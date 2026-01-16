@@ -29,8 +29,6 @@ app.UseHttpsRedirection();
 // Add Supabase authentication middleware
 app.UseMiddleware<SupabaseAuthMiddleware>();
 
-app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();
