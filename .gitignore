@@ -85,6 +85,12 @@ npm-debug.log*
 .env.local
 .env.*.local
 
+# Sensitive configuration files
+appsettings.Development.json
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json.template
+
 # Database
 *.db
 *.db-shm
