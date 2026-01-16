@@ -92,6 +92,22 @@ AS $$
     ORDER BY date DESC;
 $$;
 
+-- Create database function for efficient count queries
+CREATE OR REPLACE FUNCTION count_step_entries_in_range(
+    p_user_id UUID,
+    p_start_date DATE,
+    p_end_date DATE
+)
+RETURNS BIGINT
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+    SELECT COUNT(*)
+    FROM step_entries
+    WHERE user_id = p_user_id
+      AND date BETWEEN p_start_date AND p_end_date;
+$$;
+
 -- Add comments to table and columns
 COMMENT ON TABLE step_entries IS 'Daily step count entries recorded by users from various sources';
 COMMENT ON COLUMN step_entries.id IS 'Unique identifier for the step entry';
@@ -102,3 +118,4 @@ COMMENT ON COLUMN step_entries.date IS 'Date when steps were recorded (cannot be
 COMMENT ON COLUMN step_entries.recorded_at IS 'Timestamp when the entry was created';
 COMMENT ON COLUMN step_entries.source IS 'Source of the step data (e.g., apple_health, google_fit, manual)';
 COMMENT ON FUNCTION get_daily_step_summary IS 'Aggregates step entries by date for a user within a date range';
+COMMENT ON FUNCTION count_step_entries_in_range IS 'Efficiently counts step entries in a date range for pagination';
