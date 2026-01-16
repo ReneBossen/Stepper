@@ -1,0 +1,310 @@
+using WalkingApp.Api.Friends.DTOs;
+using WalkingApp.Api.Steps;
+using WalkingApp.Api.Steps.DTOs;
+using WalkingApp.Api.Users;
+
+namespace WalkingApp.Api.Friends;
+
+/// <summary>
+/// Service implementation for friend business logic.
+/// </summary>
+public class FriendService : IFriendService
+{
+    private readonly IFriendRepository _friendRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly IStepRepository _stepRepository;
+
+    public FriendService(
+        IFriendRepository friendRepository,
+        IUserRepository userRepository,
+        IStepRepository stepRepository)
+    {
+        ArgumentNullException.ThrowIfNull(friendRepository);
+        ArgumentNullException.ThrowIfNull(userRepository);
+        ArgumentNullException.ThrowIfNull(stepRepository);
+
+        _friendRepository = friendRepository;
+        _userRepository = userRepository;
+        _stepRepository = stepRepository;
+    }
+
+    /// <inheritdoc />
+    public async Task<FriendRequestResponse> SendFriendRequestAsync(Guid userId, SendFriendRequestRequest request)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
+        }
+
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (request.FriendUserId == Guid.Empty)
+        {
+            throw new ArgumentException("Friend user ID cannot be empty.");
+        }
+
+        if (userId == request.FriendUserId)
+        {
+            throw new ArgumentException("Cannot send friend request to yourself.");
+        }
+
+        // Check if target user exists
+        var targetUser = await _userRepository.GetByIdAsync(request.FriendUserId);
+        if (targetUser == null)
+        {
+            throw new KeyNotFoundException($"User not found: {request.FriendUserId}");
+        }
+
+        // Check if friendship already exists
+        var existingFriendship = await _friendRepository.GetFriendshipAsync(userId, request.FriendUserId);
+        if (existingFriendship != null)
+        {
+            throw new InvalidOperationException($"A friendship or request already exists with status: {existingFriendship.Status}");
+        }
+
+        var friendship = await _friendRepository.SendRequestAsync(userId, request.FriendUserId);
+
+        var requesterProfile = await _userRepository.GetByIdAsync(userId);
+
+        return new FriendRequestResponse
+        {
+            Id = friendship.Id,
+            RequesterId = friendship.RequesterId,
+            RequesterDisplayName = requesterProfile?.DisplayName ?? "Unknown",
+            RequesterAvatarUrl = requesterProfile?.AvatarUrl,
+            Status = friendship.Status.ToString().ToLowerInvariant(),
+            CreatedAt = friendship.CreatedAt
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<List<FriendRequestResponse>> GetPendingRequestsAsync(Guid userId)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
+        }
+
+        var friendships = await _friendRepository.GetPendingRequestsAsync(userId);
+
+        var responses = new List<FriendRequestResponse>();
+
+        foreach (var friendship in friendships)
+        {
+            var requesterProfile = await _userRepository.GetByIdAsync(friendship.RequesterId);
+
+            responses.Add(new FriendRequestResponse
+            {
+                Id = friendship.Id,
+                RequesterId = friendship.RequesterId,
+                RequesterDisplayName = requesterProfile?.DisplayName ?? "Unknown",
+                RequesterAvatarUrl = requesterProfile?.AvatarUrl,
+                Status = friendship.Status.ToString().ToLowerInvariant(),
+                CreatedAt = friendship.CreatedAt
+            });
+        }
+
+        return responses;
+    }
+
+    /// <inheritdoc />
+    public async Task<List<FriendRequestResponse>> GetSentRequestsAsync(Guid userId)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
+        }
+
+        var friendships = await _friendRepository.GetSentRequestsAsync(userId);
+
+        var responses = new List<FriendRequestResponse>();
+
+        foreach (var friendship in friendships)
+        {
+            var addresseeProfile = await _userRepository.GetByIdAsync(friendship.AddresseeId);
+
+            responses.Add(new FriendRequestResponse
+            {
+                Id = friendship.Id,
+                RequesterId = friendship.RequesterId,
+                RequesterDisplayName = addresseeProfile?.DisplayName ?? "Unknown",
+                RequesterAvatarUrl = addresseeProfile?.AvatarUrl,
+                Status = friendship.Status.ToString().ToLowerInvariant(),
+                CreatedAt = friendship.CreatedAt
+            });
+        }
+
+        return responses;
+    }
+
+    /// <inheritdoc />
+    public async Task<FriendRequestResponse> AcceptRequestAsync(Guid userId, Guid requestId)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
+        }
+
+        if (requestId == Guid.Empty)
+        {
+            throw new ArgumentException("Request ID cannot be empty.", nameof(requestId));
+        }
+
+        var friendship = await _friendRepository.AcceptRequestAsync(requestId, userId);
+
+        var requesterProfile = await _userRepository.GetByIdAsync(friendship.RequesterId);
+
+        return new FriendRequestResponse
+        {
+            Id = friendship.Id,
+            RequesterId = friendship.RequesterId,
+            RequesterDisplayName = requesterProfile?.DisplayName ?? "Unknown",
+            RequesterAvatarUrl = requesterProfile?.AvatarUrl,
+            Status = friendship.Status.ToString().ToLowerInvariant(),
+            CreatedAt = friendship.CreatedAt
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<FriendRequestResponse> RejectRequestAsync(Guid userId, Guid requestId)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
+        }
+
+        if (requestId == Guid.Empty)
+        {
+            throw new ArgumentException("Request ID cannot be empty.", nameof(requestId));
+        }
+
+        var friendship = await _friendRepository.RejectRequestAsync(requestId, userId);
+
+        var requesterProfile = await _userRepository.GetByIdAsync(friendship.RequesterId);
+
+        return new FriendRequestResponse
+        {
+            Id = friendship.Id,
+            RequesterId = friendship.RequesterId,
+            RequesterDisplayName = requesterProfile?.DisplayName ?? "Unknown",
+            RequesterAvatarUrl = requesterProfile?.AvatarUrl,
+            Status = friendship.Status.ToString().ToLowerInvariant(),
+            CreatedAt = friendship.CreatedAt
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<FriendListResponse> GetFriendsAsync(Guid userId)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
+        }
+
+        var friendships = await _friendRepository.GetFriendsAsync(userId);
+
+        var friendResponses = new List<FriendResponse>();
+
+        foreach (var friendship in friendships)
+        {
+            // Determine which user is the friend (not the current user)
+            var friendId = friendship.RequesterId == userId
+                ? friendship.AddresseeId
+                : friendship.RequesterId;
+
+            var friendProfile = await _userRepository.GetByIdAsync(friendId);
+
+            if (friendProfile != null)
+            {
+                friendResponses.Add(new FriendResponse
+                {
+                    UserId = friendId,
+                    DisplayName = friendProfile.DisplayName,
+                    AvatarUrl = friendProfile.AvatarUrl,
+                    FriendsSince = friendship.AcceptedAt ?? friendship.CreatedAt
+                });
+            }
+        }
+
+        return new FriendListResponse
+        {
+            Friends = friendResponses,
+            TotalCount = friendResponses.Count
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<FriendStepsResponse> GetFriendStepsAsync(Guid userId, Guid friendId)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
+        }
+
+        if (friendId == Guid.Empty)
+        {
+            throw new ArgumentException("Friend ID cannot be empty.", nameof(friendId));
+        }
+
+        // Verify friendship exists and is accepted
+        var friendship = await _friendRepository.GetFriendshipAsync(userId, friendId);
+        if (friendship == null || friendship.Status != FriendshipStatus.Accepted)
+        {
+            throw new UnauthorizedAccessException("You can only view steps of accepted friends.");
+        }
+
+        var friendProfile = await _userRepository.GetByIdAsync(friendId);
+        if (friendProfile == null)
+        {
+            throw new KeyNotFoundException($"Friend not found: {friendId}");
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        // Get Monday of current week
+        var daysFromMonday = (int)today.DayOfWeek - (int)DayOfWeek.Monday;
+        if (daysFromMonday < 0)
+        {
+            daysFromMonday += 7;
+        }
+        var weekStart = today.AddDays(-daysFromMonday);
+
+        // Get today's steps
+        var todaySteps = await _stepRepository.GetByDateAsync(friendId, today);
+        var todayTotal = todaySteps.Sum(e => e.StepCount);
+
+        // Get weekly steps
+        var weekRange = new DateRange
+        {
+            StartDate = weekStart,
+            EndDate = today
+        };
+
+        var weeklySummaries = await _stepRepository.GetDailySummariesAsync(friendId, weekRange);
+        var weeklyTotal = weeklySummaries.Sum(s => s.TotalSteps);
+
+        return new FriendStepsResponse
+        {
+            FriendId = friendId,
+            DisplayName = friendProfile.DisplayName,
+            TodaySteps = todayTotal,
+            WeeklySteps = weeklyTotal
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task RemoveFriendAsync(Guid userId, Guid friendId)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
+        }
+
+        if (friendId == Guid.Empty)
+        {
+            throw new ArgumentException("Friend ID cannot be empty.", nameof(friendId));
+        }
+
+        await _friendRepository.RemoveFriendAsync(userId, friendId);
+    }
+}
