@@ -13,6 +13,8 @@ public class SupabaseClientFactory : ISupabaseClientFactory
 
     public SupabaseClientFactory(IOptions<SupabaseSettings> settings)
     {
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(settings.Value);
         _settings = settings.Value;
     }
 
