@@ -1,5 +1,6 @@
 using WalkingApp.Api.Common.Configuration;
 using WalkingApp.Api.Common.Database;
+using WalkingApp.Api.Steps;
 using WalkingApp.Api.Users;
 
 namespace WalkingApp.Api.Common.Extensions;
@@ -35,6 +36,19 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserService, UserService>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers step-related services in the dependency injection container.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddStepServices(this IServiceCollection services)
+    {
+        services.AddScoped<IStepRepository, StepRepository>();
+        services.AddScoped<IStepService, StepService>();
 
         return services;
     }

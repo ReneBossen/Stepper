@@ -19,6 +19,9 @@ builder.Services.AddSupabaseServices(builder.Configuration);
 // Add user services
 builder.Services.AddUserServices();
 
+// Add step services
+builder.Services.AddStepServices();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
