@@ -1,10 +1,11 @@
 using WalkingApp.Api.Common.Configuration;
 using WalkingApp.Api.Common.Database;
+using WalkingApp.Api.Users;
 
 namespace WalkingApp.Api.Common.Extensions;
 
 /// <summary>
-/// Extension methods for IServiceCollection to register Supabase services.
+/// Extension methods for IServiceCollection to register application services.
 /// </summary>
 public static class ServiceCollectionExtensions
 {
@@ -21,6 +22,19 @@ public static class ServiceCollectionExtensions
 
         // Register Supabase client factory as singleton
         services.AddSingleton<ISupabaseClientFactory, SupabaseClientFactory>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers user-related services in the dependency injection container.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddUserServices(this IServiceCollection services)
+    {
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserService, UserService>();
 
         return services;
     }

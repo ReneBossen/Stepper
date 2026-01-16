@@ -10,8 +10,14 @@ builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+// Add HTTP context accessor for accessing user context in repositories
+builder.Services.AddHttpContextAccessor();
+
 // Add Supabase services
 builder.Services.AddSupabaseServices(builder.Configuration);
+
+// Add user services
+builder.Services.AddUserServices();
 
 var app = builder.Build();
 
