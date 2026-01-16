@@ -1,3 +1,4 @@
+using System.Net;
 using Supabase;
 using WalkingApp.Api.Common.Database;
 using WalkingApp.Api.Steps.DTOs;
@@ -76,13 +77,15 @@ public class StepRepository : IStepRepository
     {
         var client = await GetAuthenticatedClientAsync();
 
-        // Get total count
-        var countResponse = await client
-            .From<StepEntryEntity>()
-            .Where(x => x.UserId == userId && x.Date >= range.StartDate && x.Date <= range.EndDate)
-            .Get();
+        // Get total count efficiently using database function
+        var countResult = await client.Rpc("count_step_entries_in_range", new Dictionary<string, object>
+        {
+            { "p_user_id", userId },
+            { "p_start_date", range.StartDate.ToString("yyyy-MM-dd") },
+            { "p_end_date", range.EndDate.ToString("yyyy-MM-dd") }
+        });
 
-        var totalCount = countResponse.Models.Count;
+        var totalCount = int.TryParse(countResult, out var count) ? count : 0;
 
         // Get paginated entries
         var offset = (page - 1) * pageSize;
@@ -104,26 +107,27 @@ public class StepRepository : IStepRepository
     {
         var client = await GetAuthenticatedClientAsync();
 
-        // Get all entries in the range
-        var response = await client
-            .From<StepEntryEntity>()
-            .Where(x => x.UserId == userId && x.Date >= range.StartDate && x.Date <= range.EndDate)
-            .Get();
+        // Use database function for efficient server-side aggregation
+        var response = await client.Rpc("get_daily_step_summary", new Dictionary<string, object>
+        {
+            { "p_user_id", userId },
+            { "p_start_date", range.StartDate.ToString("yyyy-MM-dd") },
+            { "p_end_date", range.EndDate.ToString("yyyy-MM-dd") }
+        });
 
-        // Group by date and aggregate in memory
-        var summaries = response.Models
-            .GroupBy(e => e.Date)
-            .Select(g => new DailyStepSummary
-            {
-                Date = g.Key,
-                TotalSteps = g.Sum(e => e.StepCount),
-                TotalDistanceMeters = g.Sum(e => e.DistanceMeters ?? 0),
-                EntryCount = g.Count()
-            })
-            .OrderByDescending(s => s.Date)
-            .ToList();
+        // Parse the JSON response from the database function
+        var summaries = System.Text.Json.JsonSerializer
+            .Deserialize<List<DailySummaryResult>>(response)
+            ?? new List<DailySummaryResult>();
 
-        return summaries;
+        // Map to domain model
+        return summaries.Select(r => new DailyStepSummary
+        {
+            Date = DateOnly.Parse(r.Date),
+            TotalSteps = (int)r.TotalSteps,
+            TotalDistanceMeters = r.TotalDistanceMeters,
+            EntryCount = (int)r.EntryCount
+        }).ToList();
     }
 
     /// <inheritdoc />
@@ -140,13 +144,15 @@ public class StepRepository : IStepRepository
 
             return true;
         }
-        catch
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
+            // Entry not found, return false
             return false;
         }
+        // Let other exceptions bubble up to be handled by global exception handler
     }
 
-    private async Task<Client> GetAuthenticatedClientAsync()
+    private async Task<Supabase.Client> GetAuthenticatedClientAsync()
     {
         if (_httpContextAccessor.HttpContext?.Items.TryGetValue("SupabaseToken", out var tokenObj) != true)
         {
