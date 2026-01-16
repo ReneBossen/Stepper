@@ -31,8 +31,7 @@ public class ApiResponse<T>
         return new ApiResponse<T>
         {
             Success = true,
-            Data = data,
-            Errors = new List<string>()
+            Data = data
         };
     }
 
