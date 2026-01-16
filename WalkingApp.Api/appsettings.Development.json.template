@@ -1,0 +1,15 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "Supabase": {
+    "Url": "https://your-project-ref.supabase.co",
+    "AnonKey": "your-anon-key-here",
+    "JwtSecret": "your-jwt-secret-here",
+    "JwtIssuer": "https://your-project-ref.supabase.co/auth/v1",
+    "JwtAudience": "authenticated"
+  }
+}
