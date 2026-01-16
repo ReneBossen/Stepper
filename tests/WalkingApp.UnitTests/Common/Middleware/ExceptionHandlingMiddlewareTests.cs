@@ -143,7 +143,7 @@ public class ExceptionHandlingMiddlewareTests
         var response = await GetResponseBody<ApiResponse<object>>(context);
         response.Should().NotBeNull();
         response!.Success.Should().BeFalse();
-        response.Errors.Should().Contain("A database error occurred.");
+        response.Errors.Should().Contain("An external service error occurred.");
     }
 
     [Fact]
