@@ -163,13 +163,24 @@ public class FriendRepository : IFriendRepository
     {
         var client = await GetAuthenticatedClientAsync();
 
-        var response = await client
+        // Get friendships where user is requester
+        var asRequester = await client
             .From<FriendshipEntity>()
-            .Or($"requester_id.eq.{userId},addressee_id.eq.{userId}")
-            .Filter("status", Postgrest.Constants.Operator.Equals, "accepted")
+            .Where(x => x.RequesterId == userId && x.Status == "accepted")
             .Get();
 
-        return response.Models.Select(e => e.ToFriendship()).ToList();
+        // Get friendships where user is addressee
+        var asAddressee = await client
+            .From<FriendshipEntity>()
+            .Where(x => x.AddresseeId == userId && x.Status == "accepted")
+            .Get();
+
+        var allFriendships = asRequester.Models
+            .Concat(asAddressee.Models)
+            .Select(e => e.ToFriendship())
+            .ToList();
+
+        return allFriendships;
     }
 
     /// <inheritdoc />
@@ -177,13 +188,25 @@ public class FriendRepository : IFriendRepository
     {
         var client = await GetAuthenticatedClientAsync();
 
-        // Need to check both directions (userId -> friendId and friendId -> userId)
-        var response = await client
+        // Check direction 1: userId -> friendId
+        var direction1 = await client
             .From<FriendshipEntity>()
-            .Or($"and(requester_id.eq.{userId},addressee_id.eq.{friendId}),and(requester_id.eq.{friendId},addressee_id.eq.{userId})")
+            .Where(x => x.RequesterId == userId && x.AddresseeId == friendId)
             .Get();
 
-        var entity = response.Models.FirstOrDefault();
+        var entity = direction1.Models.FirstOrDefault();
+        if (entity != null)
+        {
+            return entity.ToFriendship();
+        }
+
+        // Check direction 2: friendId -> userId
+        var direction2 = await client
+            .From<FriendshipEntity>()
+            .Where(x => x.RequesterId == friendId && x.AddresseeId == userId)
+            .Get();
+
+        entity = direction2.Models.FirstOrDefault();
         return entity?.ToFriendship();
     }
 
@@ -192,21 +215,16 @@ public class FriendRepository : IFriendRepository
     {
         var client = await GetAuthenticatedClientAsync();
 
-        // Find the friendship in either direction
-        var response = await client
-            .From<FriendshipEntity>()
-            .Or($"and(requester_id.eq.{userId},addressee_id.eq.{friendId}),and(requester_id.eq.{friendId},addressee_id.eq.{userId})")
-            .Get();
-
-        var entity = response.Models.FirstOrDefault();
-        if (entity == null)
+        // Find the friendship using GetFriendshipAsync
+        var friendship = await GetFriendshipAsync(userId, friendId);
+        if (friendship == null)
         {
             throw new KeyNotFoundException($"Friendship not found between users {userId} and {friendId}");
         }
 
         await client
             .From<FriendshipEntity>()
-            .Where(x => x.Id == entity.Id)
+            .Where(x => x.Id == friendship.Id)
             .Delete();
     }
 
