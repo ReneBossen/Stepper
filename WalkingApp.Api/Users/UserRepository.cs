@@ -1,7 +1,7 @@
 using Supabase;
 using WalkingApp.Api.Common.Database;
-using Postgrest.Attributes;
-using Postgrest.Models;
+using Supabase.Postgrest.Attributes;
+using Supabase.Postgrest.Models;
 using WalkingApp.Api.Users.DTOs;
 using System.Text.Json;
 
