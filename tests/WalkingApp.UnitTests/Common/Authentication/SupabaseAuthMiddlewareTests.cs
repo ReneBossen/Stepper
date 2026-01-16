@@ -28,7 +28,9 @@ public class SupabaseAuthMiddlewareTests
         {
             Url = "https://test.supabase.co",
             AnonKey = "test-anon-key",
-            JwtSecret = "test-jwt-secret-with-at-least-32-characters-for-hs256-algorithm"
+            JwtSecret = "test-jwt-secret-with-at-least-32-characters-for-hs256-algorithm",
+            JwtIssuer = "https://test.supabase.co/auth/v1",
+            JwtAudience = "authenticated"
         };
         _options = Options.Create(_settings);
     }
@@ -251,6 +253,8 @@ public class SupabaseAuthMiddlewareTests
                 new Claim("email", "test@example.com")
             }),
             Expires = DateTime.UtcNow.AddHours(1),
+            Issuer = _settings.JwtIssuer,
+            Audience = _settings.JwtAudience,
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(key),
                 SecurityAlgorithms.HmacSha256Signature)
@@ -274,6 +278,8 @@ public class SupabaseAuthMiddlewareTests
             }),
             NotBefore = expiredTime.AddMinutes(-60), // Set NotBefore to be before Expires
             Expires = expiredTime,
+            Issuer = _settings.JwtIssuer,
+            Audience = _settings.JwtAudience,
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(key),
                 SecurityAlgorithms.HmacSha256Signature)

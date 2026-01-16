@@ -16,7 +16,9 @@ public class SupabaseClientFactoryTests
         {
             Url = "https://test.supabase.co",
             AnonKey = "test-anon-key",
-            JwtSecret = "test-jwt-secret-with-at-least-32-characters-for-hs256"
+            JwtSecret = "test-jwt-secret-with-at-least-32-characters-for-hs256",
+            JwtIssuer = "https://test.supabase.co/auth/v1",
+            JwtAudience = "authenticated"
         };
         _options = Options.Create(_validSettings);
     }
@@ -96,7 +98,7 @@ public class SupabaseClientFactoryTests
     }
 
     [Fact]
-    public void Constructor_WithNullSettings_ThrowsNullReferenceException()
+    public void Constructor_WithNullSettings_ThrowsArgumentNullException()
     {
         // Arrange
         IOptions<SupabaseSettings> nullOptions = null!;
@@ -105,6 +107,7 @@ public class SupabaseClientFactoryTests
         var act = () => new SupabaseClientFactory(nullOptions);
 
         // Assert
-        act.Should().Throw<NullReferenceException>();
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("settings");
     }
 }
