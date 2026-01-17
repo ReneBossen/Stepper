@@ -1,6 +1,7 @@
 using System.Net;
 using Supabase;
 using WalkingApp.Api.Common.Database;
+using WalkingApp.Api.Common.Models;
 using WalkingApp.Api.Steps.DTOs;
 
 namespace WalkingApp.Api.Steps;

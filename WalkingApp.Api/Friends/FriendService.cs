@@ -1,6 +1,6 @@
+using WalkingApp.Api.Common.Models;
 using WalkingApp.Api.Friends.DTOs;
 using WalkingApp.Api.Steps;
-using WalkingApp.Api.Steps.DTOs;
 using WalkingApp.Api.Users;
 
 namespace WalkingApp.Api.Friends;

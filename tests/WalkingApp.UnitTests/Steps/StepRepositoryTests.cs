@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Moq;
 using WalkingApp.Api.Common.Database;
+using WalkingApp.Api.Common.Models;
 using WalkingApp.Api.Steps;
 using WalkingApp.Api.Steps.DTOs;
 

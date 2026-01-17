@@ -1,4 +1,4 @@
-using WalkingApp.Api.Steps.DTOs;
+using WalkingApp.Api.Common.Models;
 
 namespace WalkingApp.Api.Groups;
 

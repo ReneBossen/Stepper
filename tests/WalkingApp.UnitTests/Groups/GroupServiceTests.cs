@@ -1,8 +1,8 @@
 using FluentAssertions;
 using Moq;
+using WalkingApp.Api.Common.Models;
 using WalkingApp.Api.Groups;
 using WalkingApp.Api.Groups.DTOs;
-using WalkingApp.Api.Steps.DTOs;
 using WalkingApp.Api.Users;
 
 namespace WalkingApp.UnitTests.Groups;

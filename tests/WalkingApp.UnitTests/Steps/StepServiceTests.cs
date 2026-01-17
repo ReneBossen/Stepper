@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Moq;
+using WalkingApp.Api.Common.Models;
 using WalkingApp.Api.Steps;
 using WalkingApp.Api.Steps.DTOs;
 
