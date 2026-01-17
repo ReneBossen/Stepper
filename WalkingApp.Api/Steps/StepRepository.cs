@@ -85,7 +85,7 @@ public class StepRepository : IStepRepository
             { "p_end_date", range.EndDate.ToString("yyyy-MM-dd") }
         });
 
-        var totalCount = int.TryParse(countResult, out var count) ? count : 0;
+        var totalCount = int.TryParse(countResult.Content, out var count) ? count : 0;
 
         // Get paginated entries
         var offset = (page - 1) * pageSize;
@@ -117,7 +117,7 @@ public class StepRepository : IStepRepository
 
         // Parse the JSON response from the database function
         var summaries = System.Text.Json.JsonSerializer
-            .Deserialize<List<DailySummaryResult>>(response)
+            .Deserialize<List<DailySummaryResult>>(response.Content ?? string.Empty)
             ?? new List<DailySummaryResult>();
 
         // Map to domain model
