@@ -65,6 +65,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IFriendRepository, FriendRepository>();
         services.AddScoped<IFriendService, FriendService>();
 
+        // Add friend discovery services
+        services.AddScoped<Discovery.IInviteCodeRepository, Discovery.InviteCodeRepository>();
+        services.AddScoped<Discovery.IFriendDiscoveryService, Discovery.FriendDiscoveryService>();
+
         return services;
     }
 
