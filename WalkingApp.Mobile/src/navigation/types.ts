@@ -9,6 +9,14 @@ export type RootStackParamList = {
   Onboarding: undefined;
 };
 
+// Onboarding Stack
+export type OnboardingStackParamList = {
+  WelcomeCarousel: undefined;
+  Permissions: undefined;
+  ProfileSetup: undefined;
+  PreferencesSetup: undefined;
+};
+
 // Auth Stack
 export type AuthStackParamList = {
   Login: undefined;
@@ -111,6 +119,9 @@ export type SettingsStackScreenProps<T extends keyof SettingsStackParamList> =
     NativeStackScreenProps<SettingsStackParamList, T>,
     TabScreenProps<'SettingsTab'>
   >;
+
+export type OnboardingStackScreenProps<T extends keyof OnboardingStackParamList> =
+  NativeStackScreenProps<OnboardingStackParamList, T>;
 
 // Declare global navigation type
 declare global {
