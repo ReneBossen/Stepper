@@ -8,18 +8,18 @@ interface AuthErrorMessageProps {
 }
 
 export default function AuthErrorMessage({ error }: AuthErrorMessageProps) {
-  const theme = useAppTheme();
+  const { paperTheme } = useAppTheme();
 
   if (!error) return null;
 
   return (
     <Surface
-      style={[styles.container, { backgroundColor: theme.colors.errorContainer }]}
+      style={[styles.container, { backgroundColor: paperTheme.colors.errorContainer }]}
       elevation={0}
     >
       <Text
         variant="bodyMedium"
-        style={[styles.text, { color: theme.colors.onErrorContainer }]}
+        style={[styles.text, { color: paperTheme.colors.onErrorContainer }]}
       >
         {error}
       </Text>

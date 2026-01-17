@@ -11,7 +11,7 @@ import { useRegister } from './hooks/useRegister';
 type Props = AuthStackScreenProps<'Register'>;
 
 export default function RegisterScreen({ navigation }: Props) {
-  const theme = useAppTheme();
+  const { paperTheme } = useAppTheme();
   const {
     displayName,
     setDisplayName,
@@ -36,14 +36,14 @@ export default function RegisterScreen({ navigation }: Props) {
   if (registrationSuccess) {
     return (
       <AuthLayout title="Check Your Email" subtitle="">
-        <Surface style={[styles.successCard, { backgroundColor: theme.colors.primaryContainer }]} elevation={1}>
+        <Surface style={[styles.successCard, { backgroundColor: paperTheme.colors.primaryContainer }]} elevation={1}>
           <Text variant="displaySmall" style={styles.successIcon}>
             ✉️
           </Text>
           <Text variant="bodyLarge" style={styles.successText}>
             We've sent a verification email to:
           </Text>
-          <Text variant="titleMedium" style={[styles.successEmail, { color: theme.colors.primary }]}>
+          <Text variant="titleMedium" style={[styles.successEmail, { color: paperTheme.colors.primary }]}>
             {email}
           </Text>
           <Text variant="bodyMedium" style={styles.successText}>
@@ -140,9 +140,9 @@ export default function RegisterScreen({ navigation }: Props) {
           />
           <Text variant="bodyMedium" style={styles.checkboxText}>
             I agree to the{' '}
-            <Text style={{ color: theme.colors.primary }}>Terms of Service</Text>
+            <Text style={{ color: paperTheme.colors.primary }}>Terms of Service</Text>
             {' '}and{' '}
-            <Text style={{ color: theme.colors.primary }}>Privacy Policy</Text>
+            <Text style={{ color: paperTheme.colors.primary }}>Privacy Policy</Text>
           </Text>
         </View>
 
@@ -166,7 +166,7 @@ export default function RegisterScreen({ navigation }: Props) {
           >
             <Text
               variant="bodyMedium"
-              style={{ color: theme.colors.primary, fontWeight: '600' }}
+              style={{ color: paperTheme.colors.primary, fontWeight: '600' }}
             >
               Sign In
             </Text>

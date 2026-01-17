@@ -10,7 +10,7 @@ import { useLogin } from './hooks/useLogin';
 type Props = AuthStackScreenProps<'Login'>;
 
 export default function LoginScreen({ navigation }: Props) {
-  const theme = useAppTheme();
+  const { paperTheme } = useAppTheme();
   const {
     email,
     setEmail,
@@ -66,7 +66,7 @@ export default function LoginScreen({ navigation }: Props) {
         >
           <Text
             variant="bodyMedium"
-            style={{ color: theme.colors.primary }}
+            style={{ color: paperTheme.colors.primary }}
           >
             Forgot Password?
           </Text>
@@ -112,7 +112,7 @@ export default function LoginScreen({ navigation }: Props) {
           >
             <Text
               variant="bodyMedium"
-              style={{ color: theme.colors.primary, fontWeight: '600' }}
+              style={{ color: paperTheme.colors.primary, fontWeight: '600' }}
             >
               Sign Up
             </Text>

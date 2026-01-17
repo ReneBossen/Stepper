@@ -16,7 +16,7 @@ interface AuthLayoutProps {
 }
 
 export default function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
-  const theme = useAppTheme();
+  const { paperTheme } = useAppTheme();
 
   return (
     <KeyboardAvoidingView
@@ -30,7 +30,7 @@ export default function AuthLayout({ children, title, subtitle }: AuthLayoutProp
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.container}>
-          <Text style={[styles.logo, { color: theme.colors.primary }]}>
+          <Text style={[styles.logo, { color: paperTheme.colors.primary }]}>
             🚶
           </Text>
           <Text variant="headlineMedium" style={styles.title}>
@@ -38,7 +38,7 @@ export default function AuthLayout({ children, title, subtitle }: AuthLayoutProp
           </Text>
           <Text
             variant="bodyLarge"
-            style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}
+            style={[styles.subtitle, { color: paperTheme.colors.onSurfaceVariant }]}
           >
             {subtitle}
           </Text>

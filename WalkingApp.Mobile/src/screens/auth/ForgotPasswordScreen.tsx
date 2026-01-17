@@ -10,7 +10,7 @@ import { useForgotPassword } from './hooks/useForgotPassword';
 type Props = AuthStackScreenProps<'ForgotPassword'>;
 
 export default function ForgotPasswordScreen({ navigation }: Props) {
-  const theme = useAppTheme();
+  const { paperTheme } = useAppTheme();
   const {
     email,
     setEmail,
@@ -25,7 +25,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
     return (
       <AuthLayout title="Check Your Email" subtitle="">
         <Surface
-          style={[styles.successCard, { backgroundColor: theme.colors.primaryContainer }]}
+          style={[styles.successCard, { backgroundColor: paperTheme.colors.primaryContainer }]}
           elevation={1}
         >
           <Text variant="displaySmall" style={styles.successIcon}>
@@ -34,7 +34,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
           <Text variant="bodyLarge" style={styles.successText}>
             We've sent a password reset link to:
           </Text>
-          <Text variant="titleMedium" style={[styles.successEmail, { color: theme.colors.primary }]}>
+          <Text variant="titleMedium" style={[styles.successEmail, { color: paperTheme.colors.primary }]}>
             {email}
           </Text>
           <Text variant="bodyMedium" style={styles.successText}>
@@ -55,7 +55,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
           <TouchableOpacity onPress={handleResendEmail} disabled={isLoading}>
             <Text
               variant="bodyMedium"
-              style={{ color: theme.colors.primary, fontWeight: '600' }}
+              style={{ color: paperTheme.colors.primary, fontWeight: '600' }}
             >
               Resend Link
             </Text>
@@ -95,10 +95,10 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
         </Button>
 
         <Surface
-          style={[styles.infoCard, { backgroundColor: theme.colors.surfaceVariant }]}
+          style={[styles.infoCard, { backgroundColor: paperTheme.colors.surfaceVariant }]}
           elevation={0}
         >
-          <Text variant="bodyMedium" style={[styles.infoText, { color: theme.colors.onSurfaceVariant }]}>
+          <Text variant="bodyMedium" style={[styles.infoText, { color: paperTheme.colors.onSurfaceVariant }]}>
             ℹ️  We'll send you a link to reset your password
           </Text>
         </Surface>
@@ -111,7 +111,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
           >
             <Text
               variant="bodyMedium"
-              style={{ color: theme.colors.primary, fontWeight: '600' }}
+              style={{ color: paperTheme.colors.primary, fontWeight: '600' }}
             >
               Sign In
             </Text>
