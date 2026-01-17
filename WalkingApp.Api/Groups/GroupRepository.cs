@@ -76,12 +76,37 @@ public class GroupRepository : IGroupRepository
             .Where(x => x.UserId == userId)
             .Get();
 
-        var result = new List<(Group, MemberRole)>();
+        if (memberships.Models.Count == 0)
+        {
+            return new List<(Group, MemberRole)>();
+        }
 
+        // Batch fetch all groups to avoid N+1 query
+        var groupIds = memberships.Models.Select(m => m.GroupId).ToList();
+        var groups = await client
+            .From<GroupEntity>()
+            .Where(x => groupIds.Contains(x.Id))
+            .Get();
+
+        // Get member counts for all groups
+        var memberCounts = new Dictionary<Guid, int>();
+        foreach (var groupId in groupIds)
+        {
+            memberCounts[groupId] = await GetMemberCountAsync(groupId);
+        }
+
+        // Map entities to domain models
+        var groupDict = groups.Models
+            .ToDictionary(
+                g => g.Id,
+                g => g.ToGroup(memberCounts.GetValueOrDefault(g.Id, 0))
+            );
+
+        // Build result list maintaining membership order
+        var result = new List<(Group, MemberRole)>();
         foreach (var membership in memberships.Models)
         {
-            var group = await GetByIdAsync(membership.GroupId);
-            if (group != null)
+            if (groupDict.TryGetValue(membership.GroupId, out var group))
             {
                 result.Add((group, membership.ToGroupMembership().Role));
             }
