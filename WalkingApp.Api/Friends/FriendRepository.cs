@@ -263,7 +263,26 @@ public class FriendRepository : IFriendRepository
         }
 
         // Create new blocked relationship
-        return await SendRequestAsync(userId, blockedUserId);
+        var newEntity = new FriendshipEntity
+        {
+            Id = Guid.NewGuid(),
+            RequesterId = userId,
+            AddresseeId = blockedUserId,
+            Status = "blocked",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var createResponse = await client
+            .From<FriendshipEntity>()
+            .Insert(newEntity);
+
+        var created = createResponse.Models.FirstOrDefault();
+        if (created == null)
+        {
+            throw new InvalidOperationException("Failed to block user.");
+        }
+
+        return created.ToFriendship();
     }
 
     private async Task<Client> GetAuthenticatedClientAsync()
