@@ -20,6 +20,9 @@ internal class UserEntity : BaseModel
     [Column("avatar_url")]
     public string? AvatarUrl { get; set; }
 
+    [Column("qr_code_id")]
+    public string QrCodeId { get; set; } = string.Empty;
+
     [Column("preferences")]
     public string PreferencesJson { get; set; } = "{}";
 
@@ -40,6 +43,7 @@ internal class UserEntity : BaseModel
             Id = Id,
             DisplayName = DisplayName,
             AvatarUrl = AvatarUrl,
+            QrCodeId = QrCodeId,
             Preferences = preferences,
             CreatedAt = CreatedAt,
             UpdatedAt = UpdatedAt
@@ -53,6 +57,7 @@ internal class UserEntity : BaseModel
             Id = user.Id,
             DisplayName = user.DisplayName,
             AvatarUrl = user.AvatarUrl,
+            QrCodeId = user.QrCodeId,
             PreferencesJson = JsonSerializer.Serialize(user.Preferences),
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
