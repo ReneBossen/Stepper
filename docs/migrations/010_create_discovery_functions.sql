@@ -24,6 +24,11 @@ RETURNS TABLE (
     friendship_status TEXT
 ) AS $$
 BEGIN
+    -- Authorization check: verify requesting_user_id matches authenticated user
+    IF requesting_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Unauthorized: requesting_user_id must match authenticated user';
+    END IF;
+
     RETURN QUERY
     SELECT
         u.id,
@@ -60,6 +65,11 @@ RETURNS TABLE (
     avatar_url TEXT
 ) AS $$
 BEGIN
+    -- Authorization check: verify user is authenticated
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized: user must be authenticated';
+    END IF;
+
     RETURN QUERY
     SELECT u.id, u.display_name, u.avatar_url
     FROM users u
@@ -79,8 +89,14 @@ RETURNS TABLE (
 ) AS $$
 DECLARE
     invite_record RECORD;
+    validated_user_id UUID;
 BEGIN
-    -- Find the invite code
+    -- Authorization check: verify user is authenticated
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized: user must be authenticated';
+    END IF;
+
+    -- Find the invite code (without incrementing yet)
     SELECT * INTO invite_record
     FROM invite_codes
     WHERE code = code_to_validate;
@@ -97,19 +113,22 @@ BEGIN
         RETURN;
     END IF;
 
-    -- Check if code has reached max usages
-    IF invite_record.max_usages IS NOT NULL AND invite_record.usage_count >= invite_record.max_usages THEN
+    -- Atomically increment usage count and return user_id only if under limit
+    -- This prevents race conditions by combining the check and increment in one atomic operation
+    UPDATE invite_codes
+    SET usage_count = usage_count + 1
+    WHERE code = code_to_validate
+      AND (max_usages IS NULL OR usage_count < max_usages)
+    RETURNING invite_codes.user_id INTO validated_user_id;
+
+    -- Check if the update succeeded (code was under limit)
+    IF NOT FOUND THEN
         RETURN QUERY SELECT FALSE, NULL::UUID, 'Invite code has reached maximum usage limit';
         RETURN;
     END IF;
 
-    -- Increment usage count
-    UPDATE invite_codes
-    SET usage_count = usage_count + 1
-    WHERE code = code_to_validate;
-
     -- Return success
-    RETURN QUERY SELECT TRUE, invite_record.user_id, NULL::TEXT;
+    RETURN QUERY SELECT TRUE, validated_user_id, NULL::TEXT;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

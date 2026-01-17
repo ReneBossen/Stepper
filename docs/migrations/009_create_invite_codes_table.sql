@@ -54,11 +54,10 @@ CREATE POLICY "Users can delete own invite codes"
     ON invite_codes FOR DELETE
     USING (auth.uid() = user_id);
 
--- RLS Policy: Anyone can read invite codes for validation (needed for redeeming)
--- This is safe because the code itself is the secret, and validation will check expiry/usage
-CREATE POLICY "Anyone can read invite codes for validation"
-    ON invite_codes FOR SELECT
-    USING (true);
+-- Note: We do NOT create a policy for anyone to read invite codes.
+-- The validate_invite_code function uses SECURITY DEFINER to bypass RLS
+-- when validating codes. This prevents users from querying all invite codes
+-- and exposing user IDs, expiration times, and usage counts.
 
 -- Add comments
 COMMENT ON TABLE invite_codes IS 'Invite codes for QR codes and shareable links';
