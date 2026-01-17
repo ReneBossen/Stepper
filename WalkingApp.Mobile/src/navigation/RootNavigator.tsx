@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
-import OnboardingScreen from '@screens/onboarding/OnboardingScreen';
+import OnboardingNavigator from './OnboardingNavigator';
 import { useAuthStore } from '@store/authStore';
 import { RootStackParamList } from './types';
 
@@ -12,25 +13,39 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function RootNavigator() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
 
   useEffect(() => {
-    // Check onboarding status when authenticated
-    const session = useAuthStore.getState().session;
-    // Only show onboarding if explicitly set to false
-    // Treat undefined/missing as already completed (backward compatibility)
-    if (session?.user?.user_metadata?.onboarding_completed === false) {
-      setNeedsOnboarding(true);
-    } else {
-      setNeedsOnboarding(false);
-    }
+    checkOnboardingStatus();
   }, [isAuthenticated]);
+
+  const checkOnboardingStatus = async () => {
+    if (!isAuthenticated) {
+      setIsCheckingOnboarding(false);
+      return;
+    }
+
+    try {
+      const value = await AsyncStorage.getItem('@onboarding_completed');
+      setNeedsOnboarding(value !== 'true');
+    } catch (error) {
+      console.error('Failed to check onboarding status:', error);
+      setNeedsOnboarding(false);
+    } finally {
+      setIsCheckingOnboarding(false);
+    }
+  };
+
+  if (isCheckingOnboarding && isAuthenticated) {
+    return null; // or a loading screen
+  }
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {!isAuthenticated ? (
         <Stack.Screen name="Auth" component={AuthNavigator} />
       ) : needsOnboarding ? (
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+        <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
       ) : (
         <Stack.Screen name="Main" component={MainNavigator} />
       )}
