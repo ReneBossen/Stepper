@@ -337,17 +337,4 @@ public class GroupRepository : IGroupRepository
 
         return await _clientFactory.CreateClientAsync(token);
     }
-
-    /// <summary>
-    /// Result model for leaderboard database function.
-    /// </summary>
-    private class LeaderboardEntryResult
-    {
-        public long Rank { get; set; }
-        public Guid UserId { get; set; }
-        public string DisplayName { get; set; } = string.Empty;
-        public string? AvatarUrl { get; set; }
-        public long TotalSteps { get; set; }
-        public double TotalDistanceMeters { get; set; }
-    }
 }
