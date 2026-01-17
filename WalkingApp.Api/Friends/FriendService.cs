@@ -1,4 +1,6 @@
 using WalkingApp.Api.Friends.DTOs;
+using WalkingApp.Api.Steps;
+using WalkingApp.Api.Steps.DTOs;
 using WalkingApp.Api.Users;
 
 namespace WalkingApp.Api.Friends;
@@ -10,16 +12,20 @@ public class FriendService : IFriendService
 {
     private readonly IFriendRepository _friendRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IStepRepository _stepRepository;
 
     public FriendService(
         IFriendRepository friendRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        IStepRepository stepRepository)
     {
         ArgumentNullException.ThrowIfNull(friendRepository);
         ArgumentNullException.ThrowIfNull(userRepository);
+        ArgumentNullException.ThrowIfNull(stepRepository);
 
         _friendRepository = friendRepository;
         _userRepository = userRepository;
+        _stepRepository = stepRepository;
     }
 
     /// <inheritdoc />
@@ -81,11 +87,21 @@ public class FriendService : IFriendService
 
         var friendships = await _friendRepository.GetPendingRequestsAsync(userId);
 
+        if (friendships.Count == 0)
+        {
+            return new List<FriendRequestResponse>();
+        }
+
+        // Batch fetch all requester profiles
+        var requesterIds = friendships.Select(f => f.RequesterId).Distinct().ToList();
+        var userProfiles = await _userRepository.GetByIdsAsync(requesterIds);
+        var userDict = userProfiles.ToDictionary(u => u.Id);
+
         var responses = new List<FriendRequestResponse>();
 
         foreach (var friendship in friendships)
         {
-            var requesterProfile = await _userRepository.GetByIdAsync(friendship.RequesterId);
+            var requesterProfile = userDict.GetValueOrDefault(friendship.RequesterId);
 
             responses.Add(new FriendRequestResponse
             {
@@ -111,11 +127,21 @@ public class FriendService : IFriendService
 
         var friendships = await _friendRepository.GetSentRequestsAsync(userId);
 
+        if (friendships.Count == 0)
+        {
+            return new List<FriendRequestResponse>();
+        }
+
+        // Batch fetch all addressee profiles
+        var addresseeIds = friendships.Select(f => f.AddresseeId).Distinct().ToList();
+        var userProfiles = await _userRepository.GetByIdsAsync(addresseeIds);
+        var userDict = userProfiles.ToDictionary(u => u.Id);
+
         var responses = new List<FriendRequestResponse>();
 
         foreach (var friendship in friendships)
         {
-            var addresseeProfile = await _userRepository.GetByIdAsync(friendship.AddresseeId);
+            var addresseeProfile = userDict.GetValueOrDefault(friendship.AddresseeId);
 
             responses.Add(new FriendRequestResponse
             {
@@ -197,16 +223,32 @@ public class FriendService : IFriendService
 
         var friendships = await _friendRepository.GetFriendsAsync(userId);
 
+        if (friendships.Count == 0)
+        {
+            return new FriendListResponse
+            {
+                Friends = new List<FriendResponse>(),
+                TotalCount = 0
+            };
+        }
+
+        // Determine friend IDs and batch fetch their profiles
+        var friendIds = friendships.Select(f =>
+            f.RequesterId == userId ? f.AddresseeId : f.RequesterId
+        ).Distinct().ToList();
+
+        var userProfiles = await _userRepository.GetByIdsAsync(friendIds);
+        var userDict = userProfiles.ToDictionary(u => u.Id);
+
         var friendResponses = new List<FriendResponse>();
 
         foreach (var friendship in friendships)
         {
-            // Determine which user is the friend (not the current user)
             var friendId = friendship.RequesterId == userId
                 ? friendship.AddresseeId
                 : friendship.RequesterId;
 
-            var friendProfile = await _userRepository.GetByIdAsync(friendId);
+            var friendProfile = userDict.GetValueOrDefault(friendId);
 
             if (friendProfile != null)
             {
@@ -253,9 +295,31 @@ public class FriendService : IFriendService
             throw new KeyNotFoundException($"Friend not found: {friendId}");
         }
 
-        // TODO: This functionality requires the Steps feature (Plan 3) to be implemented first.
-        // Once IStepRepository is available, this method will query step data and return it.
-        throw new NotImplementedException("Friend steps viewing will be available once the Steps feature (Plan 3) is implemented.");
+        // Get today's steps
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var todaySummaries = await _stepRepository.GetDailySummariesAsync(friendId, new DateRange
+        {
+            StartDate = today,
+            EndDate = today
+        });
+        var todaySteps = todaySummaries.FirstOrDefault()?.TotalSteps ?? 0;
+
+        // Get weekly steps (last 7 days including today)
+        var weekStart = today.AddDays(-6);
+        var weeklySummaries = await _stepRepository.GetDailySummariesAsync(friendId, new DateRange
+        {
+            StartDate = weekStart,
+            EndDate = today
+        });
+        var weeklySteps = weeklySummaries.Sum(s => s.TotalSteps);
+
+        return new FriendStepsResponse
+        {
+            FriendId = friendId,
+            DisplayName = friendProfile.DisplayName,
+            TodaySteps = todaySteps,
+            WeeklySteps = weeklySteps
+        };
     }
 
     /// <inheritdoc />
@@ -272,5 +336,40 @@ public class FriendService : IFriendService
         }
 
         await _friendRepository.RemoveFriendAsync(userId, friendId);
+    }
+
+    /// <inheritdoc />
+    public async Task<FriendResponse> GetFriendAsync(Guid userId, Guid friendId)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
+        }
+
+        if (friendId == Guid.Empty)
+        {
+            throw new ArgumentException("Friend ID cannot be empty.", nameof(friendId));
+        }
+
+        // Verify friendship exists and is accepted
+        var friendship = await _friendRepository.GetFriendshipAsync(userId, friendId);
+        if (friendship == null || friendship.Status != FriendshipStatus.Accepted)
+        {
+            throw new KeyNotFoundException("Friend not found.");
+        }
+
+        var friendProfile = await _userRepository.GetByIdAsync(friendId);
+        if (friendProfile == null)
+        {
+            throw new KeyNotFoundException($"Friend profile not found: {friendId}");
+        }
+
+        return new FriendResponse
+        {
+            UserId = friendId,
+            DisplayName = friendProfile.DisplayName,
+            AvatarUrl = friendProfile.AvatarUrl,
+            FriendsSince = friendship.AcceptedAt ?? friendship.CreatedAt
+        };
     }
 }
