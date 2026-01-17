@@ -100,6 +100,8 @@ export const useUserStore = create<UserState>((set, get) => ({
           currentUser: { ...current, avatar_url: avatarUrl },
           isLoading: false,
         });
+      } else {
+        set({ isLoading: false });
       }
     } catch (error: any) {
       set({ error: error.message, isLoading: false });

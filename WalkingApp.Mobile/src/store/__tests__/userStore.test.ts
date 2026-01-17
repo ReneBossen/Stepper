@@ -338,10 +338,8 @@ describe('userStore', () => {
         await result.current.uploadAvatar(avatarUri);
       });
 
-      // NOTE: Implementation bug - isLoading remains true when no current user
-      // Should be fixed to set isLoading: false even when currentUser is null
       expect(result.current.currentUser).toBeNull();
-      expect(result.current.isLoading).toBe(true); // Bug: should be false
+      expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
     });
 
