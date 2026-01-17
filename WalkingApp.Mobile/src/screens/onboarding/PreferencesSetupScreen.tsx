@@ -10,7 +10,8 @@ import { useOnboarding } from './hooks/useOnboarding';
 
 type PreferencesSetupScreenProps = OnboardingStackScreenProps<'PreferencesSetup'>;
 
-type PrivacyLevel = 'everyone' | 'friends' | 'nobody';
+type FindMePrivacy = 'everyone' | 'friends' | 'nobody';
+type ActivityPrivacy = 'public' | 'friends' | 'private';
 
 export default function PreferencesSetupScreen({ navigation }: PreferencesSetupScreenProps) {
   const theme = useTheme();
@@ -21,8 +22,8 @@ export default function PreferencesSetupScreen({ navigation }: PreferencesSetupS
   const [dailyStepGoal, setDailyStepGoal] = useState(10000);
   const [findMeVisible, setFindMeVisible] = useState(false);
   const [showStepsVisible, setShowStepsVisible] = useState(false);
-  const [findMePrivacy, setFindMePrivacy] = useState<PrivacyLevel>('everyone');
-  const [showStepsPrivacy, setShowStepsPrivacy] = useState<PrivacyLevel>('everyone');
+  const [findMePrivacy, setFindMePrivacy] = useState<FindMePrivacy>('everyone');
+  const [showStepsPrivacy, setShowStepsPrivacy] = useState<ActivityPrivacy>('public');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,13 +59,24 @@ export default function PreferencesSetupScreen({ navigation }: PreferencesSetupS
     }
   };
 
-  const getPrivacyLabel = (level: PrivacyLevel): string => {
+  const getFindMeLabel = (level: FindMePrivacy): string => {
     switch (level) {
       case 'everyone':
         return 'Everyone';
       case 'friends':
         return 'Friends Only';
       case 'nobody':
+        return 'Nobody';
+    }
+  };
+
+  const getActivityLabel = (level: ActivityPrivacy): string => {
+    switch (level) {
+      case 'public':
+        return 'Everyone';
+      case 'friends':
+        return 'Friends Only';
+      case 'private':
         return 'Nobody';
     }
   };
@@ -151,7 +163,7 @@ export default function PreferencesSetupScreen({ navigation }: PreferencesSetupS
                 contentStyle={styles.menuButtonContent}
                 icon="chevron-down"
               >
-                {getPrivacyLabel(findMePrivacy)}
+                {getFindMeLabel(findMePrivacy)}
               </Button>
             }
           >
@@ -192,13 +204,13 @@ export default function PreferencesSetupScreen({ navigation }: PreferencesSetupS
                 contentStyle={styles.menuButtonContent}
                 icon="chevron-down"
               >
-                {getPrivacyLabel(showStepsPrivacy)}
+                {getActivityLabel(showStepsPrivacy)}
               </Button>
             }
           >
             <Menu.Item
               onPress={() => {
-                setShowStepsPrivacy('everyone');
+                setShowStepsPrivacy('public');
                 setShowStepsVisible(false);
               }}
               title="Everyone"
@@ -212,7 +224,7 @@ export default function PreferencesSetupScreen({ navigation }: PreferencesSetupS
             />
             <Menu.Item
               onPress={() => {
-                setShowStepsPrivacy('nobody');
+                setShowStepsPrivacy('private');
                 setShowStepsVisible(false);
               }}
               title="Nobody"
