@@ -38,10 +38,4 @@ public interface IInviteCodeRepository
     /// </summary>
     /// <param name="id">The ID of the invite code to delete.</param>
     Task DeleteAsync(Guid id);
-
-    /// <summary>
-    /// Increments the usage count for an invite code.
-    /// </summary>
-    /// <param name="code">The invite code.</param>
-    Task IncrementUsageAsync(string code);
 }

@@ -100,21 +100,6 @@ public class InviteCodeRepository : IInviteCodeRepository
             .Delete();
     }
 
-    /// <inheritdoc />
-    public async Task IncrementUsageAsync(string code)
-    {
-        var client = await GetAuthenticatedClientAsync();
-
-        var inviteCode = await GetByCodeAsync(code);
-        if (inviteCode == null)
-        {
-            throw new KeyNotFoundException($"Invite code not found: {code}");
-        }
-
-        inviteCode.UsageCount++;
-        await UpdateAsync(inviteCode);
-    }
-
     private async Task<Client> GetAuthenticatedClientAsync()
     {
         if (_httpContextAccessor.HttpContext?.Items.TryGetValue("SupabaseToken", out var tokenObj) != true)

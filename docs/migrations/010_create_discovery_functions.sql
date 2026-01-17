@@ -52,6 +52,9 @@ BEGIN
         similarity(u.display_name, search_query) DESC,
         u.display_name
     LIMIT 50;
+    -- Performance Note: Similarity scoring requires computing trigram similarity for all matching rows.
+    -- The LIMIT 50 helps constrain this, but with a large user base, consider adding a minimum
+    -- similarity threshold in the WHERE clause or implementing pagination for better performance.
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
