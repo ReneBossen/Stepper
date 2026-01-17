@@ -94,6 +94,7 @@ export default function ProfileSetupScreen({ navigation }: ProfileSetupScreenPro
             maxLength={50}
             error={!!error && displayName.length > 0}
             style={styles.input}
+            testID="display-name-input"
           />
           <HelperText type="info" visible={true}>
             {displayName.length}/50 characters
@@ -108,8 +109,9 @@ export default function ProfileSetupScreen({ navigation }: ProfileSetupScreenPro
             numberOfLines={4}
             maxLength={200}
             style={styles.bioInput}
+            testID="bio-input"
           />
-          <HelperText type="info" visible={true}>
+          <HelperText type="info" visible={bio.length > 0}>
             {bio.length}/200 characters
           </HelperText>
 
@@ -126,10 +128,17 @@ export default function ProfileSetupScreen({ navigation }: ProfileSetupScreenPro
               disabled={!isValid || isSaving || isUploading}
               loading={isSaving}
               style={styles.continueButton}
+              testID="continue-button"
             >
               Continue
             </Button>
-            <Button mode="text" onPress={handleSkip} style={styles.skipButton} disabled={isSaving}>
+            <Button
+              mode="text"
+              onPress={handleSkip}
+              style={styles.skipButton}
+              disabled={isSaving}
+              testID="skip-button"
+            >
               Skip for now
             </Button>
           </View>

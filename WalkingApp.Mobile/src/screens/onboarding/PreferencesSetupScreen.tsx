@@ -123,13 +123,16 @@ export default function PreferencesSetupScreen({ navigation }: PreferencesSetupS
                 value: 'metric',
                 label: 'Metric',
                 icon: units === 'metric' ? 'check' : undefined,
+                testID: 'units-metric-button',
               },
               {
                 value: 'imperial',
                 label: 'Imperial',
                 icon: units === 'imperial' ? 'check' : undefined,
+                testID: 'units-imperial-button',
               },
             ]}
+            testID="units-segmented-buttons"
           />
         </View>
 
@@ -150,6 +153,7 @@ export default function PreferencesSetupScreen({ navigation }: PreferencesSetupS
             minimumTrackTintColor={theme.colors.primary}
             maximumTrackTintColor={theme.colors.surfaceVariant}
             thumbTintColor={theme.colors.primary}
+            testID="step-goal-slider"
           />
           <View style={styles.sliderLabels}>
             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
@@ -179,6 +183,7 @@ export default function PreferencesSetupScreen({ navigation }: PreferencesSetupS
                 style={styles.menuButton}
                 contentStyle={styles.menuButtonContent}
                 icon="chevron-down"
+                testID="find-me-menu-button"
               >
                 {getFindMeLabel(findMePrivacy)}
               </Button>
@@ -220,6 +225,7 @@ export default function PreferencesSetupScreen({ navigation }: PreferencesSetupS
                 style={styles.menuButton}
                 contentStyle={styles.menuButtonContent}
                 icon="chevron-down"
+                testID="show-steps-menu-button"
               >
                 {getActivityLabel(showStepsPrivacy)}
               </Button>
@@ -262,6 +268,7 @@ export default function PreferencesSetupScreen({ navigation }: PreferencesSetupS
             loading={isSaving}
             disabled={isSaving}
             style={styles.finishButton}
+            testID="finish-button"
           >
             Finish Setup
           </Button>

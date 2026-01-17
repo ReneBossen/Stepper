@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { ActivityIndicator } from 'react-native-paper';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -38,7 +40,11 @@ export default function RootNavigator() {
   };
 
   if (isCheckingOnboarding && isAuthenticated) {
-    return null; // or a loading screen
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" testID="loading-indicator" />
+      </View>
+    );
   }
 
   return (
@@ -53,3 +59,11 @@ export default function RootNavigator() {
     </Stack.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});

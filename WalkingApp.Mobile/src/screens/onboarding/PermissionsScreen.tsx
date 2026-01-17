@@ -60,10 +60,20 @@ export default function PermissionsScreen({ navigation }: PermissionsScreenProps
         </View>
 
         <View style={styles.footer}>
-          <Button mode="contained" onPress={handleContinue} style={styles.continueButton}>
+          <Button
+            mode="contained"
+            onPress={handleContinue}
+            style={styles.continueButton}
+            testID="continue-button"
+          >
             Continue
           </Button>
-          <Button mode="text" onPress={handleSkip} style={styles.skipButton}>
+          <Button
+            mode="text"
+            onPress={handleSkip}
+            style={styles.skipButton}
+            testID="skip-button"
+          >
             Skip for now
           </Button>
         </View>
