@@ -273,6 +273,98 @@ Supabase Auth Token
 - **Testable code** - All logic can be tested in isolation
 - **RLS for data security** - Database enforces access control
 
+## Repository Pattern: Entity Separation
+
+### Domain Models vs. Database Entities
+
+To maintain clean separation between domain logic and database infrastructure, repositories follow this pattern:
+
+**Domain Models** (e.g., `Group.cs`, `GroupMembership.cs`):
+- Live in the feature folder
+- Represent business concepts
+- Free from infrastructure concerns (no Supabase attributes)
+- Used by services and controllers
+- Immutable where practical
+
+**Entity Classes** (e.g., `GroupEntity.cs`, `GroupMembershipEntity.cs`):
+- Live in the feature folder alongside domain models
+- Contain Supabase table mapping attributes (`[Table]`, `[Column]`, `[PrimaryKey]`)
+- Handle database serialization/deserialization
+- Internal to the repository layer
+- Include mapping methods to/from domain models
+
+### Example Implementation
+
+```csharp
+// Domain model - clean business concept
+public class Group
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; }
+    public bool IsPublic { get; set; }
+    public int MemberCount { get; set; }  // Calculated, not stored
+}
+
+// Database entity - infrastructure concern
+[Table("groups")]
+internal class GroupEntity : BaseModel
+{
+    [PrimaryKey("id")]
+    public Guid Id { get; set; }
+
+    [Column("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [Column("is_public")]
+    public bool IsPublic { get; set; }
+
+    // Mapping methods
+    public Group ToGroup(int memberCount) => new()
+    {
+        Id = Id,
+        Name = Name,
+        IsPublic = IsPublic,
+        MemberCount = memberCount
+    };
+
+    public static GroupEntity FromGroup(Group group) => new()
+    {
+        Id = group.Id,
+        Name = group.Name,
+        IsPublic = group.IsPublic
+    };
+}
+```
+
+### Benefits
+
+1. **Clean Domain Models**: Business logic isn't polluted with database attributes
+2. **Flexibility**: Can change ORM/database without touching domain layer
+3. **Calculated Fields**: Domain models can include computed properties (like `MemberCount`) that aren't stored in the database
+4. **Testability**: Domain models are POCOs, easy to construct in tests
+5. **Clear Boundaries**: Repository is the only layer that knows about entities
+
+### When to Use This Pattern
+
+- **Always** for features with complex domain models
+- When domain models include calculated/derived properties
+- When domain models differ structurally from database tables
+- For features that may need to support multiple data sources
+
+### File Organization
+
+Both domain models and entities live in the same feature folder, maintaining vertical slice cohesion:
+
+```
+Groups/
+├── Group.cs              # Domain model (public)
+├── GroupEntity.cs        # Database entity (internal)
+├── GroupMembership.cs    # Domain model (public)
+├── GroupMembershipEntity.cs  # Database entity (internal)
+├── GroupRepository.cs    # Uses entities internally
+└── GroupService.cs       # Uses domain models only
+```
+
 ## Adding New Features
 
 When adding a new feature:
