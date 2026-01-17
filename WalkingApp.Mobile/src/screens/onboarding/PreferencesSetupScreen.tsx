@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, SegmentedButtons, TextInput, Button, useTheme, Menu, HelperText } from 'react-native-paper';
+import { Text, SegmentedButtons, Button, useTheme, Menu, HelperText } from 'react-native-paper';
 import Slider from '@react-native-community/slider';
+import { CommonActions } from '@react-navigation/native';
 import { OnboardingStackScreenProps } from '@navigation/types';
 import OnboardingLayout from './components/OnboardingLayout';
 import { useUserStore } from '@store/userStore';
@@ -42,11 +43,15 @@ export default function PreferencesSetupScreen({ navigation }: PreferencesSetupS
 
       await markOnboardingComplete();
 
-      // Navigate to main app - the RootNavigator will handle this
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'ProfileSetup' as never }],
-      });
+      // After marking complete, the app will automatically navigate to Main
+      // through RootNavigator's effect. We need to trigger a re-render.
+      // The simplest way is to navigate to the root and reset.
+      navigation.getParent()?.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Main' }],
+        })
+      );
     } catch (err: any) {
       setError(err.message || 'Failed to save preferences');
       setIsSaving(false);
