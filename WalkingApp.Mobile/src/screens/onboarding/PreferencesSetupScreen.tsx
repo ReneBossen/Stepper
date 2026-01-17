@@ -10,7 +10,22 @@ import { useOnboarding } from './hooks/useOnboarding';
 
 type PreferencesSetupScreenProps = OnboardingStackScreenProps<'PreferencesSetup'>;
 
+/**
+ * Privacy level for "Who can find you?" setting.
+ * Maps to backend field: privacy.find_me
+ * - 'everyone': Any user can discover your profile
+ * - 'friends': Only confirmed friends can find you
+ * - 'nobody': Profile is not discoverable in search
+ */
 type FindMePrivacy = 'everyone' | 'friends' | 'nobody';
+
+/**
+ * Privacy level for activity visibility (steps, distance, etc).
+ * Maps to backend field: privacy.activity_visibility
+ * - 'public': Activity visible to all users (equivalent to 'everyone')
+ * - 'friends': Activity visible only to confirmed friends
+ * - 'private': Activity not visible to anyone (equivalent to 'nobody')
+ */
 type ActivityPrivacy = 'public' | 'friends' | 'private';
 
 export default function PreferencesSetupScreen({ navigation }: PreferencesSetupScreenProps) {
@@ -38,6 +53,8 @@ export default function PreferencesSetupScreen({ navigation }: PreferencesSetupS
         privacy: {
           find_me: findMePrivacy,
           activity_visibility: showStepsPrivacy,
+          // Default to 'public' during onboarding. Users can change this later in settings.
+          // This keeps the onboarding flow simple while ensuring profile is visible by default.
           profile_visibility: 'public',
         },
       });
@@ -136,7 +153,7 @@ export default function PreferencesSetupScreen({ navigation }: PreferencesSetupS
           />
           <View style={styles.sliderLabels}>
             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-              5,000
+              1,000
             </Text>
             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
               50,000

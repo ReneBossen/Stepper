@@ -41,22 +41,24 @@ jest.mock('react-native-paper', () => {
   };
 });
 
-const actualRN = jest.requireActual('react-native');
-jest.mock('react-native', () => ({
-  ...actualRN,
-  KeyboardAvoidingView: ({ children }: any) => {
-    const React = require('react');
-    return React.createElement(actualRN.View, {}, children);
-  },
-  ScrollView: ({ children, ...props }: any) => {
-    const React = require('react');
-    return React.createElement(actualRN.View, props, children);
-  },
-  Platform: {
-    OS: 'ios',
-    select: jest.fn((obj) => obj.ios),
-  },
-}));
+jest.mock('react-native', () => {
+  const actualRN = jest.requireActual('react-native');
+  return {
+    ...actualRN,
+    KeyboardAvoidingView: ({ children }: any) => {
+      const React = require('react');
+      return React.createElement(actualRN.View, {}, children);
+    },
+    ScrollView: ({ children, ...props }: any) => {
+      const React = require('react');
+      return React.createElement(actualRN.View, props, children);
+    },
+    Platform: {
+      OS: 'ios',
+      select: jest.fn((obj) => obj.ios),
+    },
+  };
+});
 
 jest.mock('../components/OnboardingLayout', () => {
   const RN = jest.requireActual('react-native');
