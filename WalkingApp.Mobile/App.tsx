@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
 import { validateConfig } from '@config/supabase.config';
+import RootNavigator from '@navigation/RootNavigator';
 
 export default function App() {
   useEffect(() => {
@@ -11,18 +11,9 @@ export default function App() {
   }, []);
 
   return (
-    <View style={styles.container}>
-      <Text>Walking App - Coming Soon!</Text>
+    <>
+      <RootNavigator />
       <StatusBar style="auto" />
-    </View>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
