@@ -2,6 +2,14 @@
 
 Complete guide for setting up Android Studio, Android SDK, and Android Virtual Device (AVD) for developing the Walking App.
 
+## Android Version Information (January 2026)
+
+**Current Android Versions:**
+- **Android 16 (API 36, "Baklava")** - Latest version (13.3% adoption)
+- **Android 15 (API 35)** - **Required minimum** for Google Play submissions
+
+**Important**: This guide uses Android 16 (API 36) as the primary development target. Google Play requires all new apps and updates to target API Level 35 or higher as of January 2026.
+
 ## Table of Contents
 
 1. [Prerequisites](#prerequisites)
@@ -109,18 +117,23 @@ In the "SDK Platforms" tab:
 
 1. **Check** "Show Package Details" at bottom-right
 2. Select these platforms:
-   - **Android 14.0 (UpsideDownCake)** - API Level 34
-     - Android SDK Platform 34
+   - **Android 16.0 (Baklava)** - API Level 36 (Latest)
+     - Android SDK Platform 36
      - Google APIs Intel x86_64 Atom System Image
-   - **Android 13.0 (Tiramisu)** - API Level 33 (backup)
-     - Android SDK Platform 33
+   - **Android 15.0** - API Level 35 (Minimum for Google Play)
+     - Android SDK Platform 35
+     - Google APIs Intel x86_64 Atom System Image
+   - **Android 14.0 (UpsideDownCake)** - API Level 34 (Optional - for backward compatibility testing)
+     - Android SDK Platform 34
      - Google APIs Intel x86_64 Atom System Image
 3. Click "Apply"
 4. Click "OK" to confirm
 5. Accept license agreements
 6. Click "OK" to begin download
-7. Wait for installation to complete (5-15 minutes)
+7. Wait for installation to complete (10-20 minutes)
 8. Click "Finish"
+
+**Note**: As of January 2026, Google Play requires apps to target API Level 35 (Android 15) or higher. Android 16 (API 36) is the latest version with 13.3% adoption.
 
 ### Step 3: Install SDK Tools
 
@@ -283,20 +296,22 @@ Or if project is open:
 
 ### Step 3: Select System Image
 
-1. Click on "**UpsideDownCake**" tab (or find API Level 34)
+1. Click on "**Baklava**" tab (or find API Level 36)
 2. Select:
-   - **Release Name**: UpsideDownCake
-   - **API Level**: 34
+   - **Release Name**: Baklava
+   - **API Level**: 36
    - **ABI**: x86_64
-   - **Target**: Android 14.0 (Google APIs)
+   - **Target**: Android 16.0 (Google APIs)
 3. If "Download" link appears, click it:
    - Accept license
    - Wait for download (1-2GB, may take 10-20 minutes)
 4. Click "Next"
 
+**Alternative**: You can also select API Level 35 (Android 15) if you prefer the minimum required version for Google Play.
+
 ### Step 4: Configure AVD
 
-1. **AVD Name**: `WalkingApp_Pixel7_API34`
+1. **AVD Name**: `WalkingApp_Pixel7_API36`
 2. **Startup orientation**: Portrait
 3. Click "Show Advanced Settings"
 
@@ -318,7 +333,7 @@ Or if project is open:
 ### Step 5: Verify AVD Creation
 
 In Device Manager, you should see:
-- **WalkingApp_Pixel7_API34**
+- **WalkingApp_Pixel7_API36**
 - A play button to launch it
 
 ## Verification
@@ -362,7 +377,7 @@ The script checks:
     Version: Android emulator version 34.2.16.0
 
 [✓] Available AVDs found:
-    - WalkingApp_Pixel7_API34
+    - WalkingApp_Pixel7_API36
 
 [✓] All checks passed!
 ```
@@ -373,17 +388,17 @@ The script checks:
 
 **Option A: From Android Studio**
 1. Open Device Manager
-2. Click play button next to "WalkingApp_Pixel7_API34"
+2. Click play button next to "WalkingApp_Pixel7_API36"
 3. Wait for emulator to boot (first boot takes 1-2 minutes)
 
 **Option B: From Command Line (Windows)**
 ```powershell
-emulator -avd WalkingApp_Pixel7_API34
+emulator -avd WalkingApp_Pixel7_API36
 ```
 
 **Option C: From WSL2**
 ```bash
-emulator -avd WalkingApp_Pixel7_API34 &
+emulator -avd WalkingApp_Pixel7_API36 &
 ```
 
 ### Step 2: Verify Emulator is Running
@@ -670,10 +685,10 @@ npm run android:device
 emulator -list-avds
 
 # Start specific AVD
-emulator -avd WalkingApp_Pixel7_API34
+emulator -avd WalkingApp_Pixel7_API36
 
 # Start with options
-emulator -avd WalkingApp_Pixel7_API34 -gpu host -no-boot-anim
+emulator -avd WalkingApp_Pixel7_API36 -gpu host -no-boot-anim
 
 # List connected devices
 adb devices

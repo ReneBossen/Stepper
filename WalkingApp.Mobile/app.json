@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Walking App",
-    "slug": "walking-app",
+    "slug": "walkingapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -29,6 +29,12 @@
       "favicon": "./assets/favicon.png"
     },
     "scheme": "walkingapp",
-    "plugins": []
+    "plugins": [],
+    "extra": {
+      "eas": {
+        "projectId": "98e5123e-bcac-42ad-8639-279de66998c5"
+      }
+    },
+    "owner": "bossen"
   }
 }
