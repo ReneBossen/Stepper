@@ -10,7 +10,7 @@ module.exports = {
     }],
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(react-native|@react-native|expo|@expo|@supabase)/)',
+    'node_modules/(?!(react-native|@react-native|expo|@expo|@supabase|@react-navigation|react-native-paper|react-native-safe-area-context)/)',
   ],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   moduleNameMapper: {
