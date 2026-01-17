@@ -35,6 +35,10 @@ export const colors = {
     inverseOnSurface: '#FAFAFA',
     inversePrimary: '#81C784',
 
+    backdrop: 'rgba(0, 0, 0, 0.4)',
+    surfaceDisabled: 'rgba(33, 33, 33, 0.12)',
+    onSurfaceDisabled: 'rgba(33, 33, 33, 0.38)',
+
     elevation: {
       level0: 'transparent',
       level1: '#FFFFFF',
@@ -80,6 +84,10 @@ export const colors = {
     inverseSurface: '#E0E0E0',
     inverseOnSurface: '#121212',
     inversePrimary: '#4CAF50',
+
+    backdrop: 'rgba(0, 0, 0, 0.6)',
+    surfaceDisabled: 'rgba(224, 224, 224, 0.12)',
+    onSurfaceDisabled: 'rgba(224, 224, 224, 0.38)',
 
     elevation: {
       level0: 'transparent',
