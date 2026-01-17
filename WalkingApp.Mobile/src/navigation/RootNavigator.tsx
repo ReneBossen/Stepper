@@ -16,15 +16,16 @@ export default function RootNavigator() {
   const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
 
   useEffect(() => {
-    checkOnboardingStatus();
+    if (isAuthenticated) {
+      checkOnboardingStatus();
+    } else {
+      setIsCheckingOnboarding(false);
+      setNeedsOnboarding(false);
+    }
   }, [isAuthenticated]);
 
   const checkOnboardingStatus = async () => {
-    if (!isAuthenticated) {
-      setIsCheckingOnboarding(false);
-      return;
-    }
-
+    setIsCheckingOnboarding(true);
     try {
       const value = await AsyncStorage.getItem('@onboarding_completed');
       setNeedsOnboarding(value !== 'true');
