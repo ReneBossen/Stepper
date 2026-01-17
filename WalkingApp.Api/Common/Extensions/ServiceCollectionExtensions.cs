@@ -1,6 +1,7 @@
 using WalkingApp.Api.Common.Configuration;
 using WalkingApp.Api.Common.Database;
 using WalkingApp.Api.Friends;
+using WalkingApp.Api.Groups;
 using WalkingApp.Api.Steps;
 using WalkingApp.Api.Users;
 
@@ -63,6 +64,19 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<IFriendRepository, FriendRepository>();
         services.AddScoped<IFriendService, FriendService>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers group-related services in the dependency injection container.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddGroupServices(this IServiceCollection services)
+    {
+        services.AddScoped<IGroupRepository, GroupRepository>();
+        services.AddScoped<IGroupService, GroupService>();
 
         return services;
     }

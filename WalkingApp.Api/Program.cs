@@ -25,6 +25,9 @@ builder.Services.AddStepServices();
 // Add friend services
 builder.Services.AddFriendServices();
 
+// Add group services
+builder.Services.AddGroupServices();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
