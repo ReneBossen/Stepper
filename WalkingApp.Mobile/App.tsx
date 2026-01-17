@@ -8,6 +8,7 @@ import { supabase } from '@services/supabase';
 import { useAuthStore } from '@store/authStore';
 import { useUserStore } from '@store/userStore';
 import { validateConfig } from '@config/supabase.config';
+import { ErrorMessage } from '@components/common/ErrorMessage';
 import * as SplashScreen from 'expo-splash-screen';
 
 // Keep splash screen visible while loading
@@ -16,15 +17,25 @@ SplashScreen.preventAutoHideAsync();
 function AppContent() {
   const { navigationTheme } = useAppTheme();
   const [isReady, setIsReady] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
   const setSession = useAuthStore((state) => state.setSession);
   const fetchCurrentUser = useUserStore((state) => state.fetchCurrentUser);
 
   useEffect(() => {
+    let subscription: any = null;
+
     async function prepare() {
       try {
         // Validate configuration
         if (!validateConfig()) {
-          console.error('Invalid app configuration');
+          const error = 'Invalid app configuration. Please check your environment variables.';
+          if (__DEV__) {
+            console.error(error);
+          }
+          setInitError(error);
+          setIsReady(true);
+          await SplashScreen.hideAsync();
+          return;
         }
 
         // Check initial session
@@ -38,7 +49,7 @@ function AppContent() {
 
         // Setup auth state listener
         const {
-          data: { subscription },
+          data: { subscription: authSubscription },
         } = supabase.auth.onAuthStateChange(async (event, session) => {
           setSession(session);
 
@@ -47,25 +58,48 @@ function AppContent() {
           }
         });
 
+        subscription = authSubscription;
+
         setIsReady(true);
         await SplashScreen.hideAsync();
-
-        // Cleanup
-        return () => {
-          subscription.unsubscribe();
-        };
       } catch (error) {
-        console.error('App initialization error:', error);
+        if (__DEV__) {
+          console.error('App initialization error:', error);
+        }
+        setInitError('Failed to initialize app. Please try restarting.');
         setIsReady(true);
         await SplashScreen.hideAsync();
       }
     }
 
     prepare();
+
+    // Cleanup function returned directly from useEffect
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
 
   if (!isReady) {
     return null;
+  }
+
+  if (initError) {
+    return (
+      <ErrorMessage
+        message={initError}
+        onRetry={() => {
+          setInitError(null);
+          setIsReady(false);
+          // Force re-mount by changing key would be ideal, but retry via reload is simpler
+          if (typeof window !== 'undefined' && window.location) {
+            window.location.reload();
+          }
+        }}
+      />
+    );
   }
 
   return (

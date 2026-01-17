@@ -16,6 +16,8 @@ export default function RootNavigator() {
   useEffect(() => {
     // Check onboarding status when authenticated
     const session = useAuthStore.getState().session;
+    // Only show onboarding if explicitly set to false
+    // Treat undefined/missing as already completed (backward compatibility)
     if (session?.user?.user_metadata?.onboarding_completed === false) {
       setNeedsOnboarding(true);
     } else {
