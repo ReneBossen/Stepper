@@ -89,9 +89,11 @@ public class UserRepository : IUserRepository
 
         var client = await GetAuthenticatedClientAsync();
 
+        // Build IN clause filter - format: "id.in.(uuid1,uuid2,uuid3)"
+        var idsString = string.Join(",", userIds);
         var response = await client
             .From<UserEntity>()
-            .Filter("id", Postgrest.Constants.Operator.In, userIds)
+            .Filter("id", Supabase.Postgrest.Constants.Operator.In, $"({idsString})")
             .Get();
 
         return response.Models.Select(e => e.ToUser()).ToList();
