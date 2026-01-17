@@ -77,6 +77,26 @@ public class UserRepository : IUserRepository
         return updated.ToUser();
     }
 
+    /// <inheritdoc />
+    public async Task<List<User>> GetByIdsAsync(List<Guid> userIds)
+    {
+        ArgumentNullException.ThrowIfNull(userIds);
+
+        if (userIds.Count == 0)
+        {
+            return new List<User>();
+        }
+
+        var client = await GetAuthenticatedClientAsync();
+
+        var response = await client
+            .From<UserEntity>()
+            .Filter("id", Postgrest.Constants.Operator.In, userIds)
+            .Get();
+
+        return response.Models.Select(e => e.ToUser()).ToList();
+    }
+
     private async Task<Client> GetAuthenticatedClientAsync()
     {
         if (_httpContextAccessor.HttpContext?.Items.TryGetValue("SupabaseToken", out var tokenObj) != true)

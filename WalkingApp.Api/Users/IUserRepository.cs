@@ -25,4 +25,11 @@ public interface IUserRepository
     /// <param name="user">The user profile to update.</param>
     /// <returns>The updated user profile.</returns>
     Task<User> UpdateAsync(User user);
+
+    /// <summary>
+    /// Gets multiple user profiles by their IDs in a single query.
+    /// </summary>
+    /// <param name="userIds">The list of user IDs to fetch.</param>
+    /// <returns>List of user profiles found. Users not found are excluded from the result.</returns>
+    Task<List<User>> GetByIdsAsync(List<Guid> userIds);
 }
