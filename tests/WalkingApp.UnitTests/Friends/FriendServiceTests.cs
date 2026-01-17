@@ -2,6 +2,7 @@ using FluentAssertions;
 using Moq;
 using WalkingApp.Api.Friends;
 using WalkingApp.Api.Friends.DTOs;
+using WalkingApp.Api.Steps;
 using WalkingApp.Api.Users;
 
 namespace WalkingApp.UnitTests.Friends;
@@ -10,13 +11,15 @@ public class FriendServiceTests
 {
     private readonly Mock<IFriendRepository> _mockFriendRepository;
     private readonly Mock<IUserRepository> _mockUserRepository;
+    private readonly Mock<IStepRepository> _mockStepRepository;
     private readonly FriendService _sut;
 
     public FriendServiceTests()
     {
         _mockFriendRepository = new Mock<IFriendRepository>();
         _mockUserRepository = new Mock<IUserRepository>();
-        _sut = new FriendService(_mockFriendRepository.Object, _mockUserRepository.Object);
+        _mockStepRepository = new Mock<IStepRepository>();
+        _sut = new FriendService(_mockFriendRepository.Object, _mockUserRepository.Object, _mockStepRepository.Object);
     }
 
     #region Constructor Tests
@@ -25,7 +28,7 @@ public class FriendServiceTests
     public void Constructor_WithNullFriendRepository_ThrowsArgumentNullException()
     {
         // Arrange & Act
-        var act = () => new FriendService(null!, _mockUserRepository.Object);
+        var act = () => new FriendService(null!, _mockUserRepository.Object, _mockStepRepository.Object);
 
         // Assert
         act.Should().Throw<ArgumentNullException>();
@@ -35,7 +38,17 @@ public class FriendServiceTests
     public void Constructor_WithNullUserRepository_ThrowsArgumentNullException()
     {
         // Arrange & Act
-        var act = () => new FriendService(_mockFriendRepository.Object, null!);
+        var act = () => new FriendService(_mockFriendRepository.Object, null!, _mockStepRepository.Object);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Constructor_WithNullStepRepository_ThrowsArgumentNullException()
+    {
+        // Arrange & Act
+        var act = () => new FriendService(_mockFriendRepository.Object, _mockUserRepository.Object, null!);
 
         // Assert
         act.Should().Throw<ArgumentNullException>();
@@ -210,10 +223,8 @@ public class FriendServiceTests
 
         _mockFriendRepository.Setup(x => x.GetPendingRequestsAsync(userId))
             .ReturnsAsync(friendships);
-        _mockUserRepository.Setup(x => x.GetByIdAsync(requesterId1))
-            .ReturnsAsync(requester1);
-        _mockUserRepository.Setup(x => x.GetByIdAsync(requesterId2))
-            .ReturnsAsync(requester2);
+        _mockUserRepository.Setup(x => x.GetByIdsAsync(It.IsAny<List<Guid>>()))
+            .ReturnsAsync((List<Guid> ids) => new List<User> { requester1, requester2 }.Where(u => ids.Contains(u.Id)).ToList());
 
         // Act
         var result = await _sut.GetPendingRequestsAsync(userId);
@@ -278,10 +289,8 @@ public class FriendServiceTests
 
         _mockFriendRepository.Setup(x => x.GetSentRequestsAsync(userId))
             .ReturnsAsync(friendships);
-        _mockUserRepository.Setup(x => x.GetByIdAsync(addresseeId1))
-            .ReturnsAsync(addressee1);
-        _mockUserRepository.Setup(x => x.GetByIdAsync(addresseeId2))
-            .ReturnsAsync(addressee2);
+        _mockUserRepository.Setup(x => x.GetByIdsAsync(It.IsAny<List<Guid>>()))
+            .ReturnsAsync((List<Guid> ids) => new List<User> { addressee1, addressee2 }.Where(u => ids.Contains(u.Id)).ToList());
 
         // Act
         var result = await _sut.GetSentRequestsAsync(userId);
@@ -456,10 +465,8 @@ public class FriendServiceTests
 
         _mockFriendRepository.Setup(x => x.GetFriendsAsync(userId))
             .ReturnsAsync(friendships);
-        _mockUserRepository.Setup(x => x.GetByIdAsync(friendId1))
-            .ReturnsAsync(friend1);
-        _mockUserRepository.Setup(x => x.GetByIdAsync(friendId2))
-            .ReturnsAsync(friend2);
+        _mockUserRepository.Setup(x => x.GetByIdsAsync(It.IsAny<List<Guid>>()))
+            .ReturnsAsync((List<Guid> ids) => new List<User> { friend1, friend2 }.Where(u => ids.Contains(u.Id)).ToList());
 
         // Act
         var result = await _sut.GetFriendsAsync(userId);
@@ -521,10 +528,8 @@ public class FriendServiceTests
 
         _mockFriendRepository.Setup(x => x.GetFriendsAsync(userId))
             .ReturnsAsync(friendships);
-        _mockUserRepository.Setup(x => x.GetByIdAsync(friendId1))
-            .ReturnsAsync((User?)null);
-        _mockUserRepository.Setup(x => x.GetByIdAsync(friendId2))
-            .ReturnsAsync(friend2);
+        _mockUserRepository.Setup(x => x.GetByIdsAsync(It.IsAny<List<Guid>>()))
+            .ReturnsAsync((List<Guid> ids) => new List<User> { friend2 }.Where(u => ids.Contains(u.Id)).ToList());
 
         // Act
         var result = await _sut.GetFriendsAsync(userId);
@@ -541,25 +546,41 @@ public class FriendServiceTests
     #region GetFriendStepsAsync Tests
 
     [Fact]
-    public async Task GetFriendStepsAsync_ThrowsNotImplementedException()
+    public async Task GetFriendStepsAsync_WithValidFriendship_ReturnsFriendSteps()
     {
         // Arrange
         var userId = Guid.NewGuid();
         var friendId = Guid.NewGuid();
         var friendship = CreateTestFriendship(userId, friendId, FriendshipStatus.Accepted);
         var friend = CreateTestUser(friendId, "Friend User");
+        var todaySummaries = new List<Api.Steps.DailyStepSummary>
+        {
+            new Api.Steps.DailyStepSummary { Date = DateOnly.FromDateTime(DateTime.UtcNow), TotalSteps = 5000, TotalDistanceMeters = 4000, EntryCount = 1 }
+        };
+        var weeklySummaries = new List<Api.Steps.DailyStepSummary>
+        {
+            new Api.Steps.DailyStepSummary { Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-6)), TotalSteps = 3000, TotalDistanceMeters = 2400, EntryCount = 1 },
+            new Api.Steps.DailyStepSummary { Date = DateOnly.FromDateTime(DateTime.UtcNow), TotalSteps = 5000, TotalDistanceMeters = 4000, EntryCount = 1 }
+        };
 
         _mockFriendRepository.Setup(x => x.GetFriendshipAsync(userId, friendId))
             .ReturnsAsync(friendship);
         _mockUserRepository.Setup(x => x.GetByIdAsync(friendId))
             .ReturnsAsync(friend);
+        _mockStepRepository.Setup(x => x.GetDailySummariesAsync(friendId, It.Is<Api.Steps.DTOs.DateRange>(r => r.StartDate == r.EndDate)))
+            .ReturnsAsync(todaySummaries);
+        _mockStepRepository.Setup(x => x.GetDailySummariesAsync(friendId, It.Is<Api.Steps.DTOs.DateRange>(r => r.StartDate != r.EndDate)))
+            .ReturnsAsync(weeklySummaries);
 
         // Act
-        var act = async () => await _sut.GetFriendStepsAsync(userId, friendId);
+        var result = await _sut.GetFriendStepsAsync(userId, friendId);
 
         // Assert
-        await act.Should().ThrowAsync<NotImplementedException>()
-            .WithMessage("Friend steps viewing will be available once the Steps feature (Plan 3) is implemented.");
+        result.Should().NotBeNull();
+        result.FriendId.Should().Be(friendId);
+        result.DisplayName.Should().Be("Friend User");
+        result.TodaySteps.Should().Be(5000);
+        result.WeeklySteps.Should().Be(8000);
     }
 
     [Fact]
