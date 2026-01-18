@@ -60,7 +60,7 @@ export const stepsApi = {
     const weekTotal = weekData?.reduce((sum, entry) => sum + entry.steps, 0) || 0;
     const monthTotal = monthData?.reduce((sum, entry) => sum + entry.steps, 0) || 0;
 
-    // Calculate streak
+    // Calculate streak using UTC dates to avoid timezone sensitivity issues
     const { data: allData } = await supabase
       .from('step_entries')
       .select('date, steps')
@@ -68,10 +68,18 @@ export const stepsApi = {
 
     let streak = 0;
     if (allData) {
-      let currentDate = new Date();
+      // Get current date in UTC (YYYY-MM-DD format)
+      const now = new Date();
+      const currentDateUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+
       for (const entry of allData) {
-        const entryDate = new Date(entry.date);
-        const diffDays = Math.floor((currentDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
+        // Parse entry date as UTC (database stores dates as YYYY-MM-DD)
+        const [year, month, day] = entry.date.split('-').map(Number);
+        const entryDateUtc = Date.UTC(year, month - 1, day);
+
+        // Calculate difference in days using UTC timestamps
+        const diffDays = Math.floor((currentDateUtc - entryDateUtc) / (1000 * 60 * 60 * 24));
+
         if (diffDays === streak && entry.steps > 0) {
           streak++;
         } else {
