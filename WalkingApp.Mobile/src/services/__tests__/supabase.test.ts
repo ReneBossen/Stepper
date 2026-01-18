@@ -44,7 +44,6 @@ import {
   signUpWithEmail,
   signOut,
   resetPassword,
-  signInWithGoogleOAuth,
   signInWithIdToken,
 } from '../supabase';
 import { ExpoSecureStoreAdapter } from '../secureStore';
@@ -447,116 +446,6 @@ describe('resetPassword', () => {
     mockResetPasswordForEmail.mockRejectedValue(networkError);
 
     await expect(resetPassword('test@example.com')).rejects.toThrow('Network error');
-  });
-});
-
-describe('signInWithGoogleOAuth', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('signInWithGoogleOAuth_WithValidConfiguration_ReturnsOAuthUrl', async () => {
-    const mockOAuthData = {
-      provider: 'google',
-      url: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri=walkingapp://&response_type=code',
-    };
-
-    mockSignInWithOAuth.mockResolvedValue({
-      data: mockOAuthData,
-      error: null,
-    });
-
-    const result = await signInWithGoogleOAuth();
-
-    expect(mockSignInWithOAuth).toHaveBeenCalledWith({
-      provider: 'google',
-      options: {
-        skipBrowserRedirect: true,
-        redirectTo: undefined,
-      },
-    });
-    expect(result).toEqual(mockOAuthData);
-    expect(result.url).toBeDefined();
-    expect(result.provider).toBe('google');
-  });
-
-  it('signInWithGoogleOAuth_WhenCalled_UsesCorrectProvider', async () => {
-    mockSignInWithOAuth.mockResolvedValue({
-      data: { provider: 'google', url: 'https://test.com' },
-      error: null,
-    });
-
-    await signInWithGoogleOAuth();
-
-    const call = mockSignInWithOAuth.mock.calls[0][0];
-    expect(call.provider).toBe('google');
-  });
-
-  it('signInWithGoogleOAuth_WhenCalled_SkipsBrowserRedirect', async () => {
-    mockSignInWithOAuth.mockResolvedValue({
-      data: { provider: 'google', url: 'https://test.com' },
-      error: null,
-    });
-
-    await signInWithGoogleOAuth();
-
-    const call = mockSignInWithOAuth.mock.calls[0][0];
-    expect(call.options.skipBrowserRedirect).toBe(true);
-  });
-
-  it('signInWithGoogleOAuth_WhenCalled_RedirectToIsUndefined', async () => {
-    mockSignInWithOAuth.mockResolvedValue({
-      data: { provider: 'google', url: 'https://test.com' },
-      error: null,
-    });
-
-    await signInWithGoogleOAuth();
-
-    const call = mockSignInWithOAuth.mock.calls[0][0];
-    expect(call.options.redirectTo).toBeUndefined();
-  });
-
-  it('signInWithGoogleOAuth_WhenSupabaseReturnsError_ThrowsError', async () => {
-    const mockError = { message: 'OAuth configuration error' };
-    mockSignInWithOAuth.mockResolvedValue({
-      data: null,
-      error: mockError,
-    });
-
-    await expect(signInWithGoogleOAuth()).rejects.toEqual(mockError);
-  });
-
-  it('signInWithGoogleOAuth_WhenNetworkFails_ThrowsNetworkError', async () => {
-    const networkError = new Error('Network request failed');
-    mockSignInWithOAuth.mockRejectedValue(networkError);
-
-    await expect(signInWithGoogleOAuth()).rejects.toThrow('Network request failed');
-  });
-
-  it('signInWithGoogleOAuth_WhenProviderUnavailable_ThrowsError', async () => {
-    const mockError = { message: 'Google provider not configured' };
-    mockSignInWithOAuth.mockResolvedValue({
-      data: null,
-      error: mockError,
-    });
-
-    await expect(signInWithGoogleOAuth()).rejects.toEqual(mockError);
-  });
-
-  it('signInWithGoogleOAuth_ReturnsDataWithUrlProperty', async () => {
-    const mockData = {
-      provider: 'google',
-      url: 'https://accounts.google.com/oauth',
-    };
-    mockSignInWithOAuth.mockResolvedValue({
-      data: mockData,
-      error: null,
-    });
-
-    const result = await signInWithGoogleOAuth();
-
-    expect(result).toHaveProperty('url');
-    expect(result).toHaveProperty('provider');
   });
 });
 
