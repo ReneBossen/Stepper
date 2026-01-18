@@ -94,30 +94,13 @@ export const resetPassword = async (email: string) => {
 
 /**
  * Sign in with Google ID token
+ * Used in conjunction with expo-auth-session for secure OAuth flow
  */
 export const signInWithIdToken = async (idToken: string, accessToken?: string) => {
   const { data, error } = await supabase.auth.signInWithIdToken({
     provider: 'google',
     token: idToken,
     access_token: accessToken,
-  });
-
-  if (error) throw error;
-  return data;
-};
-
-/**
- * Sign in with Google OAuth (browser-based)
- * Note: After OAuth completes, user should manually close the browser.
- * The session will be detected automatically by the auth state listener.
- */
-export const signInWithGoogleOAuth = async () => {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      skipBrowserRedirect: true,
-      redirectTo: undefined,
-    },
   });
 
   if (error) throw error;
