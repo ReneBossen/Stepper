@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">68.75% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>11/16</span>
+                <span class='fraction'>0/16</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">16.66% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>1/6</span>
+                <span class='fraction'>0/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">68.75% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>11/16</span>
+                <span class='fraction'>0/16</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line medium'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -138,21 +138,21 @@
 <a name='L73'></a><a href='#L73'>73</a>
 <a name='L74'></a><a href='#L74'>74</a>
 <a name='L75'></a><a href='#L75'>75</a>
-<a name='L76'></a><a href='#L76'>76</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<a name='L76'></a><a href='#L76'>76</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -213,21 +213,21 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import React from 'react';</span>
+<span class="cstat-no" title="statement not covered" >import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';</span>
+<span class="cstat-no" title="statement not covered" >import { MaterialCommunityIcons } from '@expo/vector-icons';</span>
 import { TabParamList } from './types';
 &nbsp;
-import HomeStackNavigator from './stacks/HomeStackNavigator';
-import StepsStackNavigator from './stacks/StepsStackNavigator';
-import FriendsStackNavigator from './stacks/FriendsStackNavigator';
-import GroupsStackNavigator from './stacks/GroupsStackNavigator';
-import SettingsStackNavigator from './stacks/SettingsStackNavigator';
+<span class="cstat-no" title="statement not covered" >import HomeStackNavigator from './stacks/HomeStackNavigator';</span>
+<span class="cstat-no" title="statement not covered" >import StepsStackNavigator from './stacks/StepsStackNavigator';</span>
+<span class="cstat-no" title="statement not covered" >import FriendsStackNavigator from './stacks/FriendsStackNavigator';</span>
+<span class="cstat-no" title="statement not covered" >import GroupsStackNavigator from './stacks/GroupsStackNavigator';</span>
+<span class="cstat-no" title="statement not covered" >import SettingsStackNavigator from './stacks/SettingsStackNavigator';</span>
 &nbsp;
-const Tab = createBottomTabNavigator&lt;TabParamList&gt;();
+const Tab = <span class="cstat-no" title="statement not covered" >createBottomTabNavigator&lt;TabParamList&gt;();</span>
 &nbsp;
-export default function TabNavigator() {
-  return (
+<span class="cstat-no" title="statement not covered" >export default function <span class="fstat-no" title="function not covered" >T</span>abNavigator(</span>) {
+<span class="cstat-no" title="statement not covered" >  return (</span>
     &lt;Tab.Navigator
       screenOptions={{
         headerShown: false,
@@ -295,7 +295,7 @@ export default function TabNavigator() {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-01-17T18:10:17.173Z
+                at 2026-01-18T07:17:36.521Z
             </div>
         <script src="../prettify.js"></script>
         <script>

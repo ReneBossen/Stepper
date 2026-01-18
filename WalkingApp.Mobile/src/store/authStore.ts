@@ -5,6 +5,7 @@ import {
   signUpWithEmail,
   signOut as supabaseSignOut,
   resetPassword,
+  signInWithIdToken,
 } from '@services/supabase';
 
 interface AuthState {
@@ -17,6 +18,7 @@ interface AuthState {
   // Actions
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
+  signInWithGoogle: (idToken: string, accessToken?: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   setSession: (session: Session | null) => void;
@@ -57,6 +59,25 @@ export const useAuthStore = create<AuthState>((set) => ({
         session,
         user,
         isAuthenticated: !!session,
+        isLoading: false,
+      });
+    } catch (error: any) {
+      set({
+        error: error.message,
+        isLoading: false,
+      });
+      throw error;
+    }
+  },
+
+  signInWithGoogle: async (idToken, accessToken) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { session, user } = await signInWithIdToken(idToken, accessToken);
+      set({
+        session,
+        user,
+        isAuthenticated: true,
         isLoading: false,
       });
     } catch (error: any) {

@@ -5,6 +5,9 @@ const mockSignInWithPassword = jest.fn();
 const mockSignUp = jest.fn();
 const mockSignOut = jest.fn();
 const mockResetPasswordForEmail = jest.fn();
+const mockSignInWithOAuth = jest.fn();
+const mockSignInWithIdToken = jest.fn();
+const mockSetSession = jest.fn();
 const mockOnAuthStateChange = jest.fn(() => ({
   data: { subscription: { unsubscribe: jest.fn() } },
 }));
@@ -24,6 +27,9 @@ jest.mock('@supabase/supabase-js', () => ({
         signUp: mockSignUp,
         signOut: mockSignOut,
         resetPasswordForEmail: mockResetPasswordForEmail,
+        signInWithOAuth: mockSignInWithOAuth,
+        signInWithIdToken: mockSignInWithIdToken,
+        setSession: mockSetSession,
         onAuthStateChange: mockOnAuthStateChange,
       },
     };
@@ -38,6 +44,8 @@ import {
   signUpWithEmail,
   signOut,
   resetPassword,
+  signInWithGoogleOAuth,
+  signInWithIdToken,
 } from '../supabase';
 import { ExpoSecureStoreAdapter } from '../secureStore';
 
@@ -439,5 +447,233 @@ describe('resetPassword', () => {
     mockResetPasswordForEmail.mockRejectedValue(networkError);
 
     await expect(resetPassword('test@example.com')).rejects.toThrow('Network error');
+  });
+});
+
+describe('signInWithGoogleOAuth', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('signInWithGoogleOAuth_WithValidConfiguration_ReturnsOAuthUrl', async () => {
+    const mockOAuthData = {
+      provider: 'google',
+      url: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri=walkingapp://&response_type=code',
+    };
+
+    mockSignInWithOAuth.mockResolvedValue({
+      data: mockOAuthData,
+      error: null,
+    });
+
+    const result = await signInWithGoogleOAuth();
+
+    expect(mockSignInWithOAuth).toHaveBeenCalledWith({
+      provider: 'google',
+      options: {
+        skipBrowserRedirect: true,
+        redirectTo: undefined,
+      },
+    });
+    expect(result).toEqual(mockOAuthData);
+    expect(result.url).toBeDefined();
+    expect(result.provider).toBe('google');
+  });
+
+  it('signInWithGoogleOAuth_WhenCalled_UsesCorrectProvider', async () => {
+    mockSignInWithOAuth.mockResolvedValue({
+      data: { provider: 'google', url: 'https://test.com' },
+      error: null,
+    });
+
+    await signInWithGoogleOAuth();
+
+    const call = mockSignInWithOAuth.mock.calls[0][0];
+    expect(call.provider).toBe('google');
+  });
+
+  it('signInWithGoogleOAuth_WhenCalled_SkipsBrowserRedirect', async () => {
+    mockSignInWithOAuth.mockResolvedValue({
+      data: { provider: 'google', url: 'https://test.com' },
+      error: null,
+    });
+
+    await signInWithGoogleOAuth();
+
+    const call = mockSignInWithOAuth.mock.calls[0][0];
+    expect(call.options.skipBrowserRedirect).toBe(true);
+  });
+
+  it('signInWithGoogleOAuth_WhenCalled_RedirectToIsUndefined', async () => {
+    mockSignInWithOAuth.mockResolvedValue({
+      data: { provider: 'google', url: 'https://test.com' },
+      error: null,
+    });
+
+    await signInWithGoogleOAuth();
+
+    const call = mockSignInWithOAuth.mock.calls[0][0];
+    expect(call.options.redirectTo).toBeUndefined();
+  });
+
+  it('signInWithGoogleOAuth_WhenSupabaseReturnsError_ThrowsError', async () => {
+    const mockError = { message: 'OAuth configuration error' };
+    mockSignInWithOAuth.mockResolvedValue({
+      data: null,
+      error: mockError,
+    });
+
+    await expect(signInWithGoogleOAuth()).rejects.toEqual(mockError);
+  });
+
+  it('signInWithGoogleOAuth_WhenNetworkFails_ThrowsNetworkError', async () => {
+    const networkError = new Error('Network request failed');
+    mockSignInWithOAuth.mockRejectedValue(networkError);
+
+    await expect(signInWithGoogleOAuth()).rejects.toThrow('Network request failed');
+  });
+
+  it('signInWithGoogleOAuth_WhenProviderUnavailable_ThrowsError', async () => {
+    const mockError = { message: 'Google provider not configured' };
+    mockSignInWithOAuth.mockResolvedValue({
+      data: null,
+      error: mockError,
+    });
+
+    await expect(signInWithGoogleOAuth()).rejects.toEqual(mockError);
+  });
+
+  it('signInWithGoogleOAuth_ReturnsDataWithUrlProperty', async () => {
+    const mockData = {
+      provider: 'google',
+      url: 'https://accounts.google.com/oauth',
+    };
+    mockSignInWithOAuth.mockResolvedValue({
+      data: mockData,
+      error: null,
+    });
+
+    const result = await signInWithGoogleOAuth();
+
+    expect(result).toHaveProperty('url');
+    expect(result).toHaveProperty('provider');
+  });
+});
+
+describe('signInWithIdToken', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('signInWithIdToken_WithValidIdToken_SignsInSuccessfully', async () => {
+    const mockData = {
+      user: { id: '123', email: 'test@gmail.com' },
+      session: { access_token: 'access-token', refresh_token: 'refresh-token' },
+    };
+
+    mockSignInWithIdToken.mockResolvedValue({
+      data: mockData,
+      error: null,
+    });
+
+    const result = await signInWithIdToken('mock-id-token');
+
+    expect(mockSignInWithIdToken).toHaveBeenCalledWith({
+      provider: 'google',
+      token: 'mock-id-token',
+      access_token: undefined,
+    });
+    expect(result).toEqual(mockData);
+  });
+
+  it('signInWithIdToken_WithIdTokenAndAccessToken_IncludesBothTokens', async () => {
+    const mockData = {
+      user: { id: '123', email: 'test@gmail.com' },
+      session: { access_token: 'supabase-token' },
+    };
+
+    mockSignInWithIdToken.mockResolvedValue({
+      data: mockData,
+      error: null,
+    });
+
+    await signInWithIdToken('mock-id-token', 'mock-access-token');
+
+    expect(mockSignInWithIdToken).toHaveBeenCalledWith({
+      provider: 'google',
+      token: 'mock-id-token',
+      access_token: 'mock-access-token',
+    });
+  });
+
+  it('signInWithIdToken_WithOnlyIdToken_AccessTokenIsUndefined', async () => {
+    mockSignInWithIdToken.mockResolvedValue({
+      data: { user: {}, session: {} },
+      error: null,
+    });
+
+    await signInWithIdToken('mock-id-token');
+
+    const call = mockSignInWithIdToken.mock.calls[0][0];
+    expect(call.access_token).toBeUndefined();
+  });
+
+  it('signInWithIdToken_WhenInvalidToken_ThrowsError', async () => {
+    const mockError = { message: 'Invalid ID token' };
+    mockSignInWithIdToken.mockResolvedValue({
+      data: null,
+      error: mockError,
+    });
+
+    await expect(signInWithIdToken('invalid-token')).rejects.toEqual(mockError);
+  });
+
+  it('signInWithIdToken_WhenTokenExpired_ThrowsError', async () => {
+    const mockError = { message: 'Token has expired' };
+    mockSignInWithIdToken.mockResolvedValue({
+      data: null,
+      error: mockError,
+    });
+
+    await expect(signInWithIdToken('expired-token')).rejects.toEqual(mockError);
+  });
+
+  it('signInWithIdToken_AlwaysUsesGoogleProvider', async () => {
+    mockSignInWithIdToken.mockResolvedValue({
+      data: { user: {}, session: {} },
+      error: null,
+    });
+
+    await signInWithIdToken('mock-id-token');
+
+    const call = mockSignInWithIdToken.mock.calls[0][0];
+    expect(call.provider).toBe('google');
+  });
+
+  it('signInWithIdToken_ReturnsUserAndSession', async () => {
+    const mockUser = { id: 'user-123', email: 'user@gmail.com' };
+    const mockSession = {
+      access_token: 'token-123',
+      refresh_token: 'refresh-123',
+    };
+
+    mockSignInWithIdToken.mockResolvedValue({
+      data: { user: mockUser, session: mockSession },
+      error: null,
+    });
+
+    const result = await signInWithIdToken('mock-id-token', 'mock-access-token');
+
+    expect(result.user).toEqual(mockUser);
+    expect(result.session).toEqual(mockSession);
+  });
+
+  it('signInWithIdToken_WhenNetworkFails_ThrowsNetworkError', async () => {
+    const networkError = new Error('Network connection lost');
+    mockSignInWithIdToken.mockRejectedValue(networkError);
+
+    await expect(
+      signInWithIdToken('mock-id-token')
+    ).rejects.toThrow('Network connection lost');
   });
 });

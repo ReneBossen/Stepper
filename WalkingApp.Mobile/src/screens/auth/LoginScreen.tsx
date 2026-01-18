@@ -1,16 +1,21 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { TextInput, Button, Text, Divider } from 'react-native-paper';
 import { AuthStackScreenProps } from '@navigation/types';
 import { useAppTheme } from '@hooks/useAppTheme';
+import { signInWithGoogleOAuth, supabase } from '@services/supabase';
+import * as WebBrowser from 'expo-web-browser';
 import AuthLayout from './components/AuthLayout';
 import AuthErrorMessage from './components/AuthErrorMessage';
 import { useLogin } from './hooks/useLogin';
+
+WebBrowser.maybeCompleteAuthSession();
 
 type Props = AuthStackScreenProps<'Login'>;
 
 export default function LoginScreen({ navigation }: Props) {
   const { paperTheme } = useAppTheme();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const {
     email,
     setEmail,
@@ -22,6 +27,45 @@ export default function LoginScreen({ navigation }: Props) {
     error,
     handleLogin,
   } = useLogin();
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const { url } = await signInWithGoogleOAuth();
+      if (url) {
+        const result = await WebBrowser.openAuthSessionAsync(url, 'walkingapp://');
+
+        if (result.type === 'success' && result.url) {
+          // Parse the redirect URL to extract tokens
+          const redirectUrl = result.url;
+
+          // Supabase redirects with tokens in the URL fragment (after #)
+          // Format: walkingapp://#access_token=...&refresh_token=...
+          const hashIndex = redirectUrl.indexOf('#');
+          if (hashIndex !== -1) {
+            const fragment = redirectUrl.substring(hashIndex + 1);
+            const params = new URLSearchParams(fragment);
+
+            const accessToken = params.get('access_token');
+            const refreshToken = params.get('refresh_token');
+
+            if (accessToken && refreshToken) {
+              // Set the session manually
+              await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+              });
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error('Google sign-in error:', err);
+      Alert.alert('Sign In Error', err.message || 'Failed to sign in with Google');
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   return (
     <AuthLayout title="Welcome Back!" subtitle="Sign in to continue">
@@ -95,10 +139,9 @@ export default function LoginScreen({ navigation }: Props) {
         <Button
           mode="outlined"
           icon="google"
-          onPress={() => {
-            // Future: OAuth implementation
-          }}
-          disabled={true}
+          onPress={handleGoogleSignIn}
+          loading={isGoogleLoading}
+          disabled={isLoading || isGoogleLoading}
           style={styles.button}
         >
           Continue with Google

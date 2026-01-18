@@ -1,10 +1,37 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import * as WebBrowser from 'expo-web-browser';
 import LoginScreen from '../LoginScreen';
 import { useLogin } from '../hooks/useLogin';
+import { signInWithGoogleOAuth, supabase } from '@services/supabase';
+
+// Mock Alert
+jest.mock('react-native', () => ({
+  ...jest.requireActual('react-native'),
+  Alert: {
+    alert: jest.fn(),
+  },
+}));
 
 // Mock dependencies
 jest.mock('../hooks/useLogin');
+
+// Mock expo-web-browser
+jest.mock('expo-web-browser', () => ({
+  openAuthSessionAsync: jest.fn(),
+  maybeCompleteAuthSession: jest.fn(),
+}));
+
+// Mock supabase service
+jest.mock('@services/supabase', () => ({
+  signInWithGoogleOAuth: jest.fn(),
+  supabase: {
+    auth: {
+      setSession: jest.fn(),
+    },
+  },
+}));
+
 jest.mock('@hooks/useAppTheme', () => ({
   useAppTheme: () => ({
     paperTheme: {
@@ -77,6 +104,15 @@ jest.mock('react-native-paper', () => {
 const mockNavigation = {
   navigate: jest.fn(),
 };
+
+// Get references to mocked functions
+const mockSignInWithGoogleOAuth = signInWithGoogleOAuth as jest.MockedFunction<typeof signInWithGoogleOAuth>;
+const mockSetSession = supabase.auth.setSession as jest.MockedFunction<typeof supabase.auth.setSession>;
+const mockOpenAuthSessionAsync = WebBrowser.openAuthSessionAsync as jest.MockedFunction<typeof WebBrowser.openAuthSessionAsync>;
+
+// Get Alert reference
+const { Alert } = require('react-native');
+const mockAlert = Alert.alert;
 
 describe('LoginScreen', () => {
   const mockUseLogin = useLogin as jest.MockedFunction<typeof useLogin>;
@@ -511,6 +547,398 @@ describe('LoginScreen', () => {
 
       expect(getByPlaceholderText('Email').props.editable).toBe(true);
       expect(getByPlaceholderText('Password').props.editable).toBe(true);
+    });
+  });
+
+  describe('LoginScreen_GoogleSignIn_HandlesOAuthFlow', () => {
+    beforeEach(() => {
+      mockUseLogin.mockReturnValue({
+        email: '',
+        setEmail: jest.fn(),
+        password: '',
+        setPassword: jest.fn(),
+        showPassword: false,
+        togglePasswordVisibility: jest.fn(),
+        isLoading: false,
+        error: null,
+        handleLogin: jest.fn(),
+      });
+      jest.clearAllMocks();
+    });
+
+    it('LoginScreen_WhenGoogleButtonPressed_CallsSignInWithGoogleOAuth', async () => {
+      mockSignInWithGoogleOAuth.mockResolvedValue({
+        provider: 'google',
+        url: 'https://accounts.google.com/oauth',
+      } as any);
+      mockOpenAuthSessionAsync.mockResolvedValue({
+        type: 'dismissed',
+      } as any);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(mockSignInWithGoogleOAuth).toHaveBeenCalled();
+      });
+    });
+
+    it('LoginScreen_WhenOAuthUrlReceived_OpensWebBrowser', async () => {
+      const mockOAuthUrl = 'https://accounts.google.com/o/oauth2/v2/auth?test=true';
+      mockSignInWithGoogleOAuth.mockResolvedValue({
+        provider: 'google',
+        url: mockOAuthUrl,
+      } as any);
+      mockOpenAuthSessionAsync.mockResolvedValue({
+        type: 'dismissed',
+      } as any);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(mockOpenAuthSessionAsync).toHaveBeenCalledWith(
+          mockOAuthUrl,
+          'walkingapp://'
+        );
+      });
+    });
+
+    it('LoginScreen_WhenOAuthSucceeds_ExtractsTokensFromUrl', async () => {
+      mockSignInWithGoogleOAuth.mockResolvedValue({
+        provider: 'google',
+        url: 'https://accounts.google.com/oauth',
+      } as any);
+      mockOpenAuthSessionAsync.mockResolvedValue({
+        type: 'success',
+        url: 'walkingapp://#access_token=test-access-token&refresh_token=test-refresh-token',
+      } as any);
+      mockSetSession.mockResolvedValue({ data: { user: null, session: null }, error: null } as any);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(mockSetSession).toHaveBeenCalledWith({
+          access_token: 'test-access-token',
+          refresh_token: 'test-refresh-token',
+        });
+      });
+    });
+
+    it('LoginScreen_WhenOAuthSucceeds_SetsSessionWithTokens', async () => {
+      mockSignInWithGoogleOAuth.mockResolvedValue({
+        provider: 'google',
+        url: 'https://accounts.google.com/oauth',
+      } as any);
+      mockOpenAuthSessionAsync.mockResolvedValue({
+        type: 'success',
+        url: 'walkingapp://#access_token=abc123&refresh_token=def456',
+      } as any);
+      mockSetSession.mockResolvedValue({ data: { user: null, session: null }, error: null } as any);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(mockSetSession).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('LoginScreen_WhenOAuthUrlHasNoTokens_DoesNotSetSession', async () => {
+      mockSignInWithGoogleOAuth.mockResolvedValue({
+        provider: 'google',
+        url: 'https://accounts.google.com/oauth',
+      } as any);
+      mockOpenAuthSessionAsync.mockResolvedValue({
+        type: 'success',
+        url: 'walkingapp://#error=access_denied',
+      } as any);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(mockSetSession).not.toHaveBeenCalled();
+      });
+    });
+
+    it('LoginScreen_WhenOAuthUrlHasOnlyAccessToken_DoesNotSetSession', async () => {
+      mockSignInWithGoogleOAuth.mockResolvedValue({
+        provider: 'google',
+        url: 'https://accounts.google.com/oauth',
+      } as any);
+      mockOpenAuthSessionAsync.mockResolvedValue({
+        type: 'success',
+        url: 'walkingapp://#access_token=test-token',
+      } as any);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(mockSetSession).not.toHaveBeenCalled();
+      });
+    });
+
+    it('LoginScreen_WhenOAuthUrlHasOnlyRefreshToken_DoesNotSetSession', async () => {
+      mockSignInWithGoogleOAuth.mockResolvedValue({
+        provider: 'google',
+        url: 'https://accounts.google.com/oauth',
+      } as any);
+      mockOpenAuthSessionAsync.mockResolvedValue({
+        type: 'success',
+        url: 'walkingapp://#refresh_token=test-refresh',
+      } as any);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(mockSetSession).not.toHaveBeenCalled();
+      });
+    });
+
+    it('LoginScreen_WhenOAuthDismissed_DoesNotSetSession', async () => {
+      mockSignInWithGoogleOAuth.mockResolvedValue({
+        provider: 'google',
+        url: 'https://accounts.google.com/oauth',
+      } as any);
+      mockOpenAuthSessionAsync.mockResolvedValue({
+        type: 'dismissed',
+      } as any);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(mockSetSession).not.toHaveBeenCalled();
+      });
+    });
+
+    it('LoginScreen_WhenOAuthCancelled_DoesNotSetSession', async () => {
+      mockSignInWithGoogleOAuth.mockResolvedValue({
+        provider: 'google',
+        url: 'https://accounts.google.com/oauth',
+      } as any);
+      mockOpenAuthSessionAsync.mockResolvedValue({
+        type: 'cancel',
+      } as any);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(mockSetSession).not.toHaveBeenCalled();
+      });
+    });
+
+    it('LoginScreen_WhenSignInWithGoogleOAuthFails_ShowsAlert', async () => {
+      const mockError = new Error('OAuth configuration error');
+      mockSignInWithGoogleOAuth.mockRejectedValue(mockError);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(mockAlert).toHaveBeenCalledWith(
+          'Sign In Error',
+          'OAuth configuration error'
+        );
+      });
+    });
+
+    it('LoginScreen_WhenWebBrowserFails_ShowsAlert', async () => {
+      mockSignInWithGoogleOAuth.mockResolvedValue({
+        provider: 'google',
+        url: 'https://accounts.google.com/oauth',
+      } as any);
+      const mockError = new Error('Browser unavailable');
+      mockOpenAuthSessionAsync.mockRejectedValue(mockError);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(mockAlert).toHaveBeenCalledWith('Sign In Error', 'Browser unavailable');
+      });
+    });
+
+    it('LoginScreen_WhenErrorHasNoMessage_ShowsGenericAlert', async () => {
+      mockSignInWithGoogleOAuth.mockRejectedValue({});
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(mockAlert).toHaveBeenCalledWith(
+          'Sign In Error',
+          'Failed to sign in with Google'
+        );
+      });
+    });
+
+    it('LoginScreen_WhenGoogleSignInStarted_ShowsLoadingState', async () => {
+      mockSignInWithGoogleOAuth.mockImplementation(() =>
+        new Promise(resolve => setTimeout(() => resolve({ provider: 'google', url: 'test' } as any), 100))
+      );
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      // Button should be disabled during loading
+      await waitFor(() => {
+        const googleButton = getByText('Continue with Google').parent;
+        expect(googleButton?.props.disabled).toBe(true);
+      });
+    });
+
+    it('LoginScreen_WhenGoogleSignInCompletes_ResetsLoadingState', async () => {
+      mockSignInWithGoogleOAuth.mockResolvedValue({
+        provider: 'google',
+        url: 'https://accounts.google.com/oauth',
+      } as any);
+      mockOpenAuthSessionAsync.mockResolvedValue({
+        type: 'dismissed',
+      } as any);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        const googleButton = getByText('Continue with Google').parent;
+        expect(googleButton?.props.disabled).toBe(false);
+      });
+    });
+
+    it('LoginScreen_WhenGoogleSignInFails_ResetsLoadingState', async () => {
+      mockSignInWithGoogleOAuth.mockRejectedValue(new Error('Failed'));
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        const googleButton = getByText('Continue with Google').parent;
+        expect(googleButton?.props.disabled).toBe(false);
+      });
+    });
+
+    it('LoginScreen_WhenEmailLoadingActive_DisablesGoogleButton', () => {
+      mockUseLogin.mockReturnValue({
+        email: '',
+        setEmail: jest.fn(),
+        password: '',
+        setPassword: jest.fn(),
+        showPassword: false,
+        togglePasswordVisibility: jest.fn(),
+        isLoading: true, // Email login is loading
+        error: null,
+        handleLogin: jest.fn(),
+      });
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      const googleButton = getByText('Continue with Google').parent;
+      expect(googleButton?.props.disabled).toBe(true);
+    });
+
+    it('LoginScreen_WhenOAuthUrlIsNull_DoesNotOpenBrowser', async () => {
+      mockSignInWithGoogleOAuth.mockResolvedValue({
+        provider: 'google',
+        url: null,
+      } as any);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(mockOpenAuthSessionAsync).not.toHaveBeenCalled();
+      });
+    });
+
+    it('LoginScreen_WhenOAuthUrlIsUndefined_DoesNotOpenBrowser', async () => {
+      mockSignInWithGoogleOAuth.mockResolvedValue({
+        provider: 'google',
+        url: undefined,
+      } as any);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(mockOpenAuthSessionAsync).not.toHaveBeenCalled();
+      });
+    });
+
+    it('LoginScreen_WhenOAuthSuccessHasNoUrl_DoesNotSetSession', async () => {
+      mockSignInWithGoogleOAuth.mockResolvedValue({
+        provider: 'google',
+        url: 'https://accounts.google.com/oauth',
+      } as any);
+      mockOpenAuthSessionAsync.mockResolvedValue({
+        type: 'success',
+        url: undefined,
+      } as any);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(mockSetSession).not.toHaveBeenCalled();
+      });
+    });
+
+    it('LoginScreen_WhenOAuthUrlHasNoFragment_DoesNotSetSession', async () => {
+      mockSignInWithGoogleOAuth.mockResolvedValue({
+        provider: 'google',
+        url: 'https://accounts.google.com/oauth',
+      } as any);
+      mockOpenAuthSessionAsync.mockResolvedValue({
+        type: 'success',
+        url: 'walkingapp://',
+      } as any);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(mockSetSession).not.toHaveBeenCalled();
+      });
+    });
+
+    it('LoginScreen_LogsErrorToConsole_WhenGoogleSignInFails', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const mockError = new Error('OAuth failed');
+      mockSignInWithGoogleOAuth.mockRejectedValue(mockError);
+
+      const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.press(getByText('Continue with Google'));
+
+      await waitFor(() => {
+        expect(consoleErrorSpy).toHaveBeenCalledWith('Google sign-in error:', mockError);
+      });
+
+      consoleErrorSpy.mockRestore();
     });
   });
 });
