@@ -1,21 +1,20 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import React from 'react';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { TextInput, Button, Text, Divider } from 'react-native-paper';
 import { AuthStackScreenProps } from '@navigation/types';
 import { useAppTheme } from '@hooks/useAppTheme';
-import { signInWithGoogleOAuth, supabase } from '@services/supabase';
-import * as WebBrowser from 'expo-web-browser';
+import { useGoogleAuth } from '@hooks/useGoogleAuth';
+import { useAuthStore } from '@store/authStore';
 import AuthLayout from './components/AuthLayout';
 import AuthErrorMessage from './components/AuthErrorMessage';
 import { useLogin } from './hooks/useLogin';
-
-WebBrowser.maybeCompleteAuthSession();
 
 type Props = AuthStackScreenProps<'Login'>;
 
 export default function LoginScreen({ navigation }: Props) {
   const { paperTheme } = useAppTheme();
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const signInWithGoogleStore = useAuthStore((state) => state.signInWithGoogle);
+  const { signInWithGoogle, isLoading: isGoogleLoading, error: googleError } = useGoogleAuth();
   const {
     email,
     setEmail,
@@ -29,41 +28,13 @@ export default function LoginScreen({ navigation }: Props) {
   } = useLogin();
 
   const handleGoogleSignIn = async () => {
-    setIsGoogleLoading(true);
     try {
-      const { url } = await signInWithGoogleOAuth();
-      if (url) {
-        const result = await WebBrowser.openAuthSessionAsync(url, 'walkingapp://');
-
-        if (result.type === 'success' && result.url) {
-          // Parse the redirect URL to extract tokens
-          const redirectUrl = result.url;
-
-          // Supabase redirects with tokens in the URL fragment (after #)
-          // Format: walkingapp://#access_token=...&refresh_token=...
-          const hashIndex = redirectUrl.indexOf('#');
-          if (hashIndex !== -1) {
-            const fragment = redirectUrl.substring(hashIndex + 1);
-            const params = new URLSearchParams(fragment);
-
-            const accessToken = params.get('access_token');
-            const refreshToken = params.get('refresh_token');
-
-            if (accessToken && refreshToken) {
-              // Set the session manually
-              await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken,
-              });
-            }
-          }
-        }
+      const tokens = await signInWithGoogle();
+      if (tokens?.idToken) {
+        await signInWithGoogleStore(tokens.idToken, tokens.accessToken);
       }
     } catch (err: any) {
       console.error('Google sign-in error:', err);
-      Alert.alert('Sign In Error', err.message || 'Failed to sign in with Google');
-    } finally {
-      setIsGoogleLoading(false);
     }
   };
 
@@ -122,7 +93,7 @@ export default function LoginScreen({ navigation }: Props) {
           mode="contained"
           onPress={handleLogin}
           loading={isLoading}
-          disabled={isLoading}
+          disabled={isLoading || isGoogleLoading}
           style={styles.button}
         >
           Sign In
@@ -135,6 +106,8 @@ export default function LoginScreen({ navigation }: Props) {
           </Text>
           <Divider style={styles.divider} />
         </View>
+
+        <AuthErrorMessage error={googleError} />
 
         <Button
           mode="outlined"
