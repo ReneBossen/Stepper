@@ -23,6 +23,7 @@ describe('usersApi', () => {
     bio: 'Test bio',
     location: 'Test City',
     avatar_url: 'https://example.com/avatar.jpg',
+    onboarding_completed: true,
     preferences: {
       units: 'metric',
       daily_step_goal: 10000,

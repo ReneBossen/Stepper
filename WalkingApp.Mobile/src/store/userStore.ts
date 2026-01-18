@@ -43,9 +43,9 @@ interface UserState {
 
   // Actions
   fetchCurrentUser: () => Promise<void>;
-  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<UserProfile>;
   updatePreferences: (prefs: Partial<UserPreferences>) => Promise<void>;
-  uploadAvatar: (uri: string) => Promise<void>;
+  uploadAvatar: (uri: string) => Promise<string>;
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
@@ -105,6 +105,7 @@ export const useUserStore = create<UserState>((set, get) => ({
       } else {
         set({ isLoading: false });
       }
+      return avatarUrl;
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
       throw error;
