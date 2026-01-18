@@ -4,3 +4,7 @@ export { stepsApi } from './stepsApi';
 export { friendsApi } from './friendsApi';
 export { groupsApi } from './groupsApi';
 export { notificationsApi } from './notificationsApi';
+export { activityApi } from './activityApi';
+
+// Re-export types
+export type { ActivityItem, ActivityFeedResponse } from './activityApi';

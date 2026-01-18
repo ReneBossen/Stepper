@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(emulator -list-avds:*)",
+      "Bash(adb devices:*)",
+      "Bash(npx expo start:*)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(npx expo install:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix\\(auth\\): improve sign-out handling and add security to API updates\n\n- Add WHERE clauses to usersApi update functions to prevent mass updates\n- Add clearUser action to userStore for proper state cleanup on sign-out\n- Add isSigningOut guard to prevent spurious re-authentication after logout\n- Use scope: ''global'' for sign-out to invalidate all sessions\n- Add expo-notifications, expo-image-picker, @react-native-community/slider deps\n- Fix and extend test mocks for React Native components\n- Add comprehensive tests for clearUser action\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(gh pr list:*)",
+      "Bash(where gh:*)",
+      "Bash(git pull:*)",
+      "Bash(npm install:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
