@@ -17,6 +17,8 @@ describe('activityApi', () => {
   });
 
   describe('getFeed', () => {
+    // Note: activity_feed.user_id references auth.users(id), not public.users
+    // so we cannot join to get user details - userName and avatarUrl will be undefined
     const mockDbResponse = [
       {
         id: '1',
@@ -24,10 +26,6 @@ describe('activityApi', () => {
         user_id: 'user-123',
         message: 'John hit 15,000 steps!',
         created_at: '2024-01-15T10:00:00Z',
-        users: {
-          display_name: 'John Doe',
-          avatar_url: 'https://example.com/avatar.jpg',
-        },
       },
       {
         id: '2',
@@ -35,10 +33,6 @@ describe('activityApi', () => {
         user_id: 'user-456',
         message: 'Jane completed a 7-day streak!',
         created_at: '2024-01-15T09:00:00Z',
-        users: {
-          display_name: 'Jane Smith',
-          avatar_url: null,
-        },
       },
     ];
 
@@ -64,8 +58,8 @@ describe('activityApi', () => {
         id: '1',
         type: 'friend_achievement',
         userId: 'user-123',
-        userName: 'John Doe',
-        avatarUrl: 'https://example.com/avatar.jpg',
+        userName: undefined,
+        avatarUrl: undefined,
         message: 'John hit 15,000 steps!',
         timestamp: '2024-01-15T10:00:00Z',
       });
@@ -160,15 +154,16 @@ describe('activityApi', () => {
       await expect(activityApi.getFeed()).rejects.toEqual(error);
     });
 
-    it('should handle missing user data', async () => {
-      const responseWithMissingUser = [
+    it('should return undefined for userName and avatarUrl since join is not possible', async () => {
+      // Since activity_feed.user_id references auth.users (not public.users),
+      // we cannot join to get user details - they will always be undefined
+      const responseData = [
         {
           id: '1',
           type: 'milestone',
           user_id: 'user-123',
           message: 'Milestone reached!',
           created_at: '2024-01-15T10:00:00Z',
-          users: null,
         },
       ];
 
@@ -176,7 +171,7 @@ describe('activityApi', () => {
         select: jest.fn().mockReturnValue({
           order: jest.fn().mockReturnValue({
             limit: jest.fn().mockResolvedValue({
-              data: responseWithMissingUser,
+              data: responseData,
               error: null,
             }),
           }),
