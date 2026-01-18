@@ -18,36 +18,39 @@ export const activityApi = {
   /**
    * Fetches the activity feed for the current user
    * This includes friend achievements, milestones, and group activities
+   *
+   * Note: activity_feed.user_id references auth.users(id), not public.users,
+   * so we cannot use a Supabase join. User details would need to be fetched
+   * separately or stored denormalized in the activity_feed table.
    */
   getFeed: async (limit: number = 10): Promise<ActivityItem[]> => {
-    // Fetch friend achievements (friends who hit step milestones)
-    const { data: friendAchievements, error: friendError } = await supabase
+    // Fetch activity feed entries without user join
+    // The user_id references auth.users which cannot be joined from public schema
+    const { data: activities, error: activityError } = await supabase
       .from('activity_feed')
       .select(`
         id,
         type,
         user_id,
         message,
-        created_at,
-        users:user_id (
-          display_name,
-          avatar_url
-        )
+        created_at
       `)
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (friendError && friendError.code !== 'PGRST116') {
-      throw friendError;
+    if (activityError && activityError.code !== 'PGRST116') {
+      throw activityError;
     }
 
     // Map the data to ActivityItem format
-    const items: ActivityItem[] = (friendAchievements || []).map((item: any) => ({
+    // Note: userName and avatarUrl are not available without a public users table
+    // These could be populated if the activity_feed table stores denormalized user data
+    const items: ActivityItem[] = (activities || []).map((item: any) => ({
       id: item.id,
       type: item.type as ActivityItem['type'],
       userId: item.user_id,
-      userName: item.users?.display_name,
-      avatarUrl: item.users?.avatar_url,
+      userName: undefined,
+      avatarUrl: undefined,
       message: item.message,
       timestamp: item.created_at,
     }));
@@ -69,7 +72,8 @@ export const activityApi = {
           table: 'activity_feed',
         },
         async (payload) => {
-          // Fetch the full item with user details
+          // Fetch the full item without user join
+          // The user_id references auth.users which cannot be joined from public schema
           const { data } = await supabase
             .from('activity_feed')
             .select(`
@@ -77,11 +81,7 @@ export const activityApi = {
               type,
               user_id,
               message,
-              created_at,
-              users:user_id (
-                display_name,
-                avatar_url
-              )
+              created_at
             `)
             .eq('id', payload.new.id)
             .single();
@@ -91,8 +91,8 @@ export const activityApi = {
               id: data.id,
               type: data.type as ActivityItem['type'],
               userId: data.user_id,
-              userName: (data.users as any)?.display_name,
-              avatarUrl: (data.users as any)?.avatar_url,
+              userName: undefined,
+              avatarUrl: undefined,
               message: data.message,
               timestamp: data.created_at,
             });
