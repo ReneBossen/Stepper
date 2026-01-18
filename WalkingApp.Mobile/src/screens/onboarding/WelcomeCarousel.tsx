@@ -91,31 +91,36 @@ export default function WelcomeCarousel({ navigation }: WelcomeCarouselProps) {
   return (
     <OnboardingLayout>
       <View style={styles.container}>
-        <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
-          <Text variant="labelLarge" style={{ color: theme.colors.primary }}>
-            Skip →
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
+            <Text variant="labelLarge" style={{ color: theme.colors.primary }}>
+              Skip →
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-        <FlatList
-          ref={flatListRef}
-          data={slides}
-          renderItem={({ item }) => (
-            <WelcomeSlide emoji={item.emoji} title={item.title} description={item.description} />
-          )}
-          keyExtractor={(item) => item.id}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          bounces={false}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={viewabilityConfig}
-          getItemLayout={(_, index) => ({
-            length: width,
-            offset: width * index,
-            index,
-          })}
-        />
+        <View style={styles.carouselContainer}>
+          <FlatList
+            ref={flatListRef}
+            data={slides}
+            renderItem={({ item }) => (
+              <WelcomeSlide emoji={item.emoji} title={item.title} description={item.description} />
+            )}
+            keyExtractor={(item) => item.id}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            bounces={false}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
+            getItemLayout={(_, index) => ({
+              length: width,
+              offset: width * index,
+              index,
+            })}
+            style={styles.flatList}
+          />
+        </View>
 
         <View style={styles.footer}>
           <View style={styles.dotsContainer}>
@@ -135,12 +140,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
   skipButton: {
     alignSelf: 'flex-end',
     padding: 8,
-    marginBottom: 16,
+  },
+  carouselContainer: {
+    flex: 1,
+  },
+  flatList: {
+    flex: 1,
   },
   footer: {
+    paddingHorizontal: 16,
     paddingVertical: 24,
     alignItems: 'center',
   },

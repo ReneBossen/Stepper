@@ -38,16 +38,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 40,
   },
   content: {
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 20,
+    paddingHorizontal: 32,
   },
   emoji: {
-    fontSize: 120,
-    marginBottom: 24,
+    fontSize: 100,
+    marginBottom: 32,
   },
   title: {
     fontWeight: '700',
