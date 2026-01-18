@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
-import { GOOGLE_WEB_CLIENT_ID } from '@env';
+import { GOOGLE_WEB_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID } from '@env';
 
 // Complete the web browser authentication session
 WebBrowser.maybeCompleteAuthSession();
@@ -18,7 +18,7 @@ export const useGoogleAuth = () => {
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: GOOGLE_WEB_CLIENT_ID,
-    androidClientId: GOOGLE_WEB_CLIENT_ID, // Use same client ID for now
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID, // Use Android OAuth client ID
     redirectUri: makeRedirectUri({
       scheme: 'walkingapp',
     }),
