@@ -93,21 +93,6 @@ export const resetPassword = async (email: string) => {
 };
 
 /**
- * Sign in with Google ID token
- * Used in conjunction with expo-auth-session for secure OAuth flow
- */
-export const signInWithIdToken = async (idToken: string, accessToken?: string) => {
-  const { data, error } = await supabase.auth.signInWithIdToken({
-    provider: 'google',
-    token: idToken,
-    access_token: accessToken,
-  });
-
-  if (error) throw error;
-  return data;
-};
-
-/**
  * Sign in with Google OAuth (browser-based)
  * Opens browser for authentication, returns URL with tokens in fragment.
  * Caller must extract tokens from redirect URL and call setSession().
