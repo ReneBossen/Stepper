@@ -179,9 +179,12 @@ describe('useLogin', () => {
 
       const { result } = renderHook(() => useLogin());
 
-      await act(async () => {
+      act(() => {
         result.current.setEmail('TEST@EXAMPLE.COM');
         result.current.setPassword('password123');
+      });
+
+      await act(async () => {
         await result.current.handleLogin();
       });
 

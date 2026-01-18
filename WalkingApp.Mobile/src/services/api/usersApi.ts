@@ -13,9 +13,14 @@ export const usersApi = {
   },
 
   updateProfile: async (updates: Partial<UserProfile>): Promise<UserProfile> => {
+    // Get current user ID for WHERE clause
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
     const { data, error } = await supabase
       .from('users')
       .update(updates)
+      .eq('id', user.id)
       .select()
       .single();
 
@@ -24,9 +29,14 @@ export const usersApi = {
   },
 
   updatePreferences: async (prefs: Partial<UserPreferences>): Promise<UserPreferences> => {
+    // Get current user ID for WHERE clause
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
     const { data: current } = await supabase
       .from('users')
       .select('preferences')
+      .eq('id', user.id)
       .single();
 
     const merged = { ...current?.preferences, ...prefs };
@@ -34,6 +44,7 @@ export const usersApi = {
     const { data, error } = await supabase
       .from('users')
       .update({ preferences: merged })
+      .eq('id', user.id)
       .select('preferences')
       .single();
 

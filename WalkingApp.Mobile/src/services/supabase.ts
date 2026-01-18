@@ -77,7 +77,8 @@ export const signUpWithEmail = async (
  * Sign out
  */
 export const signOut = async () => {
-  const { error } = await supabase.auth.signOut();
+  // Use scope: 'global' to sign out from all devices and clear all refresh tokens
+  const { error } = await supabase.auth.signOut({ scope: 'global' });
   if (error) throw error;
 };
 

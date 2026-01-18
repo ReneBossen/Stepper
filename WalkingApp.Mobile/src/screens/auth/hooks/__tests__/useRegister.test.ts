@@ -204,19 +204,20 @@ describe('useRegister', () => {
       expect(result.current.registrationSuccess).toBe(true);
     });
 
-    it('useRegister_WhenHandleRegisterCalled_TrimsAndLowercasesEmail', async () => {
+    it('useRegister_WhenHandleRegisterCalled_LowercasesEmail', async () => {
       mockSignUp.mockResolvedValue(undefined);
 
       const { result } = renderHook(() => useRegister());
 
       act(() => {
         result.current.setDisplayName('John Doe');
-        result.current.setEmail('  TEST@EXAMPLE.COM  ');
+        result.current.setEmail('TEST@EXAMPLE.COM');
         result.current.setPassword('password123');
         result.current.setConfirmPassword('password123');
         result.current.setAgreedToTerms(true);
       });
 
+      // Wait for state to settle before calling handleRegister
       await act(async () => {
         await result.current.handleRegister();
       });

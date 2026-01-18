@@ -3,11 +3,16 @@ import { supabase } from '@services/supabase';
 import { UserProfile, UserPreferences } from '@store/userStore';
 
 // Mock the supabase client
+const mockGetUser = jest.fn();
+
 jest.mock('@services/supabase', () => ({
   supabase: {
     from: jest.fn(),
     storage: {
       from: jest.fn(),
+    },
+    auth: {
+      getUser: () => mockGetUser(),
     },
   },
 }));
@@ -46,6 +51,11 @@ describe('usersApi', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Default mock for authenticated user
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: '123' } },
+      error: null,
+    });
   });
 
   describe('getCurrentUser', () => {
@@ -113,6 +123,7 @@ describe('usersApi', () => {
       const updatedProfile = { ...mockUserProfile, ...updates };
 
       const mockUpdate = jest.fn().mockReturnThis();
+      const mockEq = jest.fn().mockReturnThis();
       const mockSelect = jest.fn().mockReturnThis();
       const mockSingle = jest.fn().mockResolvedValue({
         data: updatedProfile,
@@ -121,11 +132,13 @@ describe('usersApi', () => {
 
       (mockSupabase.from as jest.Mock).mockReturnValue({
         update: mockUpdate,
-        select: mockSelect,
-        single: mockSingle,
       });
 
       mockUpdate.mockReturnValue({
+        eq: mockEq,
+      });
+
+      mockEq.mockReturnValue({
         select: mockSelect,
       });
 
@@ -137,6 +150,7 @@ describe('usersApi', () => {
 
       expect(mockSupabase.from).toHaveBeenCalledWith('users');
       expect(mockUpdate).toHaveBeenCalledWith(updates);
+      expect(mockEq).toHaveBeenCalledWith('id', '123');
       expect(mockSelect).toHaveBeenCalled();
       expect(mockSingle).toHaveBeenCalled();
       expect(result).toEqual(updatedProfile);
@@ -147,6 +161,7 @@ describe('usersApi', () => {
       const updatedProfile = { ...mockUserProfile, bio: 'New bio only' };
 
       const mockUpdate = jest.fn().mockReturnThis();
+      const mockEq = jest.fn().mockReturnThis();
       const mockSelect = jest.fn().mockReturnThis();
       const mockSingle = jest.fn().mockResolvedValue({
         data: updatedProfile,
@@ -155,11 +170,13 @@ describe('usersApi', () => {
 
       (mockSupabase.from as jest.Mock).mockReturnValue({
         update: mockUpdate,
-        select: mockSelect,
-        single: mockSingle,
       });
 
       mockUpdate.mockReturnValue({
+        eq: mockEq,
+      });
+
+      mockEq.mockReturnValue({
         select: mockSelect,
       });
 
@@ -176,6 +193,7 @@ describe('usersApi', () => {
     it('should throw error when update fails', async () => {
       const mockError = { message: 'Update failed' };
       const mockUpdate = jest.fn().mockReturnThis();
+      const mockEq = jest.fn().mockReturnThis();
       const mockSelect = jest.fn().mockReturnThis();
       const mockSingle = jest.fn().mockResolvedValue({
         data: null,
@@ -184,11 +202,13 @@ describe('usersApi', () => {
 
       (mockSupabase.from as jest.Mock).mockReturnValue({
         update: mockUpdate,
-        select: mockSelect,
-        single: mockSingle,
       });
 
       mockUpdate.mockReturnValue({
+        eq: mockEq,
+      });
+
+      mockEq.mockReturnValue({
         select: mockSelect,
       });
 
@@ -212,6 +232,7 @@ describe('usersApi', () => {
 
       // Mock for fetching current preferences
       const mockSelectCurrent = jest.fn().mockReturnThis();
+      const mockEqCurrent = jest.fn().mockReturnThis();
       const mockSingleCurrent = jest.fn().mockResolvedValue({
         data: { preferences: currentPrefs },
         error: null,
@@ -219,6 +240,7 @@ describe('usersApi', () => {
 
       // Mock for updating preferences
       const mockUpdate = jest.fn().mockReturnThis();
+      const mockEqUpdate = jest.fn().mockReturnThis();
       const mockSelectUpdate = jest.fn().mockReturnThis();
       const mockSingleUpdate = jest.fn().mockResolvedValue({
         data: { preferences: mergedPrefs },
@@ -242,10 +264,18 @@ describe('usersApi', () => {
       });
 
       mockSelectCurrent.mockReturnValue({
+        eq: mockEqCurrent,
+      });
+
+      mockEqCurrent.mockReturnValue({
         single: mockSingleCurrent,
       });
 
       mockUpdate.mockReturnValue({
+        eq: mockEqUpdate,
+      });
+
+      mockEqUpdate.mockReturnValue({
         select: mockSelectUpdate,
       });
 
@@ -269,12 +299,14 @@ describe('usersApi', () => {
       const mergedPrefs = { ...currentPrefs, theme: 'dark' as const };
 
       const mockSelectCurrent = jest.fn().mockReturnThis();
+      const mockEqCurrent = jest.fn().mockReturnThis();
       const mockSingleCurrent = jest.fn().mockResolvedValue({
         data: { preferences: currentPrefs },
         error: null,
       });
 
       const mockUpdate = jest.fn().mockReturnThis();
+      const mockEqUpdate = jest.fn().mockReturnThis();
       const mockSelectUpdate = jest.fn().mockReturnThis();
       const mockSingleUpdate = jest.fn().mockResolvedValue({
         data: { preferences: mergedPrefs },
@@ -292,10 +324,18 @@ describe('usersApi', () => {
       });
 
       mockSelectCurrent.mockReturnValue({
+        eq: mockEqCurrent,
+      });
+
+      mockEqCurrent.mockReturnValue({
         single: mockSingleCurrent,
       });
 
       mockUpdate.mockReturnValue({
+        eq: mockEqUpdate,
+      });
+
+      mockEqUpdate.mockReturnValue({
         select: mockSelectUpdate,
       });
 
@@ -313,12 +353,14 @@ describe('usersApi', () => {
       const mockError = { message: 'Preferences update failed' };
 
       const mockSelectCurrent = jest.fn().mockReturnThis();
+      const mockEqCurrent = jest.fn().mockReturnThis();
       const mockSingleCurrent = jest.fn().mockResolvedValue({
         data: { preferences: mockUserProfile.preferences },
         error: null,
       });
 
       const mockUpdate = jest.fn().mockReturnThis();
+      const mockEqUpdate = jest.fn().mockReturnThis();
       const mockSelectUpdate = jest.fn().mockReturnThis();
       const mockSingleUpdate = jest.fn().mockResolvedValue({
         data: null,
@@ -336,10 +378,18 @@ describe('usersApi', () => {
       });
 
       mockSelectCurrent.mockReturnValue({
+        eq: mockEqCurrent,
+      });
+
+      mockEqCurrent.mockReturnValue({
         single: mockSingleCurrent,
       });
 
       mockUpdate.mockReturnValue({
+        eq: mockEqUpdate,
+      });
+
+      mockEqUpdate.mockReturnValue({
         select: mockSelectUpdate,
       });
 
@@ -354,8 +404,8 @@ describe('usersApi', () => {
   describe('uploadAvatar', () => {
     it('should upload avatar successfully', async () => {
       const avatarUri = 'file://path/to/avatar.jpg';
-      const uploadedPath = 'avatar-123456.jpg';
-      const publicUrl = 'https://storage.example.com/avatars/avatar-123456.jpg';
+      const uploadedPath = '123/avatar-123456.jpg';
+      const publicUrl = 'https://storage.example.com/avatars/123/avatar-123456.jpg';
 
       // Mock fetch
       global.fetch = jest.fn().mockResolvedValue({
@@ -413,7 +463,7 @@ describe('usersApi', () => {
       await expect(usersApi.uploadAvatar('file://avatar.jpg')).rejects.toThrow('Failed to fetch file');
     });
 
-    it('should generate unique filename', async () => {
+    it('should generate unique filename with user folder', async () => {
       const dateSpy = jest.spyOn(Date, 'now').mockReturnValue(1234567890);
 
       global.fetch = jest.fn().mockResolvedValue({
@@ -421,7 +471,7 @@ describe('usersApi', () => {
       }) as any;
 
       const mockUpload = jest.fn().mockResolvedValue({
-        data: { path: 'avatar-1234567890.jpg' },
+        data: { path: '123/avatar-1234567890.jpg' },
         error: null,
       });
 
@@ -437,8 +487,9 @@ describe('usersApi', () => {
       await usersApi.uploadAvatar('file://avatar.jpg');
 
       expect(mockUpload).toHaveBeenCalledWith(
-        'avatar-1234567890.jpg',
-        expect.any(Blob)
+        '123/avatar-1234567890.jpg',
+        expect.any(Blob),
+        { upsert: true, contentType: 'image/jpeg' }
       );
 
       dateSpy.mockRestore();

@@ -3,17 +3,26 @@ import { render, waitFor } from '@testing-library/react-native';
 import { View } from 'react-native';
 
 // Create mocks before imports
-const mockGetSession = jest.fn();
-const mockOnAuthStateChange = jest.fn();
-const mockUnsubscribe = jest.fn();
+const mockFetchCurrentUser = jest.fn();
 
-// Mock Supabase
-jest.mock('@services/supabase', () => ({
-  supabase: {
-    auth: {
-      getSession: mockGetSession,
-      onAuthStateChange: mockOnAuthStateChange,
-    },
+// Mock stores
+let mockIsAuthenticated = false;
+let mockCurrentUser: any = null;
+
+jest.mock('@store/authStore', () => ({
+  useAuthStore: (selector: any) => {
+    const state = { isAuthenticated: mockIsAuthenticated };
+    return selector(state);
+  },
+}));
+
+jest.mock('@store/userStore', () => ({
+  useUserStore: (selector: any) => {
+    const state = {
+      currentUser: mockCurrentUser,
+      fetchCurrentUser: mockFetchCurrentUser,
+    };
+    return selector(state);
   },
 }));
 
@@ -45,10 +54,10 @@ jest.mock('../MainNavigator', () => ({
   default: () => <View testID="main-navigator" />,
 }));
 
-// Mock screens
-jest.mock('@screens/onboarding/OnboardingScreen', () => ({
+// Mock OnboardingNavigator
+jest.mock('../OnboardingNavigator', () => ({
   __esModule: true,
-  default: () => <View testID="onboarding-screen" />,
+  default: () => <View testID="onboarding-navigator" />,
 }));
 
 // Mock expo-linking
@@ -62,14 +71,12 @@ import RootNavigator from '../RootNavigator';
 
 describe('RootNavigator', () => {
   beforeEach(() => {
-    mockGetSession.mockReset();
-    mockOnAuthStateChange.mockReset();
-    mockUnsubscribe.mockReset();
+    mockFetchCurrentUser.mockReset();
+    mockIsAuthenticated = false;
+    mockCurrentUser = null;
 
-    // Default setup
-    mockOnAuthStateChange.mockReturnValue({
-      data: { subscription: { unsubscribe: mockUnsubscribe } },
-    });
+    // Default setup - fetchCurrentUser resolves immediately
+    mockFetchCurrentUser.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -77,41 +84,21 @@ describe('RootNavigator', () => {
   });
 
   describe('Authentication Flow', () => {
-    it('RootNavigator_WhileCheckingAuthState_ShowsNothing', () => {
-      mockGetSession.mockReturnValue(new Promise(() => {})); // Never resolves
-
-      const { queryByTestId } = render(<RootNavigator />);
-
-      expect(queryByTestId('auth-navigator')).toBeNull();
-      expect(queryByTestId('main-navigator')).toBeNull();
-      expect(queryByTestId('onboarding-screen')).toBeNull();
-    });
-
-    it('RootNavigator_WhenNotAuthenticated_ShowsAuthNavigator', async () => {
-      mockGetSession.mockResolvedValue({
-        data: { session: null },
-      });
+    it('RootNavigator_WhenNotAuthenticated_ShowsAuthNavigator', () => {
+      mockIsAuthenticated = false;
 
       const { getByTestId } = render(<RootNavigator />);
 
-      await waitFor(() => {
-        expect(getByTestId('auth-navigator')).toBeTruthy();
-      });
+      expect(getByTestId('auth-navigator')).toBeTruthy();
     });
 
     it('RootNavigator_WhenAuthenticated_ShowsMainNavigator', async () => {
-      const mockSession = {
-        access_token: 'mock-token',
-        user: {
-          id: '123',
-          email: 'test@example.com',
-          user_metadata: { onboarding_completed: true },
-        },
+      mockIsAuthenticated = true;
+      mockCurrentUser = {
+        id: '123',
+        email: 'test@example.com',
+        onboarding_completed: true,
       };
-
-      mockGetSession.mockResolvedValue({
-        data: { session: mockSession },
-      });
 
       const { getByTestId } = render(<RootNavigator />);
 
@@ -120,102 +107,88 @@ describe('RootNavigator', () => {
       });
     });
 
-    it('RootNavigator_WhenUserNeedsOnboarding_ShowsOnboardingScreen', async () => {
-      const mockSession = {
-        access_token: 'mock-token',
-        user: {
-          id: '123',
-          email: 'test@example.com',
-          user_metadata: { onboarding_completed: false },
-        },
+    it('RootNavigator_WhenUserNeedsOnboarding_ShowsOnboardingNavigator', async () => {
+      mockIsAuthenticated = true;
+      mockCurrentUser = {
+        id: '123',
+        email: 'test@example.com',
+        onboarding_completed: false,
       };
-
-      mockGetSession.mockResolvedValue({
-        data: { session: mockSession },
-      });
 
       const { getByTestId } = render(<RootNavigator />);
 
       await waitFor(() => {
-        expect(getByTestId('onboarding-screen')).toBeTruthy();
+        expect(getByTestId('onboarding-navigator')).toBeTruthy();
       });
+    });
+
+    it('RootNavigator_WhenAuthenticatedAndLoadingUser_ReturnsNull', async () => {
+      mockIsAuthenticated = true;
+      mockCurrentUser = null;
+      // Make fetchCurrentUser hang to simulate loading
+      mockFetchCurrentUser.mockReturnValue(new Promise(() => {}));
+
+      const { toJSON } = render(<RootNavigator />);
+
+      // Component returns null while loading
+      expect(toJSON()).toBeNull();
     });
   });
 
-  describe('Auth State Changes', () => {
-    it('RootNavigator_OnMount_SetsUpAuthStateChangeListener', async () => {
-      mockGetSession.mockResolvedValue({
-        data: { session: null },
-      });
+  describe('User Fetching', () => {
+    it('RootNavigator_WhenAuthenticatedWithoutUser_FetchesCurrentUser', async () => {
+      mockIsAuthenticated = true;
+      mockCurrentUser = null;
+      mockFetchCurrentUser.mockResolvedValue(undefined);
 
       render(<RootNavigator />);
 
       await waitFor(() => {
-        expect(mockOnAuthStateChange).toHaveBeenCalled();
+        expect(mockFetchCurrentUser).toHaveBeenCalled();
       });
     });
 
-    it('RootNavigator_OnUnmount_UnsubscribesFromAuthChanges', async () => {
-      mockGetSession.mockResolvedValue({
-        data: { session: null },
-      });
-
-      const { unmount } = render(<RootNavigator />);
-
-      await waitFor(() => {
-        expect(mockOnAuthStateChange).toHaveBeenCalled();
-      });
-
-      unmount();
-
-      expect(mockUnsubscribe).toHaveBeenCalled();
-    });
-
-    it('RootNavigator_OnMount_ChecksAuthSessionOnce', async () => {
-      mockGetSession.mockResolvedValue({
-        data: { session: null },
-      });
+    it('RootNavigator_WhenAuthenticatedWithUser_DoesNotFetchUser', async () => {
+      mockIsAuthenticated = true;
+      mockCurrentUser = {
+        id: '123',
+        email: 'test@example.com',
+        onboarding_completed: true,
+      };
 
       render(<RootNavigator />);
 
+      // Wait a tick to ensure any effects have run
       await waitFor(() => {
-        expect(mockGetSession).toHaveBeenCalledTimes(1);
+        expect(mockFetchCurrentUser).not.toHaveBeenCalled();
       });
     });
   });
 
   describe('Edge Cases', () => {
-    it('RootNavigator_WithSessionFetchError_ShowsAuthNavigator', async () => {
-      mockGetSession.mockResolvedValue({
-        data: { session: null },
-        error: { message: 'Session error' },
-      });
+    it('RootNavigator_WhenNotAuthenticated_DoesNotFetchUser', async () => {
+      mockIsAuthenticated = false;
 
-      const { getByTestId } = render(<RootNavigator />);
+      render(<RootNavigator />);
 
       await waitFor(() => {
-        expect(getByTestId('auth-navigator')).toBeTruthy();
+        expect(mockFetchCurrentUser).not.toHaveBeenCalled();
       });
     });
 
-    it('RootNavigator_WithSessionWithoutUserMetadata_ShowsMainNavigator', async () => {
-      const mockSession = {
-        access_token: 'mock-token',
-        user: {
-          id: '123',
-          email: 'test@example.com',
-          user_metadata: {},
-        },
+    it('RootNavigator_WhenUserHasNullOnboardingCompleted_ShowsOnboardingNavigator', async () => {
+      mockIsAuthenticated = true;
+      mockCurrentUser = {
+        id: '123',
+        email: 'test@example.com',
+        onboarding_completed: null,
       };
-
-      mockGetSession.mockResolvedValue({
-        data: { session: mockSession },
-      });
 
       const { getByTestId } = render(<RootNavigator />);
 
       await waitFor(() => {
-        expect(getByTestId('main-navigator')).toBeTruthy();
+        // null is falsy, so !null is true -> needsOnboarding
+        expect(getByTestId('onboarding-navigator')).toBeTruthy();
       });
     });
   });

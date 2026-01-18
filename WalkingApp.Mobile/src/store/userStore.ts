@@ -46,6 +46,7 @@ interface UserState {
   updateProfile: (updates: Partial<UserProfile>) => Promise<UserProfile>;
   updatePreferences: (prefs: Partial<UserPreferences>) => Promise<void>;
   uploadAvatar: (uri: string) => Promise<string>;
+  clearUser: () => void;
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
@@ -110,5 +111,14 @@ export const useUserStore = create<UserState>((set, get) => ({
       set({ error: error.message, isLoading: false });
       throw error;
     }
+  },
+
+  /**
+   * Clears the current user from the store and resets all state to initial values.
+   * This should be called when the user signs out to ensure no stale user data remains.
+   * Resets currentUser to null, isLoading to false, and error to null.
+   */
+  clearUser: () => {
+    set({ currentUser: null, isLoading: false, error: null });
   },
 }));

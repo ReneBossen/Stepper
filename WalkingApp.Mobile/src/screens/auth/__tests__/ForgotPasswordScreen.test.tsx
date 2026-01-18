@@ -40,10 +40,9 @@ jest.mock('../components/AuthErrorMessage', () => ({
 
 jest.mock('react-native-paper', () => {
   const React = require('react');
-  const RN = require('react-native');
 
   const MockTextInput = ({ label, value, onChangeText, disabled, testID }: any) => {
-    return React.createElement(RN.TextInput, {
+    return React.createElement('TextInput', {
       testID: testID || `input-${label?.toLowerCase()}`,
       value,
       onChangeText,
@@ -52,26 +51,33 @@ jest.mock('react-native-paper', () => {
     });
   };
 
-  MockTextInput.Icon = () => null;
+  MockTextInput.Icon = () => React.createElement('View');
 
   return {
     TextInput: MockTextInput,
     Button: ({ children, onPress, loading, disabled, testID }: any) => {
+      const React = require('react');
+      const isDisabled = disabled || loading;
+      const handlePress = () => {
+        if (!isDisabled && onPress) {
+          onPress();
+        }
+      };
       return React.createElement(
-        RN.TouchableOpacity,
+        'TouchableOpacity',
         {
           testID: testID || 'button',
-          onPress,
-          disabled: disabled || loading,
+          onPress: handlePress,
+          disabled: isDisabled,
         },
-        React.createElement(RN.Text, {}, children)
+        React.createElement('Text', {}, children)
       );
     },
     Text: ({ children, testID, variant, style }: any) => {
-      return React.createElement(RN.Text, { testID, variant, style }, children);
+      return React.createElement('Text', { testID, variant, style }, children);
     },
     Surface: ({ children, testID }: any) => {
-      return React.createElement(RN.View, { testID: testID || 'surface' }, children);
+      return React.createElement('View', { testID: testID || 'surface' }, children);
     },
   };
 });
@@ -227,20 +233,23 @@ describe('ForgotPasswordScreen', () => {
     });
 
     it('ForgotPasswordScreen_WhenLoading_DisablesSendResetLinkButton', () => {
+      const handleResetPassword = jest.fn();
       mockUseForgotPassword.mockReturnValue({
         email: 'test@example.com',
         setEmail: jest.fn(),
         isLoading: true,
         emailSent: false,
         error: null,
-        handleResetPassword: jest.fn(),
+        handleResetPassword,
         handleResendEmail: jest.fn(),
       });
 
       const { getByText } = render(<ForgotPasswordScreen navigation={mockNavigation as any} route={{} as any} />);
 
-      const sendButton = getByText('Send Reset Link').parent;
-      expect(sendButton?.props.disabled).toBe(true);
+      fireEvent.press(getByText('Send Reset Link'));
+
+      // When disabled, pressing should not call handleResetPassword
+      expect(handleResetPassword).not.toHaveBeenCalled();
     });
   });
 
