@@ -16,7 +16,8 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.walkingapp.mobile"
+      "bundleIdentifier": "com.walkingapp.mobile",
+      "associatedDomains": ["applinks:walkingapp.com"]
     },
     "android": {
       "adaptiveIcon": {
@@ -38,7 +39,10 @@
               "scheme": "walkingapp"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -47,7 +51,8 @@
     },
     "scheme": "walkingapp",
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {

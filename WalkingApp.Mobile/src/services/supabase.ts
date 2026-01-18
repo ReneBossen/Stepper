@@ -10,7 +10,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     storage: ExpoSecureStoreAdapter,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl: false, // Not needed for React Native - we manually extract tokens
   },
 });
 
@@ -90,4 +90,22 @@ export const resetPassword = async (email: string) => {
   });
 
   if (error) throw error;
+};
+
+/**
+ * Sign in with Google OAuth (browser-based)
+ * Opens browser for authentication, returns URL with tokens in fragment.
+ * Caller must extract tokens from redirect URL and call setSession().
+ */
+export const signInWithGoogleOAuth = async () => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: 'walkingapp://',
+      skipBrowserRedirect: false,
+    },
+  });
+
+  if (error) throw error;
+  return data;
 };

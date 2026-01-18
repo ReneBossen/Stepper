@@ -5,6 +5,9 @@ const mockSignInWithPassword = jest.fn();
 const mockSignUp = jest.fn();
 const mockSignOut = jest.fn();
 const mockResetPasswordForEmail = jest.fn();
+const mockSignInWithOAuth = jest.fn();
+const mockSignInWithIdToken = jest.fn();
+const mockSetSession = jest.fn();
 const mockOnAuthStateChange = jest.fn(() => ({
   data: { subscription: { unsubscribe: jest.fn() } },
 }));
@@ -24,6 +27,9 @@ jest.mock('@supabase/supabase-js', () => ({
         signUp: mockSignUp,
         signOut: mockSignOut,
         resetPasswordForEmail: mockResetPasswordForEmail,
+        signInWithOAuth: mockSignInWithOAuth,
+        signInWithIdToken: mockSignInWithIdToken,
+        setSession: mockSetSession,
         onAuthStateChange: mockOnAuthStateChange,
       },
     };
