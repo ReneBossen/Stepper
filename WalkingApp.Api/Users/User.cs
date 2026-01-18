@@ -16,4 +16,5 @@ public class User
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public UserPreferences Preferences { get; set; } = new();
+    public bool OnboardingCompleted { get; set; }
 }

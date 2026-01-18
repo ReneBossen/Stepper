@@ -32,6 +32,9 @@ internal class UserEntity : BaseModel
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; }
 
+    [Column("onboarding_completed")]
+    public bool OnboardingCompleted { get; set; }
+
     public User ToUser()
     {
         var preferences = string.IsNullOrWhiteSpace(PreferencesJson)
@@ -46,7 +49,8 @@ internal class UserEntity : BaseModel
             QrCodeId = QrCodeId,
             Preferences = preferences,
             CreatedAt = CreatedAt,
-            UpdatedAt = UpdatedAt
+            UpdatedAt = UpdatedAt,
+            OnboardingCompleted = OnboardingCompleted
         };
     }
 
@@ -60,7 +64,8 @@ internal class UserEntity : BaseModel
             QrCodeId = user.QrCodeId,
             PreferencesJson = JsonSerializer.Serialize(user.Preferences),
             CreatedAt = user.CreatedAt,
-            UpdatedAt = user.UpdatedAt
+            UpdatedAt = user.UpdatedAt,
+            OnboardingCompleted = user.OnboardingCompleted
         };
     }
 }

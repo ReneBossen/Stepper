@@ -7,4 +7,5 @@ public class GetProfileResponse
     public string? AvatarUrl { get; set; }
     public UserPreferences Preferences { get; set; } = new();
     public DateTime CreatedAt { get; set; }
+    public bool OnboardingCompleted { get; set; }
 }

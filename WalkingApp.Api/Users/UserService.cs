@@ -63,6 +63,11 @@ public class UserService : IUserService
             existingUser.Preferences = request.Preferences;
         }
 
+        if (request.OnboardingCompleted.HasValue)
+        {
+            existingUser.OnboardingCompleted = request.OnboardingCompleted.Value;
+        }
+
         // Note: UpdatedAt is automatically set by the database trigger (update_users_updated_at)
         // No need to set it manually here
 
@@ -155,7 +160,8 @@ public class UserService : IUserService
             DisplayName = user.DisplayName,
             AvatarUrl = user.AvatarUrl,
             Preferences = user.Preferences,
-            CreatedAt = user.CreatedAt
+            CreatedAt = user.CreatedAt,
+            OnboardingCompleted = user.OnboardingCompleted
         };
     }
 }
