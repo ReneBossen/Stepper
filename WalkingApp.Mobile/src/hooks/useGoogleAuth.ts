@@ -42,10 +42,26 @@ export const useGoogleAuth = () => {
         const { authentication } = result;
         setIsLoading(false);
 
+        if (!authentication?.idToken) {
+          setError('Failed to retrieve authentication token from Google');
+          return null;
+        }
+
         return {
-          idToken: authentication?.idToken,
-          accessToken: authentication?.accessToken,
+          idToken: authentication.idToken,
+          accessToken: authentication.accessToken,
         };
+      }
+
+      if (result.type === 'cancel') {
+        setIsLoading(false);
+        return null;
+      }
+
+      if (result.type === 'error') {
+        setError(result.error?.message || 'Google authentication failed');
+        setIsLoading(false);
+        return null;
       }
 
       setIsLoading(false);
