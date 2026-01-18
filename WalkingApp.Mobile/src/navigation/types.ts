@@ -16,6 +16,14 @@ export type AuthStackParamList = {
   ForgotPassword: undefined;
 };
 
+// Onboarding Stack
+export type OnboardingStackParamList = {
+  WelcomeCarousel: undefined;
+  Permissions: undefined;
+  ProfileSetup: undefined;
+  PreferencesSetup: undefined;
+};
+
 // Main Stack (contains tabs + modals)
 export type MainStackParamList = {
   Tabs: undefined;
@@ -70,6 +78,9 @@ export type RootStackScreenProps<T extends keyof RootStackParamList> =
 
 export type AuthStackScreenProps<T extends keyof AuthStackParamList> =
   NativeStackScreenProps<AuthStackParamList, T>;
+
+export type OnboardingStackScreenProps<T extends keyof OnboardingStackParamList> =
+  NativeStackScreenProps<OnboardingStackParamList, T>;
 
 export type MainStackScreenProps<T extends keyof MainStackParamList> =
   CompositeScreenProps<

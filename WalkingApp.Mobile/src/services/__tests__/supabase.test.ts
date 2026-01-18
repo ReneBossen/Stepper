@@ -392,12 +392,12 @@ describe('signOut', () => {
     await expect(signOut()).rejects.toThrow('Network error');
   });
 
-  it('should call signOut without parameters', async () => {
+  it('should call signOut with global scope', async () => {
     mockSignOut.mockResolvedValue({ error: null });
 
     await signOut();
 
-    expect(mockSignOut).toHaveBeenCalledWith();
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: 'global' });
   });
 });
 

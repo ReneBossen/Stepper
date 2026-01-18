@@ -11,6 +11,7 @@ export interface UserProfile {
   avatar_url?: string;
   preferences: UserPreferences;
   created_at: string;
+  onboarding_completed: boolean;
 }
 
 export interface UserPreferences {
@@ -42,9 +43,10 @@ interface UserState {
 
   // Actions
   fetchCurrentUser: () => Promise<void>;
-  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<UserProfile>;
   updatePreferences: (prefs: Partial<UserPreferences>) => Promise<void>;
-  uploadAvatar: (uri: string) => Promise<void>;
+  uploadAvatar: (uri: string) => Promise<string>;
+  clearUser: () => void;
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
@@ -67,6 +69,7 @@ export const useUserStore = create<UserState>((set, get) => ({
     try {
       const updated = await usersApi.updateProfile(updates);
       set({ currentUser: updated, isLoading: false });
+      return updated;
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
       throw error;
@@ -103,9 +106,19 @@ export const useUserStore = create<UserState>((set, get) => ({
       } else {
         set({ isLoading: false });
       }
+      return avatarUrl;
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
       throw error;
     }
+  },
+
+  /**
+   * Clears the current user from the store and resets all state to initial values.
+   * This should be called when the user signs out to ensure no stale user data remains.
+   * Resets currentUser to null, isLoading to false, and error to null.
+   */
+  clearUser: () => {
+    set({ currentUser: null, isLoading: false, error: null });
   },
 }));

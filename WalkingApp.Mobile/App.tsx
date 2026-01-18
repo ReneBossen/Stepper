@@ -20,9 +20,11 @@ function AppContent() {
   const [initError, setInitError] = useState<string | null>(null);
   const setSession = useAuthStore((state) => state.setSession);
   const fetchCurrentUser = useUserStore((state) => state.fetchCurrentUser);
+  const clearUser = useUserStore((state) => state.clearUser);
 
   useEffect(() => {
     let subscription: any = null;
+    let isSigningOut = false;
 
     async function prepare() {
       try {
@@ -51,6 +53,25 @@ function AppContent() {
         const {
           data: { subscription: authSubscription },
         } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (event === 'SIGNED_OUT') {
+            isSigningOut = true;
+            setSession(null);
+            clearUser();
+            // Reset the isSigningOut flag after 1000ms to allow for any pending auth state
+            // change events to complete. This delay prevents false SIGNED_IN events that may
+            // be triggered by Supabase session restoration immediately after sign-out from
+            // being processed as genuine sign-in events.
+            setTimeout(() => {
+              isSigningOut = false;
+            }, 1000);
+            return;
+          }
+
+          // Ignore SIGNED_IN events that happen right after SIGNED_OUT (session restoration)
+          if (event === 'SIGNED_IN' && isSigningOut) {
+            return;
+          }
+
           setSession(session);
 
           if (event === 'SIGNED_IN' && session) {

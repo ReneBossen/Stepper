@@ -88,11 +88,11 @@ describe('AuthErrorMessage', () => {
       expect(getByText(errorWithNewlines)).toBeTruthy();
     });
 
-    it('AuthErrorMessage_WhenEmptyString_DisplaysEmptyString', () => {
-      const { getByTestId } = render(<AuthErrorMessage error="" />);
+    it('AuthErrorMessage_WhenEmptyString_ReturnsNull', () => {
+      const { toJSON } = render(<AuthErrorMessage error="" />);
 
-      const errorText = getByTestId('error-text');
-      expect(errorText.props.children).toBe('');
+      // Empty string is falsy, so component returns null
+      expect(toJSON()).toBeNull();
     });
 
     it('AuthErrorMessage_WhenErrorChanges_UpdatesDisplay', () => {

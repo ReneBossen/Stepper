@@ -41,10 +41,9 @@ jest.mock('../components/AuthErrorMessage', () => ({
 
 jest.mock('react-native-paper', () => {
   const React = require('react');
-  const RN = require('react-native');
 
   const MockTextInput = ({ label, value, onChangeText, disabled, testID, left, right }: any) => {
-    return React.createElement(RN.TextInput, {
+    return React.createElement('TextInput', {
       testID: testID || `input-${label?.toLowerCase()}`,
       value,
       onChangeText,
@@ -54,30 +53,41 @@ jest.mock('react-native-paper', () => {
   };
 
   MockTextInput.Icon = ({ icon, onPress }: any) => {
+    const React = require('react');
     if (onPress) {
-      return React.createElement(RN.TouchableOpacity, { onPress, testID: `icon-${icon}` }, null);
+      return React.createElement('TouchableOpacity', { onPress, testID: `icon-${icon}` });
     }
-    return null;
+    // Return an empty View instead of null to avoid undefined component issues
+    return React.createElement('View', { testID: `icon-${icon}` });
   };
 
   return {
     TextInput: MockTextInput,
     Button: ({ children, onPress, loading, disabled, testID }: any) => {
+      const React = require('react');
+      const isDisabled = disabled || loading;
+      // Use a function component to properly handle the press event
+      const handlePress = () => {
+        if (!isDisabled && onPress) {
+          onPress();
+        }
+      };
       return React.createElement(
-        RN.TouchableOpacity,
+        'TouchableOpacity',
         {
           testID: testID || 'button',
-          onPress,
-          disabled: disabled || loading,
+          onPress: handlePress,
+          disabled: isDisabled,
+          accessibilityState: { disabled: isDisabled },
         },
-        React.createElement(RN.Text, {}, children)
+        React.createElement('Text', {}, children)
       );
     },
-    Text: ({ children, testID, variant, style }: any) => {
-      return React.createElement(RN.Text, { testID, variant, style }, children);
+    Text: ({ children, testID, variant, style, onPress }: any) => {
+      return React.createElement('Text', { testID, variant, style, onPress }, children);
     },
     Divider: () => {
-      return React.createElement(RN.View, { testID: 'divider' });
+      return React.createElement('View', { testID: 'divider' });
     },
   };
 });
@@ -337,6 +347,7 @@ describe('LoginScreen', () => {
     });
 
     it('LoginScreen_WhenLoading_DisablesSignInButton', () => {
+      const handleLogin = jest.fn();
       mockUseLogin.mockReturnValue({
         email: 'test@example.com',
         setEmail: jest.fn(),
@@ -346,13 +357,15 @@ describe('LoginScreen', () => {
         togglePasswordVisibility: jest.fn(),
         isLoading: true,
         error: null,
-        handleLogin: jest.fn(),
+        handleLogin,
       });
 
       const { getByText } = render(<LoginScreen navigation={mockNavigation as any} route={{} as any} />);
 
-      const signInButton = getByText('Sign In').parent;
-      expect(signInButton?.props.disabled).toBe(true);
+      fireEvent.press(getByText('Sign In'));
+
+      // When disabled, pressing should not call handleLogin
+      expect(handleLogin).not.toHaveBeenCalled();
     });
   });
 

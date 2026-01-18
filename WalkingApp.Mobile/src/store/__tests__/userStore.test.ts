@@ -16,6 +16,7 @@ describe('userStore', () => {
     bio: 'Test bio',
     location: 'Test City',
     avatar_url: 'https://example.com/avatar.jpg',
+    onboarding_completed: true,
     preferences: {
       units: 'metric',
       daily_step_goal: 10000,
@@ -401,6 +402,77 @@ describe('userStore', () => {
       expect(result.current.currentUser?.display_name).toBe('Test User');
       expect(result.current.currentUser?.email).toBe('test@example.com');
       expect(result.current.currentUser?.avatar_url).toBe(avatarUrl);
+    });
+  });
+
+  describe('clearUser', () => {
+    it('should reset currentUser to null', () => {
+      const { result } = renderHook(() => useUserStore());
+
+      // Set initial user
+      act(() => {
+        useUserStore.setState({ currentUser: mockUserProfile });
+      });
+      expect(result.current.currentUser).toEqual(mockUserProfile);
+
+      act(() => {
+        result.current.clearUser();
+      });
+
+      expect(result.current.currentUser).toBeNull();
+    });
+
+    it('should reset isLoading to false', () => {
+      const { result } = renderHook(() => useUserStore());
+
+      // Set isLoading to true
+      act(() => {
+        useUserStore.setState({ isLoading: true });
+      });
+      expect(result.current.isLoading).toBe(true);
+
+      act(() => {
+        result.current.clearUser();
+      });
+
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    it('should reset error to null', () => {
+      const { result } = renderHook(() => useUserStore());
+
+      // Set an error
+      act(() => {
+        useUserStore.setState({ error: 'Some error message' });
+      });
+      expect(result.current.error).toBe('Some error message');
+
+      act(() => {
+        result.current.clearUser();
+      });
+
+      expect(result.current.error).toBeNull();
+    });
+
+    it('should reset all state properties simultaneously', () => {
+      const { result } = renderHook(() => useUserStore());
+
+      // Set all state properties
+      act(() => {
+        useUserStore.setState({
+          currentUser: mockUserProfile,
+          isLoading: true,
+          error: 'Some error',
+        });
+      });
+
+      act(() => {
+        result.current.clearUser();
+      });
+
+      expect(result.current.currentUser).toBeNull();
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toBeNull();
     });
   });
 });
