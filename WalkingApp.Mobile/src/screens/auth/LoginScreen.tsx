@@ -11,6 +11,11 @@ import { useLogin } from './hooks/useLogin';
 
 WebBrowser.maybeCompleteAuthSession();
 
+// OAuth configuration constants
+const OAUTH_REDIRECT_SCHEME = 'walkingapp://';
+const TOKEN_PARAM_ACCESS = 'access_token';
+const TOKEN_PARAM_REFRESH = 'refresh_token';
+
 type Props = AuthStackScreenProps<'Login'>;
 
 export default function LoginScreen({ navigation }: Props) {
@@ -40,13 +45,19 @@ export default function LoginScreen({ navigation }: Props) {
         // Open browser for OAuth
         const result = await WebBrowser.openAuthSessionAsync(
           url,
-          'walkingapp://'
+          OAUTH_REDIRECT_SCHEME
         );
 
         if (result.type === 'success' && result.url) {
-          // Extract tokens from redirect URL
           const redirectUrl = result.url;
 
+          // Security: Validate URL prefix (defense in depth)
+          if (!redirectUrl.startsWith(OAUTH_REDIRECT_SCHEME)) {
+            setGoogleError('Invalid redirect URL received');
+            return;
+          }
+
+          // Extract tokens from URL fragment
           // Supabase redirects with tokens in URL fragment (after #)
           // Format: walkingapp://#access_token=...&refresh_token=...
           const hashIndex = redirectUrl.indexOf('#');
@@ -55,12 +66,12 @@ export default function LoginScreen({ navigation }: Props) {
             const fragment = redirectUrl.substring(hashIndex + 1);
             const params = new URLSearchParams(fragment);
 
-            const accessToken = params.get('access_token');
-            const refreshToken = params.get('refresh_token');
+            const accessToken = params.get(TOKEN_PARAM_ACCESS);
+            const refreshToken = params.get(TOKEN_PARAM_REFRESH);
 
             if (accessToken && refreshToken) {
               // Create session - Supabase validates tokens before creating session
-              const { error: sessionError } = await supabase.auth.setSession({
+              const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken,
               });
@@ -69,7 +80,13 @@ export default function LoginScreen({ navigation }: Props) {
                 throw sessionError;
               }
 
-              // Session created successfully - auth state listener will handle navigation
+              // Security: Verify session was created successfully
+              if (!sessionData.session || !sessionData.user) {
+                throw new Error('Failed to create session after OAuth');
+              }
+
+              // Success - auth state listener will handle navigation
+              console.log('Google OAuth session created for user:', sessionData.user.email);
             } else {
               setGoogleError('Failed to extract authentication tokens');
             }
