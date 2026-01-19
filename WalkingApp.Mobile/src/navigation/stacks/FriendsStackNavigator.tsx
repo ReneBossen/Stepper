@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { FriendsStackParamList } from '../types';
 
 import FriendsListScreen from '@screens/friends/FriendsListScreen';
+import FriendRequestsScreen from '@screens/friends/FriendRequestsScreen';
 import FriendDiscoveryScreen from '@screens/friends/FriendDiscoveryScreen';
 import UserProfileScreen from '@screens/friends/UserProfileScreen';
 
@@ -14,7 +15,12 @@ export default function FriendsStackNavigator() {
       <Stack.Screen
         name="FriendsList"
         component={FriendsListScreen}
-        options={{ title: 'Friends' }}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="FriendRequests"
+        component={FriendRequestsScreen}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="FriendDiscovery"

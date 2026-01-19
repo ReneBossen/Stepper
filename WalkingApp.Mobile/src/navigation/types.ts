@@ -52,6 +52,7 @@ export type StepsStackParamList = {
 // Friends Stack
 export type FriendsStackParamList = {
   FriendsList: undefined;
+  FriendRequests: undefined;
   FriendDiscovery: undefined;
   UserProfile: { userId: string };
 };
