@@ -12,7 +12,7 @@ describe('stepsStore', () => {
     id: '123',
     user_id: 'user-123',
     date: '2024-01-15',
-    steps: 8500,
+    step_count: 8500,
     distance_meters: 6800,
     created_at: '2024-01-15T10:00:00Z',
   };
@@ -63,7 +63,7 @@ describe('stepsStore', () => {
 
   describe('addSteps', () => {
     it('should add steps successfully and update today steps', async () => {
-      const updatedEntry = { ...mockStepEntry, steps: 10000 };
+      const updatedEntry = { ...mockStepEntry, step_count: 10000 };
 
       mockStepsApi.addSteps.mockResolvedValue(mockStepEntry);
       mockStepsApi.getTodaySteps.mockResolvedValue(updatedEntry);
@@ -164,7 +164,7 @@ describe('stepsStore', () => {
     });
 
     it('should handle zero steps for today', async () => {
-      const zeroEntry = { ...mockStepEntry, steps: 0 };
+      const zeroEntry = { ...mockStepEntry, step_count: 0 };
       mockStepsApi.getTodaySteps.mockResolvedValue(zeroEntry);
 
       const { result } = renderHook(() => useStepsStore());
@@ -281,9 +281,9 @@ describe('stepsStore', () => {
 
   describe('fetchHistory', () => {
     const mockHistory: StepEntry[] = [
-      { ...mockStepEntry, id: '1', date: '2024-01-15', steps: 8500 },
-      { ...mockStepEntry, id: '2', date: '2024-01-14', steps: 9200 },
-      { ...mockStepEntry, id: '3', date: '2024-01-13', steps: 7800 },
+      { ...mockStepEntry, id: '1', date: '2024-01-15', step_count: 8500 },
+      { ...mockStepEntry, id: '2', date: '2024-01-14', step_count: 9200 },
+      { ...mockStepEntry, id: '3', date: '2024-01-13', step_count: 7800 },
     ];
 
     it('should fetch daily history successfully', async () => {

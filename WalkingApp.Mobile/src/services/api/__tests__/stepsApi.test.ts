@@ -22,7 +22,7 @@ describe('stepsApi', () => {
         id: '123',
         user_id: 'user-123',
         date: '2024-01-15',
-        steps: 8500,
+        step_count: 8500,
         distance_meters: 6800,
         created_at: '2024-01-15T10:00:00Z',
       };
@@ -53,7 +53,7 @@ describe('stepsApi', () => {
       expect(mockSupabase.from).toHaveBeenCalledWith('step_entries');
       expect(mockUpsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          steps: 8500,
+          step_count: 8500,
           distance_meters: 6800,
           date: expect.any(String),
         })
@@ -131,7 +131,7 @@ describe('stepsApi', () => {
         id: '123',
         user_id: 'user-123',
         date: '2024-01-15',
-        steps: 8500,
+        step_count: 8500,
         distance_meters: 6800,
         created_at: '2024-01-15T10:00:00Z',
       };
@@ -189,7 +189,7 @@ describe('stepsApi', () => {
 
       const result = await stepsApi.getTodaySteps();
 
-      expect(result.steps).toBe(0);
+      expect(result.step_count).toBe(0);
       expect(result.distance_meters).toBe(0);
     });
 
@@ -223,21 +223,21 @@ describe('stepsApi', () => {
 
   describe('getStats', () => {
     it('should calculate stats successfully', async () => {
-      const todayData = { steps: 8500 };
+      const todayData = { step_count: 8500 };
       const weekData = [
-        { steps: 8500 },
-        { steps: 9000 },
-        { steps: 7500 },
-        { steps: 10000 },
-        { steps: 8000 },
-        { steps: 9500 },
-        { steps: 8000 },
+        { step_count: 8500 },
+        { step_count: 9000 },
+        { step_count: 7500 },
+        { step_count: 10000 },
+        { step_count: 8000 },
+        { step_count: 9500 },
+        { step_count: 8000 },
       ];
-      const monthData = [...weekData, ...Array(23).fill({ steps: 8000 })];
+      const monthData = [...weekData, ...Array(23).fill({ step_count: 8000 })];
       const allData = [
-        { date: '2024-01-15', steps: 8500 },
-        { date: '2024-01-14', steps: 9000 },
-        { date: '2024-01-13', steps: 7500 },
+        { date: '2024-01-15', step_count: 8500 },
+        { date: '2024-01-14', step_count: 9000 },
+        { date: '2024-01-13', step_count: 7500 },
       ];
 
       let callCount = 0;
@@ -305,7 +305,7 @@ describe('stepsApi', () => {
         id: '1',
         user_id: 'user-123',
         date: '2024-01-15',
-        steps: 8500,
+        step_count: 8500,
         distance_meters: 6800,
         created_at: '2024-01-15T10:00:00Z',
       },
@@ -313,7 +313,7 @@ describe('stepsApi', () => {
         id: '2',
         user_id: 'user-123',
         date: '2024-01-14',
-        steps: 9200,
+        step_count: 9200,
         distance_meters: 7360,
         created_at: '2024-01-14T10:00:00Z',
       },

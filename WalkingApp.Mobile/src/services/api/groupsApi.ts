@@ -67,7 +67,7 @@ export const groupsApi = {
       (data || []).map(async (member: any, index: number) => {
         const { data: stepData } = await supabase
           .from('step_entries')
-          .select('steps')
+          .select('step_count')
           .eq('user_id', member.user_id)
           .eq('date', today)
           .single();
@@ -77,7 +77,7 @@ export const groupsApi = {
           display_name: member.users.display_name,
           username: member.users.username,
           avatar_url: member.users.avatar_url,
-          steps: stepData?.steps || 0,
+          steps: stepData?.step_count || 0,
           rank: index + 1,
         };
       })

@@ -205,8 +205,8 @@ describe('groupsApi', () => {
         },
       ];
 
-      const mockStepData1 = { steps: 12000 };
-      const mockStepData2 = { steps: 10500 };
+      const mockStepData1 = { step_count: 12000 };
+      const mockStepData2 = { step_count: 10500 };
 
       const mockSelect = jest.fn().mockReturnThis();
       const mockEq = jest.fn().mockResolvedValue({

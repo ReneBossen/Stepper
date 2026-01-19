@@ -6,7 +6,7 @@ export interface StepEntry {
   id: string;
   user_id: string;
   date: string;
-  steps: number;
+  step_count: number;
   distance_meters: number;
   created_at: string;
 }
@@ -62,7 +62,7 @@ export const useStepsStore = create<StepsState>((set) => ({
     try {
       await stepsApi.addSteps(steps, distanceMeters);
       const today = await stepsApi.getTodaySteps();
-      set({ todaySteps: today.steps, isLoading: false });
+      set({ todaySteps: today.step_count, isLoading: false });
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
       throw error;
@@ -73,7 +73,7 @@ export const useStepsStore = create<StepsState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const today = await stepsApi.getTodaySteps();
-      set({ todaySteps: today.steps, isLoading: false });
+      set({ todaySteps: today.step_count, isLoading: false });
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
     }
