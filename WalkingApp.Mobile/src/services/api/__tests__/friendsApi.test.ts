@@ -153,6 +153,284 @@ describe('friendsApi', () => {
     });
   });
 
+  describe('getFriendsWithSteps', () => {
+    it('should fetch friends with today steps successfully', async () => {
+      const mockFriendships = [
+        {
+          id: 'friendship-1',
+          friend_id: 'user-1',
+          status: 'accepted',
+          users: {
+            id: 'user-1',
+            display_name: 'John Doe',
+            username: 'johndoe',
+            avatar_url: 'https://example.com/john.jpg',
+          },
+        },
+        {
+          id: 'friendship-2',
+          friend_id: 'user-2',
+          status: 'accepted',
+          users: {
+            id: 'user-2',
+            display_name: 'Jane Smith',
+            username: 'janesmith',
+            avatar_url: null,
+          },
+        },
+      ];
+
+      const mockStepEntries = [
+        { user_id: 'user-1', step_count: 8500 },
+        { user_id: 'user-2', step_count: 12000 },
+      ];
+
+      // Mock for friendships query
+      const mockFriendshipsSelect = jest.fn().mockReturnThis();
+      const mockFriendshipsEq = jest.fn().mockResolvedValue({
+        data: mockFriendships,
+        error: null,
+      });
+
+      // Mock for step_entries query
+      const mockStepsSelect = jest.fn().mockReturnThis();
+      const mockStepsIn = jest.fn().mockReturnThis();
+      const mockStepsEq = jest.fn().mockResolvedValue({
+        data: mockStepEntries,
+        error: null,
+      });
+
+      let callCount = 0;
+      (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
+        if (table === 'friendships') {
+          return {
+            select: mockFriendshipsSelect.mockReturnValue({
+              eq: mockFriendshipsEq,
+            }),
+          };
+        } else if (table === 'step_entries') {
+          return {
+            select: mockStepsSelect.mockReturnValue({
+              in: mockStepsIn.mockReturnValue({
+                eq: mockStepsEq,
+              }),
+            }),
+          };
+        }
+      });
+
+      const result = await friendsApi.getFriendsWithSteps();
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('friendships');
+      expect(mockSupabase.from).toHaveBeenCalledWith('step_entries');
+      expect(result).toHaveLength(2);
+      expect(result[0].today_steps).toBe(8500);
+      expect(result[1].today_steps).toBe(12000);
+    });
+
+    it('should return empty array when no friendships', async () => {
+      const mockFriendshipsSelect = jest.fn().mockReturnThis();
+      const mockFriendshipsEq = jest.fn().mockResolvedValue({
+        data: [],
+        error: null,
+      });
+
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        select: mockFriendshipsSelect.mockReturnValue({
+          eq: mockFriendshipsEq,
+        }),
+      });
+
+      const result = await friendsApi.getFriendsWithSteps();
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return 0 steps for friends without step entries', async () => {
+      const mockFriendships = [
+        {
+          id: 'friendship-1',
+          friend_id: 'user-1',
+          status: 'accepted',
+          users: {
+            id: 'user-1',
+            display_name: 'John Doe',
+            username: 'johndoe',
+            avatar_url: null,
+          },
+        },
+      ];
+
+      const mockFriendshipsSelect = jest.fn().mockReturnThis();
+      const mockFriendshipsEq = jest.fn().mockResolvedValue({
+        data: mockFriendships,
+        error: null,
+      });
+
+      const mockStepsSelect = jest.fn().mockReturnThis();
+      const mockStepsIn = jest.fn().mockReturnThis();
+      const mockStepsEq = jest.fn().mockResolvedValue({
+        data: [], // No step entries
+        error: null,
+      });
+
+      (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
+        if (table === 'friendships') {
+          return {
+            select: mockFriendshipsSelect.mockReturnValue({
+              eq: mockFriendshipsEq,
+            }),
+          };
+        } else if (table === 'step_entries') {
+          return {
+            select: mockStepsSelect.mockReturnValue({
+              in: mockStepsIn.mockReturnValue({
+                eq: mockStepsEq,
+              }),
+            }),
+          };
+        }
+      });
+
+      const result = await friendsApi.getFriendsWithSteps();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].today_steps).toBe(0);
+    });
+
+    it('should throw error when friendships fetch fails', async () => {
+      const mockError = { message: 'Failed to fetch friendships' };
+
+      const mockFriendshipsSelect = jest.fn().mockReturnThis();
+      const mockFriendshipsEq = jest.fn().mockResolvedValue({
+        data: null,
+        error: mockError,
+      });
+
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        select: mockFriendshipsSelect.mockReturnValue({
+          eq: mockFriendshipsEq,
+        }),
+      });
+
+      await expect(friendsApi.getFriendsWithSteps()).rejects.toEqual(mockError);
+    });
+
+    it('should throw error when step entries fetch fails', async () => {
+      const mockFriendships = [
+        {
+          id: 'friendship-1',
+          friend_id: 'user-1',
+          status: 'accepted',
+          users: {
+            id: 'user-1',
+            display_name: 'John Doe',
+            username: 'johndoe',
+            avatar_url: null,
+          },
+        },
+      ];
+
+      const mockStepsError = { message: 'Failed to fetch steps' };
+
+      const mockFriendshipsSelect = jest.fn().mockReturnThis();
+      const mockFriendshipsEq = jest.fn().mockResolvedValue({
+        data: mockFriendships,
+        error: null,
+      });
+
+      const mockStepsSelect = jest.fn().mockReturnThis();
+      const mockStepsIn = jest.fn().mockReturnThis();
+      const mockStepsEq = jest.fn().mockResolvedValue({
+        data: null,
+        error: mockStepsError,
+      });
+
+      (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
+        if (table === 'friendships') {
+          return {
+            select: mockFriendshipsSelect.mockReturnValue({
+              eq: mockFriendshipsEq,
+            }),
+          };
+        } else if (table === 'step_entries') {
+          return {
+            select: mockStepsSelect.mockReturnValue({
+              in: mockStepsIn.mockReturnValue({
+                eq: mockStepsEq,
+              }),
+            }),
+          };
+        }
+      });
+
+      await expect(friendsApi.getFriendsWithSteps()).rejects.toEqual(mockStepsError);
+    });
+
+    it('should map friend data with steps correctly', async () => {
+      const mockFriendships = [
+        {
+          id: 'friendship-1',
+          friend_id: 'user-1',
+          status: 'accepted',
+          users: {
+            id: 'user-1',
+            display_name: 'Test User',
+            username: 'testuser',
+            avatar_url: 'https://example.com/avatar.jpg',
+          },
+        },
+      ];
+
+      const mockStepEntries = [
+        { user_id: 'user-1', step_count: 5500 },
+      ];
+
+      const mockFriendshipsSelect = jest.fn().mockReturnThis();
+      const mockFriendshipsEq = jest.fn().mockResolvedValue({
+        data: mockFriendships,
+        error: null,
+      });
+
+      const mockStepsSelect = jest.fn().mockReturnThis();
+      const mockStepsIn = jest.fn().mockReturnThis();
+      const mockStepsEq = jest.fn().mockResolvedValue({
+        data: mockStepEntries,
+        error: null,
+      });
+
+      (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
+        if (table === 'friendships') {
+          return {
+            select: mockFriendshipsSelect.mockReturnValue({
+              eq: mockFriendshipsEq,
+            }),
+          };
+        } else if (table === 'step_entries') {
+          return {
+            select: mockStepsSelect.mockReturnValue({
+              in: mockStepsIn.mockReturnValue({
+                eq: mockStepsEq,
+              }),
+            }),
+          };
+        }
+      });
+
+      const result = await friendsApi.getFriendsWithSteps();
+
+      expect(result[0]).toEqual({
+        id: 'friendship-1',
+        user_id: 'user-1',
+        display_name: 'Test User',
+        username: 'testuser',
+        avatar_url: 'https://example.com/avatar.jpg',
+        status: 'accepted',
+        today_steps: 5500,
+      });
+    });
+  });
+
   describe('getRequests', () => {
     it('should fetch friend requests successfully', async () => {
       const mockData = [
