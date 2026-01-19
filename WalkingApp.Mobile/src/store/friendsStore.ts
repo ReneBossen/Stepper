@@ -20,6 +20,7 @@ interface FriendsState {
 
   // Actions
   fetchFriends: () => Promise<void>;
+  fetchFriendsWithSteps: () => Promise<void>;
   fetchRequests: () => Promise<void>;
   sendRequest: (userId: string) => Promise<void>;
   acceptRequest: (userId: string) => Promise<void>;
@@ -37,6 +38,16 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const friends = await friendsApi.getFriends();
+      set({ friends, isLoading: false });
+    } catch (error: unknown) {
+      set({ error: getErrorMessage(error), isLoading: false });
+    }
+  },
+
+  fetchFriendsWithSteps: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const friends = await friendsApi.getFriendsWithSteps();
       set({ friends, isLoading: false });
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
