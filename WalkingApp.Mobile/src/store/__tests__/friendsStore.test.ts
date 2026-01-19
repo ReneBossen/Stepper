@@ -138,6 +138,100 @@ describe('friendsStore', () => {
     });
   });
 
+  describe('fetchFriendsWithSteps', () => {
+    it('should fetch friends with steps successfully', async () => {
+      mockFriendsApi.getFriendsWithSteps.mockResolvedValue(mockFriends);
+
+      const { result } = renderHook(() => useFriendsStore());
+
+      await act(async () => {
+        await result.current.fetchFriendsWithSteps();
+      });
+
+      expect(mockFriendsApi.getFriendsWithSteps).toHaveBeenCalled();
+      expect(result.current.friends).toEqual(mockFriends);
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toBeNull();
+    });
+
+    it('should handle empty friends list', async () => {
+      mockFriendsApi.getFriendsWithSteps.mockResolvedValue([]);
+
+      const { result } = renderHook(() => useFriendsStore());
+
+      await act(async () => {
+        await result.current.fetchFriendsWithSteps();
+      });
+
+      expect(result.current.friends).toEqual([]);
+    });
+
+    it('should handle fetch error', async () => {
+      const error = new Error('Failed to fetch friends with steps');
+      mockFriendsApi.getFriendsWithSteps.mockRejectedValue(error);
+
+      const { result } = renderHook(() => useFriendsStore());
+
+      await act(async () => {
+        await result.current.fetchFriendsWithSteps();
+      });
+
+      await waitFor(() => {
+        expect(result.current.error).toBe('Failed to fetch friends with steps');
+      });
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    it('should set loading state during fetch', async () => {
+      mockFriendsApi.getFriendsWithSteps.mockImplementation(() =>
+        new Promise((resolve) => setTimeout(() => resolve(mockFriends), 100))
+      );
+
+      const { result } = renderHook(() => useFriendsStore());
+
+      act(() => {
+        result.current.fetchFriendsWithSteps();
+      });
+
+      expect(result.current.isLoading).toBe(true);
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+    });
+
+    it('should clear previous errors on fetch', async () => {
+      mockFriendsApi.getFriendsWithSteps.mockResolvedValue(mockFriends);
+
+      const { result } = renderHook(() => useFriendsStore());
+
+      useFriendsStore.setState({ error: 'Previous error' });
+
+      await act(async () => {
+        await result.current.fetchFriendsWithSteps();
+      });
+
+      expect(result.current.error).toBeNull();
+    });
+
+    it('should return friends with today_steps populated', async () => {
+      const friendsWithSteps = [
+        { ...mockFriends[0], today_steps: 5000 },
+        { ...mockFriends[1], today_steps: 12000 },
+      ];
+      mockFriendsApi.getFriendsWithSteps.mockResolvedValue(friendsWithSteps);
+
+      const { result } = renderHook(() => useFriendsStore());
+
+      await act(async () => {
+        await result.current.fetchFriendsWithSteps();
+      });
+
+      expect(result.current.friends[0].today_steps).toBe(5000);
+      expect(result.current.friends[1].today_steps).toBe(12000);
+    });
+  });
+
   describe('fetchRequests', () => {
     it('should fetch friend requests successfully', async () => {
       mockFriendsApi.getRequests.mockResolvedValue(mockRequests);
