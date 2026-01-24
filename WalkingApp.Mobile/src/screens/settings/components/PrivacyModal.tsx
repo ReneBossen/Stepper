@@ -11,7 +11,7 @@ import {
 } from 'react-native-paper';
 import type { PrivacyLevel } from '@services/api/userPreferencesApi';
 
-type PrivacySettingType = 'profile_visibility' | 'activity_visibility' | 'find_me';
+export type PrivacySettingType = 'profile_visibility' | 'activity_visibility' | 'find_me';
 
 interface PrivacyModalProps {
   visible: boolean;

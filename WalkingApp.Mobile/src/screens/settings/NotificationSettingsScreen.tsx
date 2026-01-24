@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Linking, Platform } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import {
   Appbar,
   Text,
@@ -7,42 +7,26 @@ import {
   Divider,
   useTheme,
   Snackbar,
+  ActivityIndicator,
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
-import * as Notifications from 'expo-notifications';
 import { useUserStore } from '@store/userStore';
 import { getErrorMessage } from '@utils/errorUtils';
+import type { UserPreferencesUpdate } from '@services/api/userPreferencesApi';
 
 /**
- * Notification settings state for detailed notification preferences.
- * These are local state values that would typically be synced with backend.
+ * Keys for notification preference fields in the user preferences.
  */
-interface NotificationSettings {
-  // Friend Activity
-  friendRequests: boolean;
-  friendAccepted: boolean;
-  friendMilestones: boolean;
-  // Groups
-  groupInvites: boolean;
-  leaderboardUpdates: boolean;
-  competitionReminders: boolean;
-  // Personal
-  goalAchieved: boolean;
-  streakReminders: boolean;
-  weeklySummary: boolean;
-}
-
-const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
-  friendRequests: true,
-  friendAccepted: true,
-  friendMilestones: true,
-  groupInvites: true,
-  leaderboardUpdates: false,
-  competitionReminders: true,
-  goalAchieved: true,
-  streakReminders: true,
-  weeklySummary: true,
-};
+type NotificationPreferenceKey =
+  | 'notify_friend_requests'
+  | 'notify_friend_accepted'
+  | 'notify_friend_milestones'
+  | 'notify_group_invites'
+  | 'notify_leaderboard_updates'
+  | 'notify_competition_reminders'
+  | 'notify_goal_achieved'
+  | 'notify_streak_reminders'
+  | 'notify_weekly_summary';
 
 /**
  * Screen for configuring detailed notification preferences by category.
@@ -50,15 +34,28 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
 export default function NotificationSettingsScreen() {
   const theme = useTheme();
   const navigation = useNavigation();
-  const { currentUser, updatePreferences } = useUserStore();
+  const { currentUser, updatePreferences, isLoading } = useUserStore();
 
-  const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
-  const [isSaving, setIsSaving] = useState(false);
+  const [savingKey, setSavingKey] = useState<NotificationPreferenceKey | null>(null);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
   // Check if master toggle is enabled
   const masterEnabled = currentUser?.preferences.notifications_enabled ?? true;
+
+  // Get notification settings from preferences with defaults
+  const preferences = currentUser?.preferences;
+  const notificationSettings = {
+    notify_friend_requests: preferences?.notify_friend_requests ?? true,
+    notify_friend_accepted: preferences?.notify_friend_accepted ?? true,
+    notify_friend_milestones: preferences?.notify_friend_milestones ?? true,
+    notify_group_invites: preferences?.notify_group_invites ?? true,
+    notify_leaderboard_updates: preferences?.notify_leaderboard_updates ?? false,
+    notify_competition_reminders: preferences?.notify_competition_reminders ?? true,
+    notify_goal_achieved: preferences?.notify_goal_achieved ?? true,
+    notify_streak_reminders: preferences?.notify_streak_reminders ?? true,
+    notify_weekly_summary: preferences?.notify_weekly_summary ?? true,
+  };
 
   const handleBack = useCallback(() => {
     navigation.goBack();
@@ -70,7 +67,7 @@ export default function NotificationSettingsScreen() {
   }, []);
 
   const handleToggle = useCallback(
-    async (key: keyof NotificationSettings) => {
+    async (key: NotificationPreferenceKey) => {
       if (!masterEnabled) {
         Alert.alert(
           'Notifications Disabled',
@@ -80,14 +77,20 @@ export default function NotificationSettingsScreen() {
         return;
       }
 
-      const newValue = !settings[key];
-      setSettings((prev) => ({ ...prev, [key]: newValue }));
+      const newValue = !notificationSettings[key];
+      setSavingKey(key);
 
-      // In a real implementation, this would save to the backend
-      // For now, we just show a success message
-      showSnackbar('Preference updated');
+      try {
+        const update: UserPreferencesUpdate = { [key]: newValue };
+        await updatePreferences(update);
+        showSnackbar('Preference updated');
+      } catch (error) {
+        Alert.alert('Error', getErrorMessage(error));
+      } finally {
+        setSavingKey(null);
+      }
     },
-    [masterEnabled, settings, showSnackbar]
+    [masterEnabled, notificationSettings, updatePreferences, showSnackbar]
   );
 
   const handleDismissSnackbar = useCallback(() => {
@@ -95,29 +98,38 @@ export default function NotificationSettingsScreen() {
   }, []);
 
   const renderToggle = (
-    key: keyof NotificationSettings,
+    key: NotificationPreferenceKey,
     label: string,
     testId: string
-  ) => (
-    <View style={styles.toggleRow}>
-      <Text
-        variant="bodyMedium"
-        style={[
-          styles.toggleLabel,
-          { color: masterEnabled ? theme.colors.onSurface : theme.colors.onSurfaceDisabled },
-        ]}
-      >
-        {label}
-      </Text>
-      <Switch
-        value={settings[key]}
-        onValueChange={() => handleToggle(key)}
-        disabled={!masterEnabled}
-        testID={testId}
-        accessibilityLabel={`${label} toggle, currently ${settings[key] ? 'enabled' : 'disabled'}`}
-      />
-    </View>
-  );
+  ) => {
+    const value = notificationSettings[key];
+    const isSavingThis = savingKey === key;
+
+    return (
+      <View style={styles.toggleRow}>
+        <Text
+          variant="bodyMedium"
+          style={[
+            styles.toggleLabel,
+            { color: masterEnabled ? theme.colors.onSurface : theme.colors.onSurfaceDisabled },
+          ]}
+        >
+          {label}
+        </Text>
+        {isSavingThis ? (
+          <ActivityIndicator size="small" testID={`${testId}-loading`} />
+        ) : (
+          <Switch
+            value={value}
+            onValueChange={() => handleToggle(key)}
+            disabled={!masterEnabled || savingKey !== null}
+            testID={testId}
+            accessibilityLabel={`${label} toggle, currently ${value ? 'enabled' : 'disabled'}`}
+          />
+        )}
+      </View>
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -151,9 +163,9 @@ export default function NotificationSettingsScreen() {
           >
             Friend Activity
           </Text>
-          {renderToggle('friendRequests', 'Friend Requests', 'notif-friend-requests')}
-          {renderToggle('friendAccepted', 'Friend Accepted', 'notif-friend-accepted')}
-          {renderToggle('friendMilestones', 'Friend Milestones', 'notif-friend-milestones')}
+          {renderToggle('notify_friend_requests', 'Friend Requests', 'notif-friend-requests')}
+          {renderToggle('notify_friend_accepted', 'Friend Accepted', 'notif-friend-accepted')}
+          {renderToggle('notify_friend_milestones', 'Friend Milestones', 'notif-friend-milestones')}
         </View>
 
         <Divider style={styles.divider} />
@@ -166,9 +178,9 @@ export default function NotificationSettingsScreen() {
           >
             Groups
           </Text>
-          {renderToggle('groupInvites', 'Group Invites', 'notif-group-invites')}
-          {renderToggle('leaderboardUpdates', 'Leaderboard Updates', 'notif-leaderboard-updates')}
-          {renderToggle('competitionReminders', 'Competition Reminders', 'notif-competition-reminders')}
+          {renderToggle('notify_group_invites', 'Group Invites', 'notif-group-invites')}
+          {renderToggle('notify_leaderboard_updates', 'Leaderboard Updates', 'notif-leaderboard-updates')}
+          {renderToggle('notify_competition_reminders', 'Competition Reminders', 'notif-competition-reminders')}
         </View>
 
         <Divider style={styles.divider} />
@@ -181,9 +193,9 @@ export default function NotificationSettingsScreen() {
           >
             Personal
           </Text>
-          {renderToggle('goalAchieved', 'Daily Goal Achieved', 'notif-goal-achieved')}
-          {renderToggle('streakReminders', 'Streak Reminders', 'notif-streak-reminders')}
-          {renderToggle('weeklySummary', 'Weekly Summary', 'notif-weekly-summary')}
+          {renderToggle('notify_goal_achieved', 'Daily Goal Achieved', 'notif-goal-achieved')}
+          {renderToggle('notify_streak_reminders', 'Streak Reminders', 'notif-streak-reminders')}
+          {renderToggle('notify_weekly_summary', 'Weekly Summary', 'notif-weekly-summary')}
         </View>
 
         {/* Info Note */}

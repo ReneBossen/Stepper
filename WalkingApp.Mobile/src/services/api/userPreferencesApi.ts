@@ -17,6 +17,18 @@ export interface UserPreferences {
   daily_step_goal: number;
   units: 'metric' | 'imperial';
   notifications_enabled: boolean;
+  // Granular notification preferences
+  notify_friend_requests: boolean;
+  notify_friend_accepted: boolean;
+  notify_friend_milestones: boolean;
+  notify_group_invites: boolean;
+  notify_leaderboard_updates: boolean;
+  notify_competition_reminders: boolean;
+  notify_goal_achieved: boolean;
+  notify_streak_reminders: boolean;
+  notify_weekly_summary: boolean;
+  // Privacy settings
+  privacy_profile_visibility: PrivacyLevel;
   privacy_find_me: PrivacyLevel;
   privacy_show_steps: PrivacyLevel;
   created_at: string;
@@ -35,6 +47,18 @@ export const DEFAULT_PREFERENCES: Omit<UserPreferences, 'id' | 'created_at' | 'u
   daily_step_goal: 10000,
   units: 'metric',
   notifications_enabled: true,
+  // Granular notification preferences
+  notify_friend_requests: true,
+  notify_friend_accepted: true,
+  notify_friend_milestones: true,
+  notify_group_invites: true,
+  notify_leaderboard_updates: false,
+  notify_competition_reminders: true,
+  notify_goal_achieved: true,
+  notify_streak_reminders: true,
+  notify_weekly_summary: true,
+  // Privacy settings
+  privacy_profile_visibility: 'public',
   privacy_find_me: 'public',
   privacy_show_steps: 'partial',
 };

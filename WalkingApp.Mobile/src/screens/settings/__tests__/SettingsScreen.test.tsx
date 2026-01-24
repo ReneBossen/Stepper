@@ -22,6 +22,18 @@ import { useAuthStore } from '@store/authStore';
 jest.mock('@store/userStore');
 jest.mock('@store/authStore');
 
+// Mock supabase
+const mockUpdateUser = jest.fn();
+const mockGetUser = jest.fn();
+jest.mock('@services/supabase', () => ({
+  supabase: {
+    auth: {
+      getUser: () => mockGetUser(),
+      updateUser: (data: any) => mockUpdateUser(data),
+    },
+  },
+}));
+
 // Mock Alert
 jest.spyOn(Alert, 'alert');
 
@@ -124,6 +136,20 @@ jest.mock('../components', () => ({
       </RN.View>
     ) : null;
   },
+  ChangePasswordModal: ({ visible, onDismiss, onSave, isSaving }: any) => {
+    const RN = require('react-native');
+    return visible ? (
+      <RN.View testID="change-password-modal">
+        <RN.TouchableOpacity testID="change-password-save" onPress={() => onSave('newPassword123')}>
+          <RN.Text>Save Password</RN.Text>
+        </RN.TouchableOpacity>
+        <RN.TouchableOpacity testID="change-password-cancel" onPress={onDismiss}>
+          <RN.Text>Cancel</RN.Text>
+        </RN.TouchableOpacity>
+        {isSaving && <RN.View testID="change-password-saving" />}
+      </RN.View>
+    ) : null;
+  },
 }));
 
 // Mock react-native-paper
@@ -216,6 +242,16 @@ describe('SettingsScreen', () => {
       units: 'metric',
       daily_step_goal: 10000,
       notifications_enabled: true,
+      notify_friend_requests: true,
+      notify_friend_accepted: true,
+      notify_friend_milestones: true,
+      notify_group_invites: true,
+      notify_leaderboard_updates: false,
+      notify_competition_reminders: true,
+      notify_goal_achieved: true,
+      notify_streak_reminders: true,
+      notify_weekly_summary: true,
+      privacy_profile_visibility: 'public',
       privacy_find_me: 'public',
       privacy_show_steps: 'partial',
       created_at: '2025-01-15T10:00:00Z',
@@ -240,6 +276,8 @@ describe('SettingsScreen', () => {
 
     mockUpdatePreferences.mockResolvedValue(undefined);
     mockSignOut.mockResolvedValue(undefined);
+    mockGetUser.mockResolvedValue({ data: { user: { email: 'john@example.com' } } });
+    mockUpdateUser.mockResolvedValue({ data: {}, error: null });
 
     mockUseUserStore.mockImplementation((selector?: any) => {
       if (selector) {
@@ -720,6 +758,105 @@ describe('SettingsScreen', () => {
 
       const { getByTestId } = render(<SettingsScreen />);
       expect(getByTestId('settings-activity-visibility-description')).toHaveTextContent('Nobody');
+    });
+  });
+
+  describe('email display', () => {
+    it('should display email item', () => {
+      const { getByTestId } = render(<SettingsScreen />);
+      expect(getByTestId('settings-email')).toBeTruthy();
+    });
+
+    it('should display user email when loaded', async () => {
+      const { getByTestId } = render(<SettingsScreen />);
+
+      await waitFor(() => {
+        expect(getByTestId('settings-email-description')).toHaveTextContent('john@example.com');
+      });
+    });
+
+    it('should display Loading when email not yet loaded', () => {
+      mockGetUser.mockResolvedValue({ data: { user: null } });
+      const { getByTestId } = render(<SettingsScreen />);
+      expect(getByTestId('settings-email-description')).toHaveTextContent('Loading...');
+    });
+  });
+
+  describe('change password', () => {
+    it('should display change password item', () => {
+      const { getByTestId } = render(<SettingsScreen />);
+      expect(getByTestId('settings-change-password')).toBeTruthy();
+    });
+
+    it('should open change password modal when pressed', () => {
+      const { getByTestId, queryByTestId } = render(<SettingsScreen />);
+      expect(queryByTestId('change-password-modal')).toBeNull();
+      fireEvent.press(getByTestId('settings-change-password'));
+      expect(getByTestId('change-password-modal')).toBeTruthy();
+    });
+
+    it('should change password and show snackbar on success', async () => {
+      const { getByTestId } = render(<SettingsScreen />);
+      fireEvent.press(getByTestId('settings-change-password'));
+      fireEvent.press(getByTestId('change-password-save'));
+
+      await waitFor(() => {
+        expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'newPassword123' });
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('snackbar-message')).toHaveTextContent('Password changed successfully');
+      });
+    });
+
+    it('should show error alert when password change fails', async () => {
+      mockUpdateUser.mockResolvedValue({ data: null, error: { message: 'Password change failed' } });
+
+      const { getByTestId } = render(<SettingsScreen />);
+      fireEvent.press(getByTestId('settings-change-password'));
+      fireEvent.press(getByTestId('change-password-save'));
+
+      await waitFor(() => {
+        expect(Alert.alert).toHaveBeenCalledWith('Error', expect.any(String));
+      });
+    });
+
+    it('should dismiss change password modal when cancel is pressed', () => {
+      const { getByTestId, queryByTestId } = render(<SettingsScreen />);
+      fireEvent.press(getByTestId('settings-change-password'));
+      expect(getByTestId('change-password-modal')).toBeTruthy();
+      fireEvent.press(getByTestId('change-password-cancel'));
+      expect(queryByTestId('change-password-modal')).toBeNull();
+    });
+  });
+
+  describe('profile visibility', () => {
+    it('should display profile visibility item', () => {
+      const { getByTestId } = render(<SettingsScreen />);
+      expect(getByTestId('settings-profile-visibility')).toBeTruthy();
+    });
+
+    it('should display current profile visibility setting', () => {
+      const { getByTestId } = render(<SettingsScreen />);
+      expect(getByTestId('settings-profile-visibility-description')).toHaveTextContent('Everyone');
+    });
+
+    it('should open privacy modal for profile visibility', () => {
+      const { getByTestId, queryByTestId } = render(<SettingsScreen />);
+      expect(queryByTestId('privacy-modal')).toBeNull();
+      fireEvent.press(getByTestId('settings-profile-visibility'));
+      expect(getByTestId('privacy-modal')).toBeTruthy();
+      expect(getByTestId('privacy-modal-type')).toHaveTextContent('profile_visibility');
+    });
+
+    it('should save profile visibility preference', async () => {
+      const { getByTestId } = render(<SettingsScreen />);
+      fireEvent.press(getByTestId('settings-profile-visibility'));
+      fireEvent.press(getByTestId('privacy-modal-save-private'));
+
+      await waitFor(() => {
+        expect(mockUpdatePreferences).toHaveBeenCalledWith({ privacy_profile_visibility: 'private' });
+      });
     });
   });
 });

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Linking, Platform } from 'react-native';
 import {
   Text,
@@ -21,8 +21,11 @@ import {
   ThemeModal,
   PrivacyModal,
   SignOutDialog,
+  ChangePasswordModal,
 } from './components';
+import type { PrivacySettingType } from './components';
 import type { PrivacyLevel } from '@services/api/userPreferencesApi';
+import { supabase } from '@services/supabase';
 
 // App version from app.json (would use expo-application in production)
 const APP_VERSION = '1.0.0';
@@ -32,8 +35,6 @@ const TERMS_URL = 'https://walkingapp.com/terms';
 const PRIVACY_URL = 'https://walkingapp.com/privacy';
 
 type NavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'Settings'>;
-
-type PrivacySettingType = 'profile_visibility' | 'activity_visibility' | 'find_me';
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -53,6 +54,7 @@ export default function SettingsScreen() {
   const [showThemeModal, setShowThemeModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
   // Privacy modal state
   const [activePrivacySetting, setActivePrivacySetting] = useState<PrivacySettingType>('profile_visibility');
@@ -63,16 +65,32 @@ export default function SettingsScreen() {
   const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
   const [isTogglingNotifications, setIsTogglingNotifications] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  // User email state
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   // Snackbar state
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+
+  // Fetch user email on mount
+  useEffect(() => {
+    const fetchEmail = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setUserEmail(user.email);
+      }
+    };
+    fetchEmail();
+  }, []);
 
   // Get user preferences with defaults
   const preferences = currentUser?.preferences;
   const units = preferences?.units ?? 'metric';
   const dailyStepGoal = preferences?.daily_step_goal ?? 10000;
   const notificationsEnabled = preferences?.notifications_enabled ?? true;
+  const privacyProfileVisibility = preferences?.privacy_profile_visibility ?? 'public';
   const privacyFindMe = preferences?.privacy_find_me ?? 'public';
   const privacyShowSteps = preferences?.privacy_show_steps ?? 'partial';
 
@@ -189,6 +207,25 @@ export default function SettingsScreen() {
     }
   }, [notificationsEnabled, updatePreferences, showSnackbar]);
 
+  // Change password modal handlers
+  const handleChangePasswordPress = useCallback(() => {
+    setShowChangePasswordModal(true);
+  }, []);
+
+  const handleChangePasswordSave = useCallback(async (newPassword: string) => {
+    setIsChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setShowChangePasswordModal(false);
+      showSnackbar('Password changed successfully');
+    } catch (error) {
+      Alert.alert('Error', getErrorMessage(error));
+    } finally {
+      setIsChangingPassword(false);
+    }
+  }, [showSnackbar]);
+
   // Privacy modal handlers
   const handlePrivacyPress = useCallback((settingType: PrivacySettingType) => {
     setActivePrivacySetting(settingType);
@@ -198,13 +235,13 @@ export default function SettingsScreen() {
   const handlePrivacySave = useCallback(async (value: PrivacyLevel) => {
     setIsSavingPrivacy(true);
     try {
-      if (activePrivacySetting === 'find_me') {
+      if (activePrivacySetting === 'profile_visibility') {
+        await updatePreferences({ privacy_profile_visibility: value });
+      } else if (activePrivacySetting === 'find_me') {
         await updatePreferences({ privacy_find_me: value });
       } else if (activePrivacySetting === 'activity_visibility') {
         await updatePreferences({ privacy_show_steps: value });
       }
-      // Note: profile_visibility is not in the current API schema,
-      // it would need to be added to the backend
       setShowPrivacyModal(false);
       showSnackbar('Privacy setting saved');
     } catch (error) {
@@ -279,12 +316,13 @@ export default function SettingsScreen() {
   };
 
   const getCurrentPrivacyValue = (): PrivacyLevel => {
-    if (activePrivacySetting === 'find_me') {
+    if (activePrivacySetting === 'profile_visibility') {
+      return privacyProfileVisibility;
+    } else if (activePrivacySetting === 'find_me') {
       return privacyFindMe;
     } else if (activePrivacySetting === 'activity_visibility') {
       return privacyShowSteps;
     }
-    // Default for profile_visibility (not in current API)
     return 'public';
   };
 
@@ -311,6 +349,23 @@ export default function SettingsScreen() {
           style={styles.listItem}
           accessibilityLabel="Go to profile"
           testID="settings-profile"
+        />
+        <List.Item
+          title="Email"
+          description={userEmail || 'Loading...'}
+          left={(props) => <List.Icon {...props} icon="email" />}
+          style={styles.listItem}
+          accessibilityLabel={`Email: ${userEmail || 'Loading'}`}
+          testID="settings-email"
+        />
+        <List.Item
+          title="Change Password"
+          left={(props) => <List.Icon {...props} icon="lock" />}
+          right={(props) => <List.Icon {...props} icon="chevron-right" />}
+          onPress={handleChangePasswordPress}
+          style={styles.listItem}
+          accessibilityLabel="Change password"
+          testID="settings-change-password"
         />
       </View>
 
@@ -405,6 +460,16 @@ export default function SettingsScreen() {
         >
           Privacy
         </Text>
+        <List.Item
+          title="Profile Visibility"
+          description={getPrivacyLabel(privacyProfileVisibility)}
+          left={(props) => <List.Icon {...props} icon="account-eye" />}
+          right={(props) => <List.Icon {...props} icon="chevron-right" />}
+          onPress={() => handlePrivacyPress('profile_visibility')}
+          style={styles.listItem}
+          accessibilityLabel={`Profile visibility: ${getPrivacyLabel(privacyProfileVisibility)}`}
+          testID="settings-profile-visibility"
+        />
         <List.Item
           title="Activity Visibility"
           description={getPrivacyLabel(privacyShowSteps)}
@@ -518,6 +583,13 @@ export default function SettingsScreen() {
         onDismiss={() => setShowSignOutDialog(false)}
         onConfirm={handleSignOutConfirm}
         isLoading={isSigningOut}
+      />
+
+      <ChangePasswordModal
+        visible={showChangePasswordModal}
+        onDismiss={() => setShowChangePasswordModal(false)}
+        onSave={handleChangePasswordSave}
+        isSaving={isChangingPassword}
       />
 
       <Snackbar

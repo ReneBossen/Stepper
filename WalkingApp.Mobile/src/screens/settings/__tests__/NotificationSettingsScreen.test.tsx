@@ -72,6 +72,11 @@ jest.mock('react-native-paper', () => {
     ),
     Divider: () => <RN.View testID="divider" />,
     Switch: MockSwitch,
+    ActivityIndicator: ({ size, testID }: any) => (
+      <RN.View testID={testID}>
+        <RN.Text>Loading</RN.Text>
+      </RN.View>
+    ),
     Snackbar: ({ visible, children, onDismiss }: any) =>
       visible ? (
         <RN.View testID="snackbar">
@@ -109,6 +114,16 @@ describe('NotificationSettingsScreen', () => {
       units: 'metric',
       daily_step_goal: 10000,
       notifications_enabled: true,
+      notify_friend_requests: true,
+      notify_friend_accepted: true,
+      notify_friend_milestones: true,
+      notify_group_invites: true,
+      notify_leaderboard_updates: false,
+      notify_competition_reminders: true,
+      notify_goal_achieved: true,
+      notify_streak_reminders: true,
+      notify_weekly_summary: true,
+      privacy_profile_visibility: 'public',
       privacy_find_me: 'public',
       privacy_show_steps: 'partial',
       created_at: '2025-01-15T10:00:00Z',
@@ -119,6 +134,7 @@ describe('NotificationSettingsScreen', () => {
   const defaultUserState = {
     currentUser: mockUser,
     updatePreferences: mockUpdatePreferences,
+    isLoading: false,
   };
 
   beforeEach(() => {
@@ -190,10 +206,14 @@ describe('NotificationSettingsScreen', () => {
       expect(getByTestId('notif-friend-milestones')).toBeTruthy();
     });
 
-    it('should toggle friend requests notification', async () => {
+    it('should toggle friend requests notification and save to backend', async () => {
       const { getByTestId } = render(<NotificationSettingsScreen />);
       const toggle = getByTestId('notif-friend-requests');
       fireEvent(toggle, 'valueChange', false);
+
+      await waitFor(() => {
+        expect(mockUpdatePreferences).toHaveBeenCalledWith({ notify_friend_requests: false });
+      });
 
       await waitFor(() => {
         expect(getByTestId('snackbar-message')).toHaveTextContent('Preference updated');
@@ -332,7 +352,7 @@ describe('NotificationSettingsScreen', () => {
   });
 
   describe('toggle state changes', () => {
-    it('should update state when toggle is pressed', async () => {
+    it('should call updatePreferences when toggle is pressed', async () => {
       const { getByTestId } = render(<NotificationSettingsScreen />);
       const toggle = getByTestId('notif-leaderboard-updates');
 
@@ -340,7 +360,7 @@ describe('NotificationSettingsScreen', () => {
       fireEvent(toggle, 'valueChange', true);
 
       await waitFor(() => {
-        expect(getByTestId('notif-leaderboard-updates').props.value).toBe(true);
+        expect(mockUpdatePreferences).toHaveBeenCalledWith({ notify_leaderboard_updates: true });
       });
     });
 
@@ -352,6 +372,19 @@ describe('NotificationSettingsScreen', () => {
 
       await waitFor(() => {
         expect(getByTestId('snackbar-message')).toHaveTextContent('Preference updated');
+      });
+    });
+
+    it('should show error alert when update fails', async () => {
+      mockUpdatePreferences.mockRejectedValue(new Error('Update failed'));
+
+      const { getByTestId } = render(<NotificationSettingsScreen />);
+      const toggle = getByTestId('notif-friend-requests');
+
+      fireEvent(toggle, 'valueChange', false);
+
+      await waitFor(() => {
+        expect(Alert.alert).toHaveBeenCalledWith('Error', 'Update failed');
       });
     });
   });
