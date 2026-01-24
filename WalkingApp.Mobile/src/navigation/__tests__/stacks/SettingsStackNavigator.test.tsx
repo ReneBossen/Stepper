@@ -28,6 +28,11 @@ jest.mock('@screens/settings/EditProfileScreen', () => ({
   default: () => <View testID="edit-profile-screen" />,
 }));
 
+jest.mock('@screens/settings/NotificationSettingsScreen', () => ({
+  __esModule: true,
+  default: () => <View testID="notification-settings-screen" />,
+}));
+
 import SettingsStackNavigator from '../../stacks/SettingsStackNavigator';
 
 describe('SettingsStackNavigator', () => {
@@ -44,5 +49,10 @@ describe('SettingsStackNavigator', () => {
   it('SettingsStackNavigator_WhenRendered_DisplaysEditProfileScreen', () => {
     const { getByTestId } = render(<SettingsStackNavigator />);
     expect(getByTestId('edit-profile-screen')).toBeTruthy();
+  });
+
+  it('SettingsStackNavigator_WhenRendered_DisplaysNotificationSettingsScreen', () => {
+    const { getByTestId } = render(<SettingsStackNavigator />);
+    expect(getByTestId('notification-settings-screen')).toBeTruthy();
   });
 });

@@ -5,6 +5,7 @@ import { SettingsStackParamList } from '../types';
 import SettingsScreen from '@screens/settings/SettingsScreen';
 import ProfileScreen from '@screens/settings/ProfileScreen';
 import EditProfileScreen from '@screens/settings/EditProfileScreen';
+import NotificationSettingsScreen from '@screens/settings/NotificationSettingsScreen';
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
 
@@ -24,6 +25,11 @@ export default function SettingsStackNavigator() {
       <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="NotificationSettings"
+        component={NotificationSettingsScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

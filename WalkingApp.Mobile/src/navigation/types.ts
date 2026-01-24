@@ -74,6 +74,7 @@ export type SettingsStackParamList = {
   Settings: undefined;
   Profile: undefined;
   EditProfile: undefined;
+  NotificationSettings: undefined;
 };
 
 // Screen props types
