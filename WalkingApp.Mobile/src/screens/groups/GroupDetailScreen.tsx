@@ -136,15 +136,9 @@ export default function GroupDetailScreen({ route }: Props) {
   }, [groupId, leaveGroup, navigation]);
 
   const handleInviteMembers = useCallback(() => {
-    // Navigate to invite flow or show share sheet
-    Alert.alert(
-      'Invite Members',
-      currentGroup?.is_private
-        ? 'Share this join code with friends: ' + currentGroup.join_code
-        : 'This is a public group. Anyone can join!',
-      [{ text: 'OK' }]
-    );
-  }, [currentGroup]);
+    // Navigate to invite members screen
+    navigation.navigate('InviteMembers', { groupId });
+  }, [navigation, groupId]);
 
   const handleMemberPress = useCallback((entry: LeaderboardEntry) => {
     // Navigate to member profile
