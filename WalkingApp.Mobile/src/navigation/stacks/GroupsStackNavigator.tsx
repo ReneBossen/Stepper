@@ -16,12 +16,12 @@ export default function GroupsStackNavigator() {
       <Stack.Screen
         name="GroupsList"
         component={GroupsListScreen}
-        options={{ title: 'Groups' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="GroupDetail"
         component={GroupDetailScreen}
-        options={{ title: 'Group Details' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="GroupManagement"

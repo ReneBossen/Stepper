@@ -1,5 +1,5 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
-import { useGroupsStore, Group, GroupMember, CreateGroupData } from '../groupsStore';
+import { useGroupsStore, Group, GroupMember, CreateGroupData, LeaderboardEntry, GroupDetail, GroupWithLeaderboard } from '../groupsStore';
 import { groupsApi } from '@services/api/groupsApi';
 
 // Mock the groups API
@@ -29,22 +29,45 @@ describe('groupsStore', () => {
     },
   ];
 
-  const mockLeaderboard: GroupMember[] = [
+  const mockGroupDetail: GroupDetail = {
+    ...mockGroups[0],
+    user_role: 'member',
+    period_start: '2024-01-15',
+    period_end: '2024-01-15',
+    period_display: 'Jan 15, 2024',
+  };
+
+  const mockLeaderboard: LeaderboardEntry[] = [
     {
       user_id: 'user-1',
       display_name: 'John Doe',
-      username: 'johndoe',
       avatar_url: 'https://example.com/john.jpg',
       steps: 12000,
       rank: 1,
+      rank_change: 2,
+      is_current_user: false,
     },
     {
       user_id: 'user-2',
       display_name: 'Jane Smith',
-      username: 'janesmith',
       avatar_url: 'https://example.com/jane.jpg',
       steps: 10500,
       rank: 2,
+      rank_change: -1,
+      is_current_user: true,
+    },
+  ];
+
+  const mockMyGroups: GroupWithLeaderboard[] = [
+    {
+      ...mockGroups[0],
+      user_role: 'owner',
+      period_start: '2024-01-15',
+      period_end: '2024-01-15',
+      period_display: 'Jan 15, 2024',
+      leaderboard_preview: mockLeaderboard.slice(0, 3),
+      current_user_rank: 2,
+      current_user_steps: 10500,
     },
   ];
 
@@ -52,9 +75,14 @@ describe('groupsStore', () => {
     jest.clearAllMocks();
     // Reset store state before each test
     useGroupsStore.setState({
-      groups: [],
+      myGroups: [],
+      isLoadingGroups: false,
+      groupsError: null,
       currentGroup: null,
       leaderboard: [],
+      isLoadingDetail: false,
+      detailError: null,
+      groups: [],
       isLoading: false,
       error: null,
     });
@@ -65,10 +93,15 @@ describe('groupsStore', () => {
       const { result } = renderHook(() => useGroupsStore());
 
       expect(result.current.groups).toEqual([]);
+      expect(result.current.myGroups).toEqual([]);
       expect(result.current.currentGroup).toBeNull();
       expect(result.current.leaderboard).toEqual([]);
       expect(result.current.isLoading).toBe(false);
+      expect(result.current.isLoadingGroups).toBe(false);
+      expect(result.current.isLoadingDetail).toBe(false);
       expect(result.current.error).toBeNull();
+      expect(result.current.groupsError).toBeNull();
+      expect(result.current.detailError).toBeNull();
     });
   });
 
@@ -149,9 +182,42 @@ describe('groupsStore', () => {
     });
   });
 
+  describe('fetchMyGroups', () => {
+    it('should fetch user groups with leaderboard preview', async () => {
+      mockGroupsApi.getMyGroups.mockResolvedValue(mockMyGroups);
+
+      const { result } = renderHook(() => useGroupsStore());
+
+      await act(async () => {
+        await result.current.fetchMyGroups();
+      });
+
+      expect(mockGroupsApi.getMyGroups).toHaveBeenCalled();
+      expect(result.current.myGroups).toEqual(mockMyGroups);
+      expect(result.current.isLoadingGroups).toBe(false);
+      expect(result.current.groupsError).toBeNull();
+    });
+
+    it('should handle fetch error for my groups', async () => {
+      const error = new Error('Failed to fetch my groups');
+      mockGroupsApi.getMyGroups.mockRejectedValue(error);
+
+      const { result } = renderHook(() => useGroupsStore());
+
+      await act(async () => {
+        await result.current.fetchMyGroups();
+      });
+
+      await waitFor(() => {
+        expect(result.current.groupsError).toBe('Failed to fetch my groups');
+      });
+      expect(result.current.isLoadingGroups).toBe(false);
+    });
+  });
+
   describe('fetchGroup', () => {
     it('should fetch single group successfully', async () => {
-      mockGroupsApi.getGroup.mockResolvedValue(mockGroups[0]);
+      mockGroupsApi.getGroup.mockResolvedValue(mockGroupDetail);
 
       const { result } = renderHook(() => useGroupsStore());
 
@@ -160,9 +226,9 @@ describe('groupsStore', () => {
       });
 
       expect(mockGroupsApi.getGroup).toHaveBeenCalledWith('group-1');
-      expect(result.current.currentGroup).toEqual(mockGroups[0]);
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toBeNull();
+      expect(result.current.currentGroup).toEqual(mockGroupDetail);
+      expect(result.current.isLoadingDetail).toBe(false);
+      expect(result.current.detailError).toBeNull();
     });
 
     it('should handle fetch single group error', async () => {
@@ -176,23 +242,30 @@ describe('groupsStore', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.error).toBe('Group not found');
+        expect(result.current.detailError).toBe('Group not found');
       });
       expect(result.current.currentGroup).toBeNull();
     });
 
     it('should replace current group on fetch', async () => {
-      mockGroupsApi.getGroup.mockResolvedValue(mockGroups[1]);
+      const secondGroupDetail: GroupDetail = {
+        ...mockGroups[1],
+        user_role: 'admin',
+        period_start: '2024-01-08',
+        period_end: '2024-01-14',
+        period_display: 'Jan 8 - Jan 14',
+      };
+      mockGroupsApi.getGroup.mockResolvedValue(secondGroupDetail);
 
       const { result } = renderHook(() => useGroupsStore());
 
-      useGroupsStore.setState({ currentGroup: mockGroups[0] });
+      useGroupsStore.setState({ currentGroup: mockGroupDetail });
 
       await act(async () => {
         await result.current.fetchGroup('group-2');
       });
 
-      expect(result.current.currentGroup).toEqual(mockGroups[1]);
+      expect(result.current.currentGroup).toEqual(secondGroupDetail);
     });
   });
 
@@ -208,8 +281,8 @@ describe('groupsStore', () => {
 
       expect(mockGroupsApi.getLeaderboard).toHaveBeenCalledWith('group-1');
       expect(result.current.leaderboard).toEqual(mockLeaderboard);
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toBeNull();
+      expect(result.current.isLoadingDetail).toBe(false);
+      expect(result.current.detailError).toBeNull();
     });
 
     it('should handle empty leaderboard', async () => {
@@ -235,7 +308,7 @@ describe('groupsStore', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.error).toBe('Leaderboard unavailable');
+        expect(result.current.detailError).toBe('Leaderboard unavailable');
       });
     });
 
@@ -272,6 +345,7 @@ describe('groupsStore', () => {
 
     it('should create group successfully', async () => {
       mockGroupsApi.createGroup.mockResolvedValue(createdGroup);
+      mockGroupsApi.getMyGroups.mockResolvedValue([]);
 
       const { result } = renderHook(() => useGroupsStore());
 
@@ -310,6 +384,7 @@ describe('groupsStore', () => {
       mockGroupsApi.createGroup.mockImplementation(() =>
         new Promise((resolve) => setTimeout(() => resolve(createdGroup), 100))
       );
+      mockGroupsApi.getMyGroups.mockResolvedValue([]);
 
       const { result } = renderHook(() => useGroupsStore());
 
@@ -329,6 +404,7 @@ describe('groupsStore', () => {
       const privateGroup = { ...createdGroup, is_private: true };
 
       mockGroupsApi.createGroup.mockResolvedValue(privateGroup);
+      mockGroupsApi.getMyGroups.mockResolvedValue([]);
 
       const { result } = renderHook(() => useGroupsStore());
 
@@ -349,6 +425,7 @@ describe('groupsStore', () => {
         const group = { ...createdGroup, competition_type: type };
 
         mockGroupsApi.createGroup.mockResolvedValue(group);
+        mockGroupsApi.getMyGroups.mockResolvedValue([]);
 
         const { result } = renderHook(() => useGroupsStore());
 
@@ -366,6 +443,7 @@ describe('groupsStore', () => {
   describe('joinGroup', () => {
     it('should join group successfully', async () => {
       mockGroupsApi.joinGroup.mockResolvedValue(undefined);
+      mockGroupsApi.getMyGroups.mockResolvedValue([]);
 
       const { result } = renderHook(() => useGroupsStore());
 
@@ -401,6 +479,7 @@ describe('groupsStore', () => {
       mockGroupsApi.joinGroup.mockImplementation(() =>
         new Promise((resolve) => setTimeout(() => resolve(undefined), 100))
       );
+      mockGroupsApi.getMyGroups.mockResolvedValue([]);
 
       const { result } = renderHook(() => useGroupsStore());
 
@@ -416,9 +495,49 @@ describe('groupsStore', () => {
     });
   });
 
+  describe('joinGroupByCode', () => {
+    it('should join group by code successfully', async () => {
+      mockGroupsApi.joinGroupByCode.mockResolvedValue('group-1');
+      mockGroupsApi.getMyGroups.mockResolvedValue([]);
+
+      const { result } = renderHook(() => useGroupsStore());
+
+      let groupId: string | undefined;
+
+      await act(async () => {
+        groupId = await result.current.joinGroupByCode('ABC123');
+      });
+
+      expect(mockGroupsApi.joinGroupByCode).toHaveBeenCalledWith('ABC123');
+      expect(groupId).toBe('group-1');
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toBeNull();
+    });
+
+    it('should handle invalid join code', async () => {
+      const error = new Error('Invalid join code');
+      mockGroupsApi.joinGroupByCode.mockRejectedValue(error);
+
+      const { result } = renderHook(() => useGroupsStore());
+
+      try {
+        await act(async () => {
+          await result.current.joinGroupByCode('INVALID');
+        });
+      } catch (e) {
+        // Expected to throw
+      }
+
+      await waitFor(() => {
+        expect(result.current.error).toBe('Invalid join code');
+      });
+    });
+  });
+
   describe('leaveGroup', () => {
     it('should leave group successfully', async () => {
       mockGroupsApi.leaveGroup.mockResolvedValue(undefined);
+      mockGroupsApi.getMyGroups.mockResolvedValue([]);
 
       const { result } = renderHook(() => useGroupsStore());
 
@@ -454,6 +573,7 @@ describe('groupsStore', () => {
       mockGroupsApi.leaveGroup.mockImplementation(() =>
         new Promise((resolve) => setTimeout(() => resolve(undefined), 100))
       );
+      mockGroupsApi.getMyGroups.mockResolvedValue([]);
 
       const { result } = renderHook(() => useGroupsStore());
 
@@ -466,6 +586,24 @@ describe('groupsStore', () => {
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
       });
+    });
+  });
+
+  describe('clearCurrentGroup', () => {
+    it('should clear current group and leaderboard', () => {
+      const { result } = renderHook(() => useGroupsStore());
+
+      useGroupsStore.setState({
+        currentGroup: mockGroupDetail,
+        leaderboard: mockLeaderboard,
+      });
+
+      act(() => {
+        result.current.clearCurrentGroup();
+      });
+
+      expect(result.current.currentGroup).toBeNull();
+      expect(result.current.leaderboard).toEqual([]);
     });
   });
 });

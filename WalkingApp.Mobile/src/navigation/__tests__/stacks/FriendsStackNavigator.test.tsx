@@ -12,15 +12,25 @@ jest.mock('@react-navigation/native-stack', () => ({
   }),
 }));
 
-// Mock screens
+// Mock screens - must be before importing the navigator
 jest.mock('@screens/friends/FriendsListScreen', () => ({
   __esModule: true,
   default: () => <View testID="friends-list-screen" />,
 }));
 
+jest.mock('@screens/friends/FriendRequestsScreen', () => ({
+  __esModule: true,
+  default: () => <View testID="friend-requests-screen" />,
+}));
+
 jest.mock('@screens/friends/FriendDiscoveryScreen', () => ({
   __esModule: true,
   default: () => <View testID="friend-discovery-screen" />,
+}));
+
+jest.mock('@screens/friends/QRScannerScreen', () => ({
+  __esModule: true,
+  default: () => <View testID="qr-scanner-screen" />,
 }));
 
 jest.mock('@screens/friends/UserProfileScreen', () => ({
@@ -36,9 +46,19 @@ describe('FriendsStackNavigator', () => {
     expect(getByTestId('friends-list-screen')).toBeTruthy();
   });
 
+  it('FriendsStackNavigator_WhenRendered_DisplaysFriendRequestsScreen', () => {
+    const { getByTestId } = render(<FriendsStackNavigator />);
+    expect(getByTestId('friend-requests-screen')).toBeTruthy();
+  });
+
   it('FriendsStackNavigator_WhenRendered_DisplaysFriendDiscoveryScreen', () => {
     const { getByTestId } = render(<FriendsStackNavigator />);
     expect(getByTestId('friend-discovery-screen')).toBeTruthy();
+  });
+
+  it('FriendsStackNavigator_WhenRendered_DisplaysQRScannerScreen', () => {
+    const { getByTestId } = render(<FriendsStackNavigator />);
+    expect(getByTestId('qr-scanner-screen')).toBeTruthy();
   });
 
   it('FriendsStackNavigator_WhenRendered_DisplaysUserProfileScreen', () => {

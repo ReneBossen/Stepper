@@ -2,18 +2,31 @@ import { groupsApi } from '../groupsApi';
 import { supabase } from '@services/supabase';
 import { Group, GroupMember, CreateGroupData } from '@store/groupsStore';
 
+// Mock user ID for tests
+const MOCK_USER_ID = 'current-user-id';
+
 // Mock the supabase client
 jest.mock('@services/supabase', () => ({
   supabase: {
+    auth: {
+      getUser: jest.fn(),
+    },
     from: jest.fn(),
+    rpc: jest.fn(),
   },
 }));
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
+const mockGetUser = supabase.auth.getUser as jest.Mock;
 
 describe('groupsApi', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Default: user is authenticated
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: MOCK_USER_ID } },
+      error: null,
+    });
   });
 
   describe('getGroups', () => {
@@ -117,124 +130,111 @@ describe('groupsApi', () => {
 
   describe('getGroup', () => {
     it('should fetch single group successfully', async () => {
-      const mockData = {
+      const mockGroupData = {
         id: 'group-1',
         name: 'Morning Walkers',
         description: 'Early bird group',
-        competition_type: 'daily',
-        is_private: false,
+        period_type: 'daily',
+        is_public: true,
         created_at: '2024-01-01T00:00:00Z',
         group_memberships: [{ count: 15 }],
       };
 
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockReturnThis();
-      const mockSingle = jest.fn().mockResolvedValue({
-        data: mockData,
-        error: null,
-      });
+      const mockMembershipData = {
+        role: 'member',
+      };
 
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
-        single: mockSingle,
-      });
-
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-
-      mockEq.mockReturnValue({
-        single: mockSingle,
+      let callCount = 0;
+      (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
+        callCount++;
+        if (callCount === 1) {
+          // Groups query
+          const mockSelect = jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ data: mockGroupData, error: null }),
+            }),
+          });
+          return { select: mockSelect };
+        } else {
+          // Membership query
+          const mockSelect = jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({ data: mockMembershipData, error: null }),
+              }),
+            }),
+          });
+          return { select: mockSelect };
+        }
       });
 
       const result = await groupsApi.getGroup('group-1');
 
       expect(mockSupabase.from).toHaveBeenCalledWith('groups');
-      expect(mockEq).toHaveBeenCalledWith('id', 'group-1');
       expect(result.id).toBe('group-1');
       expect(result.member_count).toBe(15);
+      expect(result.user_role).toBe('member');
     });
 
     it('should throw error when group not found', async () => {
       const mockError = { message: 'Group not found' };
 
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockReturnThis();
-      const mockSingle = jest.fn().mockResolvedValue({
-        data: null,
-        error: mockError,
-      });
-
       (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
-        single: mockSingle,
-      });
-
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-
-      mockEq.mockReturnValue({
-        single: mockSingle,
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ data: null, error: mockError }),
+          }),
+        }),
       });
 
       await expect(groupsApi.getGroup('invalid-group')).rejects.toEqual(mockError);
     });
-  });
 
-  describe('getLeaderboard', () => {
-    it('should fetch and sort leaderboard successfully', async () => {
-      const mockMemberships = [
-        {
-          user_id: 'user-1',
-          users: {
-            display_name: 'John Doe',
-            username: 'johndoe',
-            avatar_url: 'https://example.com/john.jpg',
-          },
-        },
-        {
-          user_id: 'user-2',
-          users: {
-            display_name: 'Jane Smith',
-            username: 'janesmith',
-            avatar_url: null,
-          },
-        },
-      ];
-
-      const mockStepData1 = { step_count: 12000 };
-      const mockStepData2 = { step_count: 10500 };
-
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        data: mockMemberships,
+    it('should throw error when not authenticated', async () => {
+      mockGetUser.mockResolvedValue({
+        data: { user: null },
         error: null,
       });
 
-      let stepQueryCount = 0;
-      (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
-        if (table === 'group_memberships') {
-          return {
-            select: mockSelect,
-            eq: mockEq,
-          };
-        } else if (table === 'step_entries') {
-          stepQueryCount++;
-          const stepData = stepQueryCount === 1 ? mockStepData1 : mockStepData2;
-          return {
-            select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockReturnThis(),
-            single: jest.fn().mockResolvedValue({ data: stepData, error: null }),
-          };
-        }
+      await expect(groupsApi.getGroup('group-1')).rejects.toThrow('User not authenticated');
+    });
+  });
+
+  describe('getLeaderboard', () => {
+    const mockRpc = supabase.rpc as jest.Mock;
+
+    it('should fetch and sort leaderboard successfully', async () => {
+      // Mock RPC response with leaderboard data already ranked
+      const mockLeaderboardData = [
+        {
+          user_id: 'user-1',
+          display_name: 'John Doe',
+          avatar_url: 'https://example.com/john.jpg',
+          total_steps: 12000,
+          rank: 1,
+        },
+        {
+          user_id: 'user-2',
+          display_name: 'Jane Smith',
+          avatar_url: null,
+          total_steps: 10500,
+          rank: 2,
+        },
+      ];
+
+      // Mock group period_type query
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ data: { period_type: 'weekly' }, error: null }),
+          }),
+        }),
       });
 
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
+      // Mock RPC calls - first for current leaderboard, second for previous (rank changes)
+      mockRpc
+        .mockResolvedValueOnce({ data: mockLeaderboardData, error: null })
+        .mockResolvedValueOnce({ data: mockLeaderboardData, error: null });
 
       const result = await groupsApi.getLeaderboard('group-1');
 
@@ -246,41 +246,29 @@ describe('groupsApi', () => {
     });
 
     it('should handle members with no steps', async () => {
-      const mockMemberships = [
+      // Mock RPC response with zero steps
+      const mockLeaderboardData = [
         {
           user_id: 'user-1',
-          users: {
-            display_name: 'John Doe',
-            username: 'johndoe',
-            avatar_url: null,
-          },
+          display_name: 'John Doe',
+          avatar_url: null,
+          total_steps: 0,
+          rank: 1,
         },
       ];
 
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        data: mockMemberships,
-        error: null,
+      // Mock group period_type query
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ data: { period_type: 'weekly' }, error: null }),
+          }),
+        }),
       });
 
-      (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
-        if (table === 'group_memberships') {
-          return {
-            select: mockSelect,
-            eq: mockEq,
-          };
-        } else if (table === 'step_entries') {
-          return {
-            select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockReturnThis(),
-            single: jest.fn().mockResolvedValue({ data: null, error: null }),
-          };
-        }
-      });
-
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
+      mockRpc
+        .mockResolvedValueOnce({ data: mockLeaderboardData, error: null })
+        .mockResolvedValueOnce({ data: [], error: null });
 
       const result = await groupsApi.getLeaderboard('group-1');
 
@@ -290,22 +278,27 @@ describe('groupsApi', () => {
     it('should throw error when fetch fails', async () => {
       const mockError = { message: 'Leaderboard unavailable' };
 
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        data: null,
-        error: mockError,
-      });
-
+      // Mock group period_type query
       (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ data: { period_type: 'weekly' }, error: null }),
+          }),
+        }),
       });
 
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
+      mockRpc.mockResolvedValue({ data: null, error: mockError });
 
       await expect(groupsApi.getLeaderboard('group-1')).rejects.toEqual(mockError);
+    });
+
+    it('should throw error when not authenticated', async () => {
+      mockGetUser.mockResolvedValue({
+        data: { user: null },
+        error: null,
+      });
+
+      await expect(groupsApi.getLeaderboard('group-1')).rejects.toThrow('User not authenticated');
     });
   });
 
@@ -391,6 +384,15 @@ describe('groupsApi', () => {
 
       await expect(groupsApi.createGroup(newGroupData)).rejects.toEqual(mockError);
     });
+
+    it('should throw error when not authenticated', async () => {
+      mockGetUser.mockResolvedValue({
+        data: { user: null },
+        error: null,
+      });
+
+      await expect(groupsApi.createGroup(newGroupData)).rejects.toThrow('User not authenticated');
+    });
   });
 
   describe('joinGroup', () => {
@@ -408,6 +410,7 @@ describe('groupsApi', () => {
       expect(mockSupabase.from).toHaveBeenCalledWith('group_memberships');
       expect(mockInsert).toHaveBeenCalledWith({
         group_id: 'group-1',
+        role: 'member',
       });
     });
 

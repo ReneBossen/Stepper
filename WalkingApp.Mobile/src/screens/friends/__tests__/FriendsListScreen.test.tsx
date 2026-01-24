@@ -209,9 +209,9 @@ describe('FriendsListScreen', () => {
       expect(getByTestId('appbar-title')).toHaveTextContent('Friends');
     });
 
-    it('should render search action button', () => {
+    it('should render search bar', () => {
       const { getByTestId } = render(<FriendsListScreen />);
-      expect(getByTestId('appbar-action-magnify')).toBeTruthy();
+      expect(getByTestId('friends-search-bar')).toBeTruthy();
     });
 
     it('should render add friend action button', () => {
@@ -393,36 +393,15 @@ describe('FriendsListScreen', () => {
   });
 
   describe('search functionality', () => {
-    it('should show searchbar when search action is pressed', () => {
-      const { getByTestId, queryByTestId } = render(<FriendsListScreen />);
+    it('should render search bar visible by default', () => {
+      const { getByTestId } = render(<FriendsListScreen />);
 
-      // Search bar should not be visible initially
-      expect(queryByTestId('friends-search-bar')).toBeNull();
-
-      // Press search action
-      fireEvent.press(getByTestId('appbar-action-magnify'));
-
-      // Search bar should now be visible
+      // Search bar should be visible initially
       expect(getByTestId('friends-search-bar')).toBeTruthy();
-    });
-
-    it('should hide searchbar when search action is pressed again', () => {
-      const { getByTestId, queryByTestId } = render(<FriendsListScreen />);
-
-      // Show search bar
-      fireEvent.press(getByTestId('appbar-action-magnify'));
-      expect(getByTestId('friends-search-bar')).toBeTruthy();
-
-      // Hide search bar
-      fireEvent.press(getByTestId('appbar-action-magnify'));
-      expect(queryByTestId('friends-search-bar')).toBeNull();
     });
 
     it('should filter friends by display name', () => {
       const { getByTestId, queryByTestId } = render(<FriendsListScreen />);
-
-      // Show search bar
-      fireEvent.press(getByTestId('appbar-action-magnify'));
 
       // Type search query
       fireEvent.changeText(getByTestId('friends-search-bar'), 'User 0');
@@ -436,9 +415,6 @@ describe('FriendsListScreen', () => {
     it('should filter friends by username', () => {
       const { getByTestId, queryByTestId } = render(<FriendsListScreen />);
 
-      // Show search bar
-      fireEvent.press(getByTestId('appbar-action-magnify'));
-
       // Type search query using username
       fireEvent.changeText(getByTestId('friends-search-bar'), 'user1');
 
@@ -450,9 +426,6 @@ describe('FriendsListScreen', () => {
 
     it('should filter out all friends when search has no results', () => {
       const { getByTestId, queryByTestId } = render(<FriendsListScreen />);
-
-      // Show search bar
-      fireEvent.press(getByTestId('appbar-action-magnify'));
 
       // Type non-matching search query
       fireEvent.changeText(getByTestId('friends-search-bar'), 'nonexistent');
@@ -466,32 +439,26 @@ describe('FriendsListScreen', () => {
     it('should maintain search bar value when typing', () => {
       const { getByTestId } = render(<FriendsListScreen />);
 
-      // Show search bar
-      fireEvent.press(getByTestId('appbar-action-magnify'));
-
       // Type search query
       fireEvent.changeText(getByTestId('friends-search-bar'), 'xyz');
 
       expect(getByTestId('friends-search-bar').props.value).toBe('xyz');
     });
 
-    it('should clear search query when search is hidden', async () => {
+    it('should show all friends when search is cleared', async () => {
       const { getByTestId, queryByTestId } = render(<FriendsListScreen />);
 
-      // Show search bar and type query
-      fireEvent.press(getByTestId('appbar-action-magnify'));
+      // Type query to filter
       fireEvent.changeText(getByTestId('friends-search-bar'), 'User 0');
 
       // Verify filter is applied
       expect(getByTestId('friend-item-friendship-0')).toBeTruthy();
       expect(queryByTestId('friend-item-friendship-1')).toBeNull();
 
-      // Hide search bar (this should clear the query)
-      fireEvent.press(getByTestId('appbar-action-magnify'));
+      // Clear search query
+      fireEvent.changeText(getByTestId('friends-search-bar'), '');
 
-      // Show search bar again - all friends should be visible (query was cleared)
-      fireEvent.press(getByTestId('appbar-action-magnify'));
-
+      // All friends should be visible again
       await waitFor(() => {
         expect(getByTestId('friend-item-friendship-0')).toBeTruthy();
         expect(getByTestId('friend-item-friendship-1')).toBeTruthy();
@@ -501,9 +468,6 @@ describe('FriendsListScreen', () => {
 
     it('should be case insensitive', () => {
       const { getByTestId, queryByTestId } = render(<FriendsListScreen />);
-
-      // Show search bar
-      fireEvent.press(getByTestId('appbar-action-magnify'));
 
       // Type uppercase search query
       fireEvent.changeText(getByTestId('friends-search-bar'), 'USER 0');
