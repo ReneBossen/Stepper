@@ -1,14 +1,18 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useUserStore, UserProfile, UserPreferences } from '../userStore';
-import { usersApi } from '@services/api/usersApi';
+import { usersApi, UserProfileData } from '@services/api/usersApi';
+import { userPreferencesApi } from '@services/api/userPreferencesApi';
 
-// Mock the users API
+// Mock the APIs
 jest.mock('@services/api/usersApi');
+jest.mock('@services/api/userPreferencesApi');
 
 const mockUsersApi = usersApi as jest.Mocked<typeof usersApi>;
+const mockUserPreferencesApi = userPreferencesApi as jest.Mocked<typeof userPreferencesApi>;
 
 describe('userStore', () => {
-  const mockUserProfile: UserProfile = {
+  // Profile data (from users table)
+  const mockProfileData: UserProfileData = {
     id: '123',
     email: 'test@example.com',
     display_name: 'Test User',
@@ -17,24 +21,25 @@ describe('userStore', () => {
     location: 'Test City',
     avatar_url: 'https://example.com/avatar.jpg',
     onboarding_completed: true,
-    preferences: {
-      units: 'metric',
-      daily_step_goal: 10000,
-      theme: 'light',
-      notifications: {
-        push_enabled: true,
-        friend_requests: true,
-        friend_accepted: true,
-        group_invites: true,
-        goal_achieved: true,
-      },
-      privacy: {
-        profile_visibility: 'public',
-        activity_visibility: 'friends',
-        find_me: 'everyone',
-      },
-    },
     created_at: '2024-01-01T00:00:00Z',
+  };
+
+  // Preferences data (from user_preferences table)
+  const mockPreferences: UserPreferences = {
+    id: '123',
+    units: 'metric',
+    daily_step_goal: 10000,
+    notifications_enabled: true,
+    privacy_find_me: 'public',
+    privacy_show_steps: 'partial',
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+  };
+
+  // Combined profile (what the store exposes)
+  const mockUserProfile: UserProfile = {
+    ...mockProfileData,
+    preferences: mockPreferences,
   };
 
   beforeEach(() => {
@@ -42,6 +47,7 @@ describe('userStore', () => {
     // Reset store state before each test
     useUserStore.setState({
       currentUser: null,
+      themePreference: 'system',
       isLoading: false,
       error: null,
     });
@@ -52,14 +58,16 @@ describe('userStore', () => {
       const { result } = renderHook(() => useUserStore());
 
       expect(result.current.currentUser).toBeNull();
+      expect(result.current.themePreference).toBe('system');
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
     });
   });
 
   describe('fetchCurrentUser', () => {
-    it('should fetch current user successfully', async () => {
-      mockUsersApi.getCurrentUser.mockResolvedValue(mockUserProfile);
+    it('should fetch current user and preferences successfully', async () => {
+      mockUsersApi.getCurrentUser.mockResolvedValue(mockProfileData);
+      mockUserPreferencesApi.getPreferences.mockResolvedValue(mockPreferences);
 
       const { result } = renderHook(() => useUserStore());
 
@@ -68,6 +76,7 @@ describe('userStore', () => {
       });
 
       expect(mockUsersApi.getCurrentUser).toHaveBeenCalled();
+      expect(mockUserPreferencesApi.getPreferences).toHaveBeenCalled();
       expect(result.current.currentUser).toEqual(mockUserProfile);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
@@ -75,7 +84,10 @@ describe('userStore', () => {
 
     it('should set loading state during fetch', async () => {
       mockUsersApi.getCurrentUser.mockImplementation(() =>
-        new Promise((resolve) => setTimeout(() => resolve(mockUserProfile), 100))
+        new Promise((resolve) => setTimeout(() => resolve(mockProfileData), 100))
+      );
+      mockUserPreferencesApi.getPreferences.mockImplementation(() =>
+        new Promise((resolve) => setTimeout(() => resolve(mockPreferences), 100))
       );
 
       const { result } = renderHook(() => useUserStore());
@@ -94,6 +106,7 @@ describe('userStore', () => {
     it('should handle fetch error', async () => {
       const error = new Error('User not found');
       mockUsersApi.getCurrentUser.mockRejectedValue(error);
+      mockUserPreferencesApi.getPreferences.mockResolvedValue(mockPreferences);
 
       const { result } = renderHook(() => useUserStore());
 
@@ -109,7 +122,8 @@ describe('userStore', () => {
     });
 
     it('should clear previous errors on new fetch', async () => {
-      mockUsersApi.getCurrentUser.mockResolvedValue(mockUserProfile);
+      mockUsersApi.getCurrentUser.mockResolvedValue(mockProfileData);
+      mockUserPreferencesApi.getPreferences.mockResolvedValue(mockPreferences);
 
       const { result } = renderHook(() => useUserStore());
 
@@ -127,29 +141,35 @@ describe('userStore', () => {
   describe('updateProfile', () => {
     it('should update profile successfully', async () => {
       const updates = { display_name: 'Updated Name', bio: 'Updated bio' };
-      const updatedProfile = { ...mockUserProfile, ...updates };
+      const updatedProfileData = { ...mockProfileData, ...updates };
 
-      mockUsersApi.updateProfile.mockResolvedValue(updatedProfile);
+      mockUsersApi.updateProfile.mockResolvedValue(updatedProfileData);
 
       const { result } = renderHook(() => useUserStore());
+      // Set initial user with preferences
+      useUserStore.setState({ currentUser: mockUserProfile });
 
       await act(async () => {
         await result.current.updateProfile(updates);
       });
 
       expect(mockUsersApi.updateProfile).toHaveBeenCalledWith(updates);
-      expect(result.current.currentUser).toEqual(updatedProfile);
+      expect(result.current.currentUser?.display_name).toBe('Updated Name');
+      expect(result.current.currentUser?.bio).toBe('Updated bio');
+      // Preferences should be preserved
+      expect(result.current.currentUser?.preferences).toEqual(mockPreferences);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
     });
 
     it('should handle partial updates', async () => {
       const updates = { bio: 'New bio only' };
-      const updatedProfile = { ...mockUserProfile, bio: 'New bio only' };
+      const updatedProfileData = { ...mockProfileData, bio: 'New bio only' };
 
-      mockUsersApi.updateProfile.mockResolvedValue(updatedProfile);
+      mockUsersApi.updateProfile.mockResolvedValue(updatedProfileData);
 
       const { result } = renderHook(() => useUserStore());
+      useUserStore.setState({ currentUser: mockUserProfile });
 
       await act(async () => {
         await result.current.updateProfile(updates);
@@ -181,7 +201,7 @@ describe('userStore', () => {
 
     it('should set loading state during update', async () => {
       mockUsersApi.updateProfile.mockImplementation(() =>
-        new Promise((resolve) => setTimeout(() => resolve(mockUserProfile), 100))
+        new Promise((resolve) => setTimeout(() => resolve(mockProfileData), 100))
       );
 
       const { result } = renderHook(() => useUserStore());
@@ -200,13 +220,13 @@ describe('userStore', () => {
 
   describe('updatePreferences', () => {
     it('should update preferences successfully', async () => {
-      const prefUpdates: Partial<UserPreferences> = {
-        units: 'imperial',
+      const prefUpdates = {
+        units: 'imperial' as const,
         daily_step_goal: 12000,
       };
-      const updatedPrefs = { ...mockUserProfile.preferences, ...prefUpdates };
+      const updatedPrefs: UserPreferences = { ...mockPreferences, ...prefUpdates };
 
-      mockUsersApi.updatePreferences.mockResolvedValue(updatedPrefs);
+      mockUserPreferencesApi.updatePreferences.mockResolvedValue(updatedPrefs);
 
       const { result } = renderHook(() => useUserStore());
 
@@ -217,19 +237,20 @@ describe('userStore', () => {
         await result.current.updatePreferences(prefUpdates);
       });
 
-      expect(mockUsersApi.updatePreferences).toHaveBeenCalledWith(prefUpdates);
+      expect(mockUserPreferencesApi.updatePreferences).toHaveBeenCalledWith(prefUpdates);
       expect(result.current.currentUser?.preferences).toEqual(updatedPrefs);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
     });
 
-    it('should merge preferences with current user', async () => {
-      const prefUpdates: Partial<UserPreferences> = {
-        theme: 'dark',
+    it('should update privacy settings', async () => {
+      const prefUpdates = {
+        privacy_find_me: 'private' as const,
+        privacy_show_steps: 'private' as const,
       };
-      const updatedPrefs = { ...mockUserProfile.preferences, theme: 'dark' as const };
+      const updatedPrefs: UserPreferences = { ...mockPreferences, ...prefUpdates };
 
-      mockUsersApi.updatePreferences.mockResolvedValue(updatedPrefs);
+      mockUserPreferencesApi.updatePreferences.mockResolvedValue(updatedPrefs);
 
       const { result } = renderHook(() => useUserStore());
 
@@ -239,7 +260,8 @@ describe('userStore', () => {
         await result.current.updatePreferences(prefUpdates);
       });
 
-      expect(result.current.currentUser?.preferences.theme).toBe('dark');
+      expect(result.current.currentUser?.preferences.privacy_find_me).toBe('private');
+      expect(result.current.currentUser?.preferences.privacy_show_steps).toBe('private');
       expect(result.current.currentUser?.preferences.units).toBe('metric'); // Original value preserved
     });
 
@@ -248,7 +270,7 @@ describe('userStore', () => {
 
       try {
         await act(async () => {
-          await result.current.updatePreferences({ theme: 'dark' });
+          await result.current.updatePreferences({ daily_step_goal: 15000 });
         });
       } catch (e) {
         // Expected to throw
@@ -261,7 +283,7 @@ describe('userStore', () => {
 
     it('should handle update error', async () => {
       const error = new Error('Preferences update failed');
-      mockUsersApi.updatePreferences.mockRejectedValue(error);
+      mockUserPreferencesApi.updatePreferences.mockRejectedValue(error);
 
       const { result } = renderHook(() => useUserStore());
 
@@ -269,7 +291,7 @@ describe('userStore', () => {
 
       try {
         await act(async () => {
-          await result.current.updatePreferences({ theme: 'dark' });
+          await result.current.updatePreferences({ daily_step_goal: 15000 });
         });
       } catch (e) {
         // Expected to throw
@@ -280,19 +302,13 @@ describe('userStore', () => {
       });
     });
 
-    it('should update nested notification preferences', async () => {
-      const prefUpdates: Partial<UserPreferences> = {
-        notifications: {
-          push_enabled: false,
-          friend_requests: false,
-          friend_accepted: true,
-          group_invites: true,
-          goal_achieved: false,
-        },
+    it('should update notifications_enabled preference', async () => {
+      const prefUpdates = {
+        notifications_enabled: false,
       };
-      const updatedPrefs = { ...mockUserProfile.preferences, ...prefUpdates };
+      const updatedPrefs: UserPreferences = { ...mockPreferences, notifications_enabled: false };
 
-      mockUsersApi.updatePreferences.mockResolvedValue(updatedPrefs);
+      mockUserPreferencesApi.updatePreferences.mockResolvedValue(updatedPrefs);
 
       const { result } = renderHook(() => useUserStore());
 
@@ -302,7 +318,39 @@ describe('userStore', () => {
         await result.current.updatePreferences(prefUpdates);
       });
 
-      expect(result.current.currentUser?.preferences.notifications.push_enabled).toBe(false);
+      expect(result.current.currentUser?.preferences.notifications_enabled).toBe(false);
+    });
+  });
+
+  describe('setThemePreference', () => {
+    it('should update theme preference', () => {
+      const { result } = renderHook(() => useUserStore());
+
+      expect(result.current.themePreference).toBe('system');
+
+      act(() => {
+        result.current.setThemePreference('dark');
+      });
+
+      expect(result.current.themePreference).toBe('dark');
+    });
+
+    it('should persist theme preference across renders', () => {
+      const { result } = renderHook(() => useUserStore());
+
+      act(() => {
+        result.current.setThemePreference('light');
+      });
+
+      // The state persists because Zustand stores state outside React
+      expect(result.current.themePreference).toBe('light');
+
+      // Clear and verify it was reset
+      act(() => {
+        result.current.clearUser();
+      });
+
+      expect(result.current.themePreference).toBe('system');
     });
   });
 
@@ -461,6 +509,7 @@ describe('userStore', () => {
       act(() => {
         useUserStore.setState({
           currentUser: mockUserProfile,
+          themePreference: 'dark',
           isLoading: true,
           error: 'Some error',
         });
@@ -471,6 +520,7 @@ describe('userStore', () => {
       });
 
       expect(result.current.currentUser).toBeNull();
+      expect(result.current.themePreference).toBe('system');
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
     });

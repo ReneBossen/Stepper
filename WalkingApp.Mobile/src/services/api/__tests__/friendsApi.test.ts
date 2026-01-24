@@ -855,4 +855,419 @@ describe('friendsApi', () => {
       await expect(friendsApi.removeFriend('user-123')).rejects.toEqual(mockError);
     });
   });
+
+  describe('searchUsers', () => {
+    it('should search users by display_name', async () => {
+      const mockUsers = [
+        { id: 'user-1', display_name: 'Alice', avatar_url: 'https://example.com/alice.jpg' },
+        { id: 'user-2', display_name: 'Alicia', avatar_url: null },
+      ];
+
+      const mockUsersLimit = jest.fn().mockResolvedValue({
+        data: mockUsers,
+        error: null,
+      });
+      const mockUsersIlike = jest.fn().mockReturnValue({
+        limit: mockUsersLimit,
+      });
+      const mockUsersNeq = jest.fn().mockReturnValue({
+        ilike: mockUsersIlike,
+      });
+      const mockUsersSelect = jest.fn().mockReturnValue({
+        neq: mockUsersNeq,
+      });
+
+      // Mock friendships query (no existing friendships)
+      const mockFriendshipsOr = jest.fn().mockResolvedValue({
+        data: [],
+        error: null,
+      });
+      const mockFriendshipsSelect = jest.fn().mockReturnValue({
+        or: mockFriendshipsOr,
+      });
+
+      (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
+        if (table === 'users') {
+          return { select: mockUsersSelect };
+        } else if (table === 'friendships') {
+          return { select: mockFriendshipsSelect };
+        }
+      });
+
+      const result = await friendsApi.searchUsers('Ali');
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('users');
+      expect(mockUsersIlike).toHaveBeenCalledWith('display_name', '%Ali%');
+      expect(result).toHaveLength(2);
+      expect(result[0].display_name).toBe('Alice');
+    });
+
+    it('should return empty array for empty query', async () => {
+      const result = await friendsApi.searchUsers('');
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array for whitespace-only query', async () => {
+      const result = await friendsApi.searchUsers('   ');
+      expect(result).toEqual([]);
+    });
+
+    it('should exclude users with existing friendships', async () => {
+      const mockUsers = [
+        { id: 'user-1', display_name: 'Alice', avatar_url: null },
+        { id: 'user-2', display_name: 'Alicia', avatar_url: null },
+      ];
+
+      const mockFriendships = [
+        { requester_id: MOCK_USER_ID, addressee_id: 'user-1' },
+      ];
+
+      const mockUsersLimit = jest.fn().mockResolvedValue({
+        data: mockUsers,
+        error: null,
+      });
+      const mockUsersIlike = jest.fn().mockReturnValue({
+        limit: mockUsersLimit,
+      });
+      const mockUsersNeq = jest.fn().mockReturnValue({
+        ilike: mockUsersIlike,
+      });
+      const mockUsersSelect = jest.fn().mockReturnValue({
+        neq: mockUsersNeq,
+      });
+
+      const mockFriendshipsOr = jest.fn().mockResolvedValue({
+        data: mockFriendships,
+        error: null,
+      });
+      const mockFriendshipsSelect = jest.fn().mockReturnValue({
+        or: mockFriendshipsOr,
+      });
+
+      (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
+        if (table === 'users') {
+          return { select: mockUsersSelect };
+        } else if (table === 'friendships') {
+          return { select: mockFriendshipsSelect };
+        }
+      });
+
+      const result = await friendsApi.searchUsers('Ali');
+
+      // user-1 should be filtered out since they have an existing friendship
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('user-2');
+    });
+
+    it('should throw error when not authenticated', async () => {
+      mockGetUser.mockResolvedValue({
+        data: { user: null },
+        error: null,
+      });
+
+      await expect(friendsApi.searchUsers('test')).rejects.toThrow('Not authenticated');
+    });
+  });
+
+  describe('getOutgoingRequests', () => {
+    it('should fetch outgoing requests successfully', async () => {
+      const mockFriendships = [
+        { id: 'request-1', addressee_id: 'user-1', created_at: '2024-01-15T10:00:00Z' },
+        { id: 'request-2', addressee_id: 'user-2', created_at: '2024-01-14T10:00:00Z' },
+      ];
+
+      const mockUsers = [
+        { id: 'user-1', display_name: 'John Doe', avatar_url: 'https://example.com/john.jpg' },
+        { id: 'user-2', display_name: 'Jane Smith', avatar_url: null },
+      ];
+
+      const mockFriendshipsOrder = jest.fn().mockResolvedValue({
+        data: mockFriendships,
+        error: null,
+      });
+      const mockFriendshipsEqStatus = jest.fn().mockReturnValue({
+        order: mockFriendshipsOrder,
+      });
+      const mockFriendshipsEqRequester = jest.fn().mockReturnValue({
+        eq: mockFriendshipsEqStatus,
+      });
+      const mockFriendshipsSelect = jest.fn().mockReturnValue({
+        eq: mockFriendshipsEqRequester,
+      });
+
+      const mockUsersIn = jest.fn().mockResolvedValue({
+        data: mockUsers,
+        error: null,
+      });
+      const mockUsersSelect = jest.fn().mockReturnValue({
+        in: mockUsersIn,
+      });
+
+      (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
+        if (table === 'friendships') {
+          return { select: mockFriendshipsSelect };
+        } else if (table === 'users') {
+          return { select: mockUsersSelect };
+        }
+      });
+
+      const result = await friendsApi.getOutgoingRequests();
+
+      expect(result).toHaveLength(2);
+      expect(result[0].display_name).toBe('John Doe');
+      expect(result[0].created_at).toBe('2024-01-15T10:00:00Z');
+      expect(result[1].display_name).toBe('Jane Smith');
+    });
+
+    it('should return empty array when no outgoing requests', async () => {
+      const mockFriendshipsOrder = jest.fn().mockResolvedValue({
+        data: [],
+        error: null,
+      });
+      const mockFriendshipsEqStatus = jest.fn().mockReturnValue({
+        order: mockFriendshipsOrder,
+      });
+      const mockFriendshipsEqRequester = jest.fn().mockReturnValue({
+        eq: mockFriendshipsEqStatus,
+      });
+      const mockFriendshipsSelect = jest.fn().mockReturnValue({
+        eq: mockFriendshipsEqRequester,
+      });
+
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        select: mockFriendshipsSelect,
+      });
+
+      const result = await friendsApi.getOutgoingRequests();
+
+      expect(result).toEqual([]);
+    });
+
+    it('should throw error when not authenticated', async () => {
+      mockGetUser.mockResolvedValue({
+        data: { user: null },
+        error: null,
+      });
+
+      await expect(friendsApi.getOutgoingRequests()).rejects.toThrow('Not authenticated');
+    });
+  });
+
+  describe('getUserById', () => {
+    it('should fetch user by ID successfully', async () => {
+      const mockUser = {
+        id: 'user-123',
+        display_name: 'Test User',
+        avatar_url: 'https://example.com/avatar.jpg',
+      };
+
+      const mockSingle = jest.fn().mockResolvedValue({
+        data: mockUser,
+        error: null,
+      });
+      const mockEq = jest.fn().mockReturnValue({
+        single: mockSingle,
+      });
+      const mockSelect = jest.fn().mockReturnValue({
+        eq: mockEq,
+      });
+
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      });
+
+      const result = await friendsApi.getUserById('user-123');
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('users');
+      expect(mockEq).toHaveBeenCalledWith('id', 'user-123');
+      expect(result).toEqual({
+        id: 'user-123',
+        display_name: 'Test User',
+        username: 'Test User',
+        avatar_url: 'https://example.com/avatar.jpg',
+      });
+    });
+
+    it('should return null when user not found', async () => {
+      const mockSingle = jest.fn().mockResolvedValue({
+        data: null,
+        error: { code: 'PGRST116', message: 'Row not found' },
+      });
+      const mockEq = jest.fn().mockReturnValue({
+        single: mockSingle,
+      });
+      const mockSelect = jest.fn().mockReturnValue({
+        eq: mockEq,
+      });
+
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      });
+
+      const result = await friendsApi.getUserById('nonexistent');
+
+      expect(result).toBeNull();
+    });
+
+    it('should throw error when fetching own user ID', async () => {
+      await expect(friendsApi.getUserById(MOCK_USER_ID)).rejects.toThrow(
+        'Cannot add yourself as a friend'
+      );
+    });
+
+    it('should throw error when not authenticated', async () => {
+      mockGetUser.mockResolvedValue({
+        data: { user: null },
+        error: null,
+      });
+
+      await expect(friendsApi.getUserById('user-123')).rejects.toThrow('Not authenticated');
+    });
+  });
+
+  describe('checkFriendshipStatus', () => {
+    it('should return "none" when no friendship exists', async () => {
+      const mockOr = jest.fn().mockResolvedValue({
+        data: [],
+        error: null,
+      });
+      const mockSelect = jest.fn().mockReturnValue({
+        or: mockOr,
+      });
+
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      });
+
+      const result = await friendsApi.checkFriendshipStatus('user-123');
+
+      expect(result).toBe('none');
+    });
+
+    it('should return "accepted" when friendship is accepted', async () => {
+      const mockOr = jest.fn().mockResolvedValue({
+        data: [{ requester_id: MOCK_USER_ID, addressee_id: 'user-123', status: 'accepted' }],
+        error: null,
+      });
+      const mockSelect = jest.fn().mockReturnValue({
+        or: mockOr,
+      });
+
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      });
+
+      const result = await friendsApi.checkFriendshipStatus('user-123');
+
+      expect(result).toBe('accepted');
+    });
+
+    it('should return "pending_sent" when current user sent the request', async () => {
+      const mockOr = jest.fn().mockResolvedValue({
+        data: [{ requester_id: MOCK_USER_ID, addressee_id: 'user-123', status: 'pending' }],
+        error: null,
+      });
+      const mockSelect = jest.fn().mockReturnValue({
+        or: mockOr,
+      });
+
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      });
+
+      const result = await friendsApi.checkFriendshipStatus('user-123');
+
+      expect(result).toBe('pending_sent');
+    });
+
+    it('should return "pending_received" when current user received the request', async () => {
+      const mockOr = jest.fn().mockResolvedValue({
+        data: [{ requester_id: 'user-123', addressee_id: MOCK_USER_ID, status: 'pending' }],
+        error: null,
+      });
+      const mockSelect = jest.fn().mockReturnValue({
+        or: mockOr,
+      });
+
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        select: mockSelect,
+      });
+
+      const result = await friendsApi.checkFriendshipStatus('user-123');
+
+      expect(result).toBe('pending_received');
+    });
+
+    it('should throw error when not authenticated', async () => {
+      mockGetUser.mockResolvedValue({
+        data: { user: null },
+        error: null,
+      });
+
+      await expect(friendsApi.checkFriendshipStatus('user-123')).rejects.toThrow(
+        'Not authenticated'
+      );
+    });
+  });
+
+  describe('cancelRequest', () => {
+    it('should cancel outgoing request successfully', async () => {
+      const mockEqStatus = jest.fn().mockResolvedValue({
+        error: null,
+      });
+      const mockEqAddressee = jest.fn().mockReturnValue({
+        eq: mockEqStatus,
+      });
+      const mockEqRequester = jest.fn().mockReturnValue({
+        eq: mockEqAddressee,
+      });
+      const mockDelete = jest.fn().mockReturnValue({
+        eq: mockEqRequester,
+      });
+
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        delete: mockDelete,
+      });
+
+      await friendsApi.cancelRequest('user-123');
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('friendships');
+      expect(mockDelete).toHaveBeenCalled();
+      expect(mockEqRequester).toHaveBeenCalledWith('requester_id', MOCK_USER_ID);
+      expect(mockEqAddressee).toHaveBeenCalledWith('addressee_id', 'user-123');
+      expect(mockEqStatus).toHaveBeenCalledWith('status', 'pending');
+    });
+
+    it('should throw error when cancel fails', async () => {
+      const mockError = { message: 'Cancel failed' };
+
+      const mockEqStatus = jest.fn().mockResolvedValue({
+        error: mockError,
+      });
+      const mockEqAddressee = jest.fn().mockReturnValue({
+        eq: mockEqStatus,
+      });
+      const mockEqRequester = jest.fn().mockReturnValue({
+        eq: mockEqAddressee,
+      });
+      const mockDelete = jest.fn().mockReturnValue({
+        eq: mockEqRequester,
+      });
+
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        delete: mockDelete,
+      });
+
+      await expect(friendsApi.cancelRequest('user-123')).rejects.toEqual(mockError);
+    });
+
+    it('should throw error when not authenticated', async () => {
+      mockGetUser.mockResolvedValue({
+        data: { user: null },
+        error: null,
+      });
+
+      await expect(friendsApi.cancelRequest('user-123')).rejects.toThrow('Not authenticated');
+    });
+  });
 });
