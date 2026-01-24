@@ -1,18 +1,41 @@
 import { supabase } from '../supabase';
-import { UserProfile, UserPreferences } from '@store/userStore';
+
+/**
+ * User profile data from the users table.
+ * Note: Preferences are now stored in the separate user_preferences table.
+ */
+export interface UserProfileData {
+  id: string;
+  email: string;
+  display_name: string;
+  username: string;
+  bio?: string;
+  location?: string;
+  avatar_url?: string;
+  created_at: string;
+  onboarding_completed: boolean;
+}
 
 export const usersApi = {
-  getCurrentUser: async (): Promise<UserProfile> => {
+  /**
+   * Fetches the current user's profile from the users table.
+   * Note: This no longer includes preferences - use userPreferencesApi for that.
+   */
+  getCurrentUser: async (): Promise<UserProfileData> => {
     const { data, error } = await supabase
       .from('users')
-      .select('*')
+      .select('id, email, display_name, username, bio, location, avatar_url, created_at, onboarding_completed')
       .single();
 
     if (error) throw error;
     return data;
   },
 
-  updateProfile: async (updates: Partial<UserProfile>): Promise<UserProfile> => {
+  /**
+   * Updates the current user's profile in the users table.
+   * Note: To update preferences, use userPreferencesApi.updatePreferences().
+   */
+  updateProfile: async (updates: Partial<UserProfileData>): Promise<UserProfileData> => {
     // Get current user ID for WHERE clause
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -21,35 +44,11 @@ export const usersApi = {
       .from('users')
       .update(updates)
       .eq('id', user.id)
-      .select()
+      .select('id, email, display_name, username, bio, location, avatar_url, created_at, onboarding_completed')
       .single();
 
     if (error) throw error;
     return data;
-  },
-
-  updatePreferences: async (prefs: Partial<UserPreferences>): Promise<UserPreferences> => {
-    // Get current user ID for WHERE clause
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    const { data: current } = await supabase
-      .from('users')
-      .select('preferences')
-      .eq('id', user.id)
-      .single();
-
-    const merged = { ...current?.preferences, ...prefs };
-
-    const { data, error } = await supabase
-      .from('users')
-      .update({ preferences: merged })
-      .eq('id', user.id)
-      .select('preferences')
-      .single();
-
-    if (error) throw error;
-    return data.preferences;
   },
 
   uploadAvatar: async (uri: string): Promise<string> => {

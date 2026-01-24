@@ -15,6 +15,22 @@ function getTodayDateString(): string {
  * - To get friend details, we first query friendships, then query users table separately
  */
 
+export interface UserSearchResult {
+  id: string;
+  display_name: string;
+  username: string;
+  avatar_url?: string;
+}
+
+export interface OutgoingRequest {
+  id: string;
+  user_id: string;
+  display_name: string;
+  username: string;
+  avatar_url?: string;
+  created_at: string;
+}
+
 export const friendsApi = {
   /**
    * Get all accepted friends for the current user.
@@ -249,5 +265,178 @@ export const friendsApi = {
 
     // If both fail, throw an error
     if (error1 && error2) throw error1;
+  },
+
+  /**
+   * Search for users by username or display_name.
+   * Excludes the current user and users who are already friends or have pending requests.
+   */
+  searchUsers: async (query: string): Promise<UserSearchResult[]> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    if (!query.trim()) return [];
+
+    // Search users by display_name (case-insensitive)
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('id, display_name, avatar_url')
+      .neq('id', user.id)
+      .ilike('display_name', `%${query}%`)
+      .limit(20);
+
+    if (error) throw error;
+    if (!users || users.length === 0) return [];
+
+    // Get existing friendships to filter out
+    const userIds = users.map(u => u.id);
+    const { data: friendships, error: friendshipsError } = await supabase
+      .from('friendships')
+      .select('requester_id, addressee_id')
+      .or(
+        `and(requester_id.eq.${user.id},addressee_id.in.(${userIds.join(',')})),` +
+        `and(addressee_id.eq.${user.id},requester_id.in.(${userIds.join(',')}))`
+      );
+
+    if (friendshipsError) throw friendshipsError;
+
+    // Build set of user IDs that have existing friendships
+    const existingFriendIds = new Set<string>();
+    friendships?.forEach(f => {
+      if (f.requester_id === user.id) {
+        existingFriendIds.add(f.addressee_id);
+      } else {
+        existingFriendIds.add(f.requester_id);
+      }
+    });
+
+    // Filter out users with existing friendships
+    return users
+      .filter(u => !existingFriendIds.has(u.id))
+      .map(u => ({
+        id: u.id,
+        display_name: u.display_name || 'Unknown',
+        username: u.display_name || '', // username not in DB, fallback to display_name
+        avatar_url: u.avatar_url,
+      }));
+  },
+
+  /**
+   * Get outgoing friend requests (where current user is the requester and status is pending).
+   */
+  getOutgoingRequests: async (): Promise<OutgoingRequest[]> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Get pending friendships where current user is the requester
+    const { data: friendships, error } = await supabase
+      .from('friendships')
+      .select('id, addressee_id, created_at')
+      .eq('requester_id', user.id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    if (!friendships || friendships.length === 0) return [];
+
+    // Get the addressee IDs
+    const addresseeIds = friendships.map(f => f.addressee_id);
+
+    // Fetch user details from users table
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, display_name, avatar_url')
+      .in('id', addresseeIds);
+
+    if (usersError) throw usersError;
+
+    // Map to OutgoingRequest objects
+    return friendships.map(f => {
+      const addresseeUser = users?.find(u => u.id === f.addressee_id);
+      return {
+        id: f.id,
+        user_id: f.addressee_id,
+        display_name: addresseeUser?.display_name || 'Unknown',
+        username: addresseeUser?.display_name || '', // username not in DB, fallback to display_name
+        avatar_url: addresseeUser?.avatar_url,
+        created_at: f.created_at,
+      };
+    });
+  },
+
+  /**
+   * Get a user by their ID (for QR code scanning).
+   */
+  getUserById: async (userId: string): Promise<UserSearchResult | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    if (userId === user.id) {
+      throw new Error('Cannot add yourself as a friend');
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, display_name, avatar_url')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null; // Not found
+      throw error;
+    }
+
+    return {
+      id: data.id,
+      display_name: data.display_name || 'Unknown',
+      username: data.display_name || '',
+      avatar_url: data.avatar_url,
+    };
+  },
+
+  /**
+   * Check if a friendship or pending request already exists with a user.
+   */
+  checkFriendshipStatus: async (targetUserId: string): Promise<'none' | 'pending_sent' | 'pending_received' | 'accepted'> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Check if there's an existing friendship
+    const { data: friendships, error } = await supabase
+      .from('friendships')
+      .select('requester_id, addressee_id, status')
+      .or(
+        `and(requester_id.eq.${user.id},addressee_id.eq.${targetUserId}),` +
+        `and(requester_id.eq.${targetUserId},addressee_id.eq.${user.id})`
+      );
+
+    if (error) throw error;
+    if (!friendships || friendships.length === 0) return 'none';
+
+    const friendship = friendships[0];
+    if (friendship.status === 'accepted') return 'accepted';
+
+    if (friendship.requester_id === user.id) {
+      return 'pending_sent';
+    } else {
+      return 'pending_received';
+    }
+  },
+
+  /**
+   * Cancel a pending outgoing friend request.
+   */
+  cancelRequest: async (addresseeId: string): Promise<void> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { error } = await supabase
+      .from('friendships')
+      .delete()
+      .eq('requester_id', user.id)
+      .eq('addressee_id', addresseeId)
+      .eq('status', 'pending');
+
+    if (error) throw error;
   },
 };

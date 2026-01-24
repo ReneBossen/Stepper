@@ -32,9 +32,7 @@ describe('useAppTheme', () => {
     it('should use light theme when system is light and preference is system', () => {
       mockUseColorScheme.mockReturnValue('light');
       mockUseUserStore.mockImplementation((selector: any) =>
-        selector({
-          currentUser: { preferences: { theme: 'system' } }
-        })
+        selector({ themePreference: 'system' })
       );
 
       const { result } = renderHook(() => useAppTheme());
@@ -47,9 +45,7 @@ describe('useAppTheme', () => {
     it('should use dark theme when system is dark and preference is system', () => {
       mockUseColorScheme.mockReturnValue('dark');
       mockUseUserStore.mockImplementation((selector: any) =>
-        selector({
-          currentUser: { preferences: { theme: 'system' } }
-        })
+        selector({ themePreference: 'system' })
       );
 
       const { result } = renderHook(() => useAppTheme());
@@ -59,34 +55,18 @@ describe('useAppTheme', () => {
       expect(result.current.isDark).toBe(true);
     });
 
-    it('should default to system preference when no user preference set', () => {
+    it('should default to system preference when themePreference is not set', () => {
       mockUseColorScheme.mockReturnValue('light');
       mockUseUserStore.mockImplementation((selector: any) =>
-        selector({
-          currentUser: null
-        })
+        selector({ themePreference: undefined })
       );
 
       const { result } = renderHook(() => useAppTheme());
 
+      // Default themePreference should be 'system'
       expect(result.current.paperTheme).toEqual(lightTheme);
       expect(result.current.navigationTheme).toEqual(lightNavigationTheme);
       expect(result.current.isDark).toBe(false);
-    });
-
-    it('should default to system preference when preferences object is undefined', () => {
-      mockUseColorScheme.mockReturnValue('dark');
-      mockUseUserStore.mockImplementation((selector: any) =>
-        selector({
-          currentUser: { preferences: undefined }
-        })
-      );
-
-      const { result } = renderHook(() => useAppTheme());
-
-      expect(result.current.paperTheme).toEqual(darkTheme);
-      expect(result.current.navigationTheme).toEqual(darkNavigationTheme);
-      expect(result.current.isDark).toBe(true);
     });
   });
 
@@ -94,9 +74,7 @@ describe('useAppTheme', () => {
     it('should use light theme when preference is light regardless of system', () => {
       mockUseColorScheme.mockReturnValue('dark');
       mockUseUserStore.mockImplementation((selector: any) =>
-        selector({
-          currentUser: { preferences: { theme: 'light' } }
-        })
+        selector({ themePreference: 'light' })
       );
 
       const { result } = renderHook(() => useAppTheme());
@@ -109,9 +87,7 @@ describe('useAppTheme', () => {
     it('should override system dark mode when explicitly set to light', () => {
       mockUseColorScheme.mockReturnValue('dark');
       mockUseUserStore.mockImplementation((selector: any) =>
-        selector({
-          currentUser: { preferences: { theme: 'light' } }
-        })
+        selector({ themePreference: 'light' })
       );
 
       const { result } = renderHook(() => useAppTheme());
@@ -124,9 +100,7 @@ describe('useAppTheme', () => {
     it('should use dark theme when preference is dark regardless of system', () => {
       mockUseColorScheme.mockReturnValue('light');
       mockUseUserStore.mockImplementation((selector: any) =>
-        selector({
-          currentUser: { preferences: { theme: 'dark' } }
-        })
+        selector({ themePreference: 'dark' })
       );
 
       const { result } = renderHook(() => useAppTheme());
@@ -139,9 +113,7 @@ describe('useAppTheme', () => {
     it('should override system light mode when explicitly set to dark', () => {
       mockUseColorScheme.mockReturnValue('light');
       mockUseUserStore.mockImplementation((selector: any) =>
-        selector({
-          currentUser: { preferences: { theme: 'dark' } }
-        })
+        selector({ themePreference: 'dark' })
       );
 
       const { result } = renderHook(() => useAppTheme());
@@ -154,9 +126,7 @@ describe('useAppTheme', () => {
     it('should return all required properties', () => {
       mockUseColorScheme.mockReturnValue('light');
       mockUseUserStore.mockImplementation((selector: any) =>
-        selector({
-          currentUser: { preferences: { theme: 'system' } }
-        })
+        selector({ themePreference: 'system' })
       );
 
       const { result } = renderHook(() => useAppTheme());
@@ -169,9 +139,7 @@ describe('useAppTheme', () => {
     it('should return boolean for isDark', () => {
       mockUseColorScheme.mockReturnValue('light');
       mockUseUserStore.mockImplementation((selector: any) =>
-        selector({
-          currentUser: { preferences: { theme: 'system' } }
-        })
+        selector({ themePreference: 'system' })
       );
 
       const { result } = renderHook(() => useAppTheme());
@@ -182,9 +150,7 @@ describe('useAppTheme', () => {
     it('should return theme objects with required properties', () => {
       mockUseColorScheme.mockReturnValue('light');
       mockUseUserStore.mockImplementation((selector: any) =>
-        selector({
-          currentUser: { preferences: { theme: 'system' } }
-        })
+        selector({ themePreference: 'system' })
       );
 
       const { result } = renderHook(() => useAppTheme());
@@ -198,9 +164,7 @@ describe('useAppTheme', () => {
     it('should handle null system color scheme', () => {
       mockUseColorScheme.mockReturnValue(null);
       mockUseUserStore.mockImplementation((selector: any) =>
-        selector({
-          currentUser: { preferences: { theme: 'system' } }
-        })
+        selector({ themePreference: 'system' })
       );
 
       const { result } = renderHook(() => useAppTheme());
@@ -209,41 +173,13 @@ describe('useAppTheme', () => {
       expect(result.current.paperTheme).toEqual(lightTheme);
       expect(result.current.isDark).toBe(false);
     });
-
-    it('should handle missing currentUser', () => {
-      mockUseColorScheme.mockReturnValue('light');
-      mockUseUserStore.mockImplementation((selector: any) =>
-        selector({ currentUser: null })
-      );
-
-      const { result } = renderHook(() => useAppTheme());
-
-      expect(result.current.paperTheme).toEqual(lightTheme);
-      expect(result.current.isDark).toBe(false);
-    });
-
-    it('should handle undefined theme preference', () => {
-      mockUseColorScheme.mockReturnValue('dark');
-      mockUseUserStore.mockImplementation((selector: any) =>
-        selector({
-          currentUser: { preferences: { theme: undefined } }
-        })
-      );
-
-      const { result } = renderHook(() => useAppTheme());
-
-      // Should use system theme when preference is undefined
-      expect(result.current.isDark).toBe(true);
-    });
   });
 
   describe('theme switching', () => {
     it('should switch from light to dark when preference changes', () => {
       mockUseColorScheme.mockReturnValue('light');
       const mockSelector = jest.fn((selector: any) =>
-        selector({
-          currentUser: { preferences: { theme: 'light' } }
-        })
+        selector({ themePreference: 'light' })
       );
       mockUseUserStore.mockImplementation(mockSelector);
 
@@ -253,9 +189,7 @@ describe('useAppTheme', () => {
 
       // Change preference to dark
       mockSelector.mockImplementation((selector: any) =>
-        selector({
-          currentUser: { preferences: { theme: 'dark' } }
-        })
+        selector({ themePreference: 'dark' })
       );
 
       rerender({});
@@ -266,9 +200,7 @@ describe('useAppTheme', () => {
     it('should react to system theme changes when preference is system', () => {
       mockUseColorScheme.mockReturnValue('light');
       mockUseUserStore.mockImplementation((selector: any) =>
-        selector({
-          currentUser: { preferences: { theme: 'system' } }
-        })
+        selector({ themePreference: 'system' })
       );
 
       const { result, rerender } = renderHook(() => useAppTheme());
@@ -288,9 +220,7 @@ describe('useAppTheme', () => {
     it('should use zustand selector for efficient state access', () => {
       mockUseColorScheme.mockReturnValue('light');
       const selectorFn = jest.fn((selector: any) =>
-        selector({
-          currentUser: { preferences: { theme: 'system' } }
-        })
+        selector({ themePreference: 'system' })
       );
       mockUseUserStore.mockImplementation(selectorFn);
 

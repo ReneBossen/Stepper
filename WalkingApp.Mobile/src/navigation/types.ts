@@ -54,6 +54,7 @@ export type FriendsStackParamList = {
   FriendsList: undefined;
   FriendRequests: undefined;
   FriendDiscovery: undefined;
+  QRScanner: undefined;
   UserProfile: { userId: string };
 };
 

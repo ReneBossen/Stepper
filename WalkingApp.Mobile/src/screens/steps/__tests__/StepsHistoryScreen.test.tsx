@@ -164,25 +164,19 @@ describe('StepsHistoryScreen', () => {
       display_name: 'Test User',
       username: 'testuser',
       preferences: {
+        id: 'user-1',
         units: 'metric' as const,
         daily_step_goal: 10000,
-        theme: 'light' as const,
-        notifications: {
-          push_enabled: true,
-          friend_requests: true,
-          friend_accepted: true,
-          group_invites: true,
-          goal_achieved: true,
-        },
-        privacy: {
-          profile_visibility: 'public' as const,
-          activity_visibility: 'public' as const,
-          find_me: 'everyone' as const,
-        },
+        notifications_enabled: true,
+        privacy_find_me: 'public' as const,
+        privacy_show_steps: 'partial' as const,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
       },
       created_at: '2024-01-01T00:00:00Z',
       onboarding_completed: true,
     },
+    themePreference: 'system' as const,
   };
 
   beforeEach(() => {

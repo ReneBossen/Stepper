@@ -5,6 +5,7 @@ import { FriendsStackParamList } from '../types';
 import FriendsListScreen from '@screens/friends/FriendsListScreen';
 import FriendRequestsScreen from '@screens/friends/FriendRequestsScreen';
 import FriendDiscoveryScreen from '@screens/friends/FriendDiscoveryScreen';
+import QRScannerScreen from '@screens/friends/QRScannerScreen';
 import UserProfileScreen from '@screens/friends/UserProfileScreen';
 
 const Stack = createNativeStackNavigator<FriendsStackParamList>();
@@ -25,7 +26,15 @@ export default function FriendsStackNavigator() {
       <Stack.Screen
         name="FriendDiscovery"
         component={FriendDiscoveryScreen}
-        options={{ title: 'Discover Friends' }}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="QRScanner"
+        component={QRScannerScreen}
+        options={{
+          headerShown: false,
+          presentation: 'fullScreenModal',
+        }}
       />
       <Stack.Screen
         name="UserProfile"

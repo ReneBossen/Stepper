@@ -1,64 +1,63 @@
 import { create } from 'zustand';
-import { usersApi } from '@services/api/usersApi';
+import { usersApi, UserProfileData } from '@services/api/usersApi';
+import { userPreferencesApi, UserPreferences, UserPreferencesUpdate, DEFAULT_PREFERENCES } from '@services/api/userPreferencesApi';
 import { getErrorMessage } from '@utils/errorUtils';
 
-export interface UserProfile {
-  id: string;
-  email: string;
-  display_name: string;
-  username: string;
-  bio?: string;
-  location?: string;
-  avatar_url?: string;
+// Re-export types for consumers
+export type { UserPreferences, UserPreferencesUpdate } from '@services/api/userPreferencesApi';
+export type { PrivacyLevel } from '@services/api/userPreferencesApi';
+
+/**
+ * Combined user profile with preferences.
+ * Profile data comes from `users` table, preferences from `user_preferences` table.
+ */
+export interface UserProfile extends UserProfileData {
   preferences: UserPreferences;
-  created_at: string;
-  onboarding_completed: boolean;
 }
 
-export interface UserPreferences {
-  units: 'metric' | 'imperial';
-  daily_step_goal: number;
-  theme: 'light' | 'dark' | 'system';
-  notifications: NotificationPreferences;
-  privacy: PrivacySettings;
-}
-
-interface NotificationPreferences {
-  push_enabled: boolean;
-  friend_requests: boolean;
-  friend_accepted: boolean;
-  group_invites: boolean;
-  goal_achieved: boolean;
-}
-
-interface PrivacySettings {
-  profile_visibility: 'public' | 'friends' | 'private';
-  activity_visibility: 'public' | 'friends' | 'private';
-  find_me: 'everyone' | 'friends' | 'nobody';
-}
+/**
+ * Theme preference stored locally (not in user_preferences table).
+ * This is kept separate because theme affects the entire app and may need
+ * to be accessed before user data is loaded.
+ */
+export type ThemePreference = 'light' | 'dark' | 'system';
 
 interface UserState {
   currentUser: UserProfile | null;
+  themePreference: ThemePreference;
   isLoading: boolean;
   error: string | null;
 
   // Actions
   fetchCurrentUser: () => Promise<void>;
-  updateProfile: (updates: Partial<UserProfile>) => Promise<UserProfile>;
-  updatePreferences: (prefs: Partial<UserPreferences>) => Promise<void>;
+  updateProfile: (updates: Partial<UserProfileData>) => Promise<UserProfile>;
+  updatePreferences: (prefs: UserPreferencesUpdate) => Promise<void>;
+  setThemePreference: (theme: ThemePreference) => void;
   uploadAvatar: (uri: string) => Promise<string>;
   clearUser: () => void;
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
   currentUser: null,
+  themePreference: 'system',
   isLoading: false,
   error: null,
 
   fetchCurrentUser: async () => {
     set({ isLoading: true, error: null });
     try {
-      const user = await usersApi.getCurrentUser();
+      // Fetch user profile and preferences in parallel
+      const [profileData, preferences] = await Promise.all([
+        usersApi.getCurrentUser(),
+        userPreferencesApi.getPreferences(),
+      ]);
+
+      // Combine profile and preferences into UserProfile
+      const user: UserProfile = {
+        ...profileData,
+        preferences,
+      };
+
       set({ currentUser: user, isLoading: false });
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
@@ -68,9 +67,22 @@ export const useUserStore = create<UserState>((set, get) => ({
   updateProfile: async (updates) => {
     set({ isLoading: true, error: null });
     try {
+      const current = get().currentUser;
       const updated = await usersApi.updateProfile(updates);
-      set({ currentUser: updated, isLoading: false });
-      return updated;
+
+      // Merge updated profile with existing preferences
+      const userProfile: UserProfile = {
+        ...updated,
+        preferences: current?.preferences ?? {
+          id: updated.id,
+          ...DEFAULT_PREFERENCES,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      };
+
+      set({ currentUser: userProfile, isLoading: false });
+      return userProfile;
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
       throw error;
@@ -83,7 +95,7 @@ export const useUserStore = create<UserState>((set, get) => ({
       const current = get().currentUser;
       if (!current) throw new Error('No user loaded');
 
-      const updated = await usersApi.updatePreferences(prefs);
+      const updated = await userPreferencesApi.updatePreferences(prefs);
       set({
         currentUser: { ...current, preferences: updated },
         isLoading: false,
@@ -92,6 +104,10 @@ export const useUserStore = create<UserState>((set, get) => ({
       set({ error: getErrorMessage(error), isLoading: false });
       throw error;
     }
+  },
+
+  setThemePreference: (theme) => {
+    set({ themePreference: theme });
   },
 
   uploadAvatar: async (uri) => {
@@ -117,9 +133,9 @@ export const useUserStore = create<UserState>((set, get) => ({
   /**
    * Clears the current user from the store and resets all state to initial values.
    * This should be called when the user signs out to ensure no stale user data remains.
-   * Resets currentUser to null, isLoading to false, and error to null.
+   * Resets currentUser to null, themePreference to 'system', isLoading to false, and error to null.
    */
   clearUser: () => {
-    set({ currentUser: null, isLoading: false, error: null });
+    set({ currentUser: null, themePreference: 'system', isLoading: false, error: null });
   },
 }));

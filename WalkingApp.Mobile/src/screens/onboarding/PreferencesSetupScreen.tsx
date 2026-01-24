@@ -3,14 +3,12 @@ import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Text, Button, SegmentedButtons, TextInput, Menu } from 'react-native-paper';
 import { OnboardingStackScreenProps } from '@navigation/types';
 import { useAppTheme } from '@hooks/useAppTheme';
-import { useUserStore, UserPreferences } from '@store/userStore';
+import { useUserStore, UserPreferencesUpdate, PrivacyLevel } from '@store/userStore';
 import { getErrorMessage } from '@utils/errorUtils';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 
 type Props = OnboardingStackScreenProps<'PreferencesSetup'>;
-
-type PrivacyLevel = 'everyone' | 'friends' | 'nobody';
 
 export default function PreferencesSetupScreen({ navigation }: Props) {
   const { paperTheme } = useAppTheme();
@@ -22,15 +20,15 @@ export default function PreferencesSetupScreen({ navigation }: Props) {
   const [dailyStepGoal, setDailyStepGoal] = useState(10000);
   const [findMeVisible, setFindMeVisible] = useState(false);
   const [showStepsVisible, setShowStepsVisible] = useState(false);
-  const [findMe, setFindMe] = useState<PrivacyLevel>('everyone');
-  const [showSteps, setShowSteps] = useState<PrivacyLevel>('everyone');
+  const [findMe, setFindMe] = useState<PrivacyLevel>('public');
+  const [showSteps, setShowSteps] = useState<PrivacyLevel>('partial');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const privacyOptions: { value: PrivacyLevel; label: string }[] = [
-    { value: 'everyone', label: 'Everyone' },
-    { value: 'friends', label: 'Friends Only' },
-    { value: 'nobody', label: 'Nobody' },
+    { value: 'public', label: 'Everyone' },
+    { value: 'partial', label: 'Friends Only' },
+    { value: 'private', label: 'Nobody' },
   ];
 
   const handleFinish = async () => {
@@ -38,15 +36,12 @@ export default function PreferencesSetupScreen({ navigation }: Props) {
     setError(null);
 
     try {
-      // Update preferences
-      const preferences: Partial<UserPreferences> = {
+      // Update preferences using the new flat structure
+      const preferences: UserPreferencesUpdate = {
         units,
         daily_step_goal: dailyStepGoal,
-        privacy: {
-          find_me: findMe,
-          activity_visibility: showSteps as any,
-          profile_visibility: 'public',
-        },
+        privacy_find_me: findMe,
+        privacy_show_steps: showSteps,
       };
 
       await updatePreferences(preferences);

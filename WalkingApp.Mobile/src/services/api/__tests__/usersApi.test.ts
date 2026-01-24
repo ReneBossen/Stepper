@@ -1,6 +1,5 @@
-import { usersApi } from '../usersApi';
+import { usersApi, UserProfileData } from '../usersApi';
 import { supabase } from '@services/supabase';
-import { UserProfile, UserPreferences } from '@store/userStore';
 
 // Mock the supabase client
 const mockGetUser = jest.fn();
@@ -20,7 +19,8 @@ jest.mock('@services/supabase', () => ({
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 
 describe('usersApi', () => {
-  const mockUserProfile: UserProfile = {
+  // UserProfileData no longer includes preferences - they are in a separate table
+  const mockUserProfile: UserProfileData = {
     id: '123',
     email: 'test@example.com',
     display_name: 'Test User',
@@ -29,23 +29,6 @@ describe('usersApi', () => {
     location: 'Test City',
     avatar_url: 'https://example.com/avatar.jpg',
     onboarding_completed: true,
-    preferences: {
-      units: 'metric',
-      daily_step_goal: 10000,
-      theme: 'light',
-      notifications: {
-        push_enabled: true,
-        friend_requests: true,
-        friend_accepted: true,
-        group_invites: true,
-        goal_achieved: true,
-      },
-      privacy: {
-        profile_visibility: 'public',
-        activity_visibility: 'friends',
-        find_me: 'everyone',
-      },
-    },
     created_at: '2024-01-01T00:00:00Z',
   };
 
@@ -78,7 +61,7 @@ describe('usersApi', () => {
       const result = await usersApi.getCurrentUser();
 
       expect(mockSupabase.from).toHaveBeenCalledWith('users');
-      expect(mockSelect).toHaveBeenCalledWith('*');
+      expect(mockSelect).toHaveBeenCalledWith('id, email, display_name, username, bio, location, avatar_url, created_at, onboarding_completed');
       expect(mockSingle).toHaveBeenCalled();
       expect(result).toEqual(mockUserProfile);
     });
@@ -220,186 +203,8 @@ describe('usersApi', () => {
     });
   });
 
-  describe('updatePreferences', () => {
-    it('should update preferences successfully', async () => {
-      const prefUpdates: Partial<UserPreferences> = {
-        units: 'imperial',
-        daily_step_goal: 12000,
-      };
-
-      const currentPrefs = mockUserProfile.preferences;
-      const mergedPrefs = { ...currentPrefs, ...prefUpdates };
-
-      // Mock for fetching current preferences
-      const mockSelectCurrent = jest.fn().mockReturnThis();
-      const mockEqCurrent = jest.fn().mockReturnThis();
-      const mockSingleCurrent = jest.fn().mockResolvedValue({
-        data: { preferences: currentPrefs },
-        error: null,
-      });
-
-      // Mock for updating preferences
-      const mockUpdate = jest.fn().mockReturnThis();
-      const mockEqUpdate = jest.fn().mockReturnThis();
-      const mockSelectUpdate = jest.fn().mockReturnThis();
-      const mockSingleUpdate = jest.fn().mockResolvedValue({
-        data: { preferences: mergedPrefs },
-        error: null,
-      });
-
-      let callCount = 0;
-      (mockSupabase.from as jest.Mock).mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) {
-          // First call for fetching current
-          return {
-            select: mockSelectCurrent,
-          };
-        } else {
-          // Second call for updating
-          return {
-            update: mockUpdate,
-          };
-        }
-      });
-
-      mockSelectCurrent.mockReturnValue({
-        eq: mockEqCurrent,
-      });
-
-      mockEqCurrent.mockReturnValue({
-        single: mockSingleCurrent,
-      });
-
-      mockUpdate.mockReturnValue({
-        eq: mockEqUpdate,
-      });
-
-      mockEqUpdate.mockReturnValue({
-        select: mockSelectUpdate,
-      });
-
-      mockSelectUpdate.mockReturnValue({
-        single: mockSingleUpdate,
-      });
-
-      const result = await usersApi.updatePreferences(prefUpdates);
-
-      expect(result).toEqual(mergedPrefs);
-      expect(result.units).toBe('imperial');
-      expect(result.daily_step_goal).toBe(12000);
-    });
-
-    it('should merge with existing preferences', async () => {
-      const prefUpdates: Partial<UserPreferences> = {
-        theme: 'dark',
-      };
-
-      const currentPrefs = mockUserProfile.preferences;
-      const mergedPrefs = { ...currentPrefs, theme: 'dark' as const };
-
-      const mockSelectCurrent = jest.fn().mockReturnThis();
-      const mockEqCurrent = jest.fn().mockReturnThis();
-      const mockSingleCurrent = jest.fn().mockResolvedValue({
-        data: { preferences: currentPrefs },
-        error: null,
-      });
-
-      const mockUpdate = jest.fn().mockReturnThis();
-      const mockEqUpdate = jest.fn().mockReturnThis();
-      const mockSelectUpdate = jest.fn().mockReturnThis();
-      const mockSingleUpdate = jest.fn().mockResolvedValue({
-        data: { preferences: mergedPrefs },
-        error: null,
-      });
-
-      let callCount = 0;
-      (mockSupabase.from as jest.Mock).mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) {
-          return { select: mockSelectCurrent };
-        } else {
-          return { update: mockUpdate };
-        }
-      });
-
-      mockSelectCurrent.mockReturnValue({
-        eq: mockEqCurrent,
-      });
-
-      mockEqCurrent.mockReturnValue({
-        single: mockSingleCurrent,
-      });
-
-      mockUpdate.mockReturnValue({
-        eq: mockEqUpdate,
-      });
-
-      mockEqUpdate.mockReturnValue({
-        select: mockSelectUpdate,
-      });
-
-      mockSelectUpdate.mockReturnValue({
-        single: mockSingleUpdate,
-      });
-
-      const result = await usersApi.updatePreferences(prefUpdates);
-
-      expect(result.theme).toBe('dark');
-      expect(result.units).toBe('metric'); // Original value preserved
-    });
-
-    it('should throw error when update fails', async () => {
-      const mockError = { message: 'Preferences update failed' };
-
-      const mockSelectCurrent = jest.fn().mockReturnThis();
-      const mockEqCurrent = jest.fn().mockReturnThis();
-      const mockSingleCurrent = jest.fn().mockResolvedValue({
-        data: { preferences: mockUserProfile.preferences },
-        error: null,
-      });
-
-      const mockUpdate = jest.fn().mockReturnThis();
-      const mockEqUpdate = jest.fn().mockReturnThis();
-      const mockSelectUpdate = jest.fn().mockReturnThis();
-      const mockSingleUpdate = jest.fn().mockResolvedValue({
-        data: null,
-        error: mockError,
-      });
-
-      let callCount = 0;
-      (mockSupabase.from as jest.Mock).mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) {
-          return { select: mockSelectCurrent };
-        } else {
-          return { update: mockUpdate };
-        }
-      });
-
-      mockSelectCurrent.mockReturnValue({
-        eq: mockEqCurrent,
-      });
-
-      mockEqCurrent.mockReturnValue({
-        single: mockSingleCurrent,
-      });
-
-      mockUpdate.mockReturnValue({
-        eq: mockEqUpdate,
-      });
-
-      mockEqUpdate.mockReturnValue({
-        select: mockSelectUpdate,
-      });
-
-      mockSelectUpdate.mockReturnValue({
-        single: mockSingleUpdate,
-      });
-
-      await expect(usersApi.updatePreferences({ theme: 'dark' })).rejects.toEqual(mockError);
-    });
-  });
+  // Note: updatePreferences tests have been moved to userPreferencesApi.test.ts
+  // since preferences are now stored in the user_preferences table
 
   describe('uploadAvatar', () => {
     it('should upload avatar successfully', async () => {
