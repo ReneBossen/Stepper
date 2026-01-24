@@ -14,9 +14,9 @@ export function JoinGroupCard({ onPress, testID }: JoinGroupCardProps) {
   const theme = useTheme();
 
   return (
-    <Pressable onPress={onPress} testID={testID}>
+    <Pressable onPress={onPress} testID={testID} accessibilityLabel="Join a group">
       <Card
-        style={[styles.card, { borderColor: theme.colors.outline }]}
+        style={[styles.card, { borderColor: theme.colors.outlineVariant }]}
         mode="outlined"
       >
         <Card.Content style={styles.content}>

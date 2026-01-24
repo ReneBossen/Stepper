@@ -72,6 +72,7 @@ export interface CreateGroupData {
  */
 export interface GroupDetail extends Group {
   user_role?: 'owner' | 'admin' | 'member';
+  join_code?: string;
   period_start: string;
   period_end: string;
   period_display: string;

@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
-import { Card, Text, Chip, Avatar, useTheme } from 'react-native-paper';
+import { Card, Text, Chip, useTheme } from 'react-native-paper';
 import type { GroupWithLeaderboard, LeaderboardEntry } from '@store/groupsStore';
+import { getCompetitionTypeLabel } from '@utils/groupUtils';
 
 interface GroupCardProps {
   group: GroupWithLeaderboard;
@@ -19,11 +20,9 @@ export function GroupCard({ group, onPress, testID }: GroupCardProps) {
     onPress(group);
   };
 
-  const competitionTypeLabel = {
-    daily: 'Daily',
-    weekly: 'Weekly',
-    monthly: 'Monthly',
-  }[group.competition_type];
+  const competitionTypeLabel = getCompetitionTypeLabel(group.competition_type);
+
+  const accessibilityLabel = `${group.name} group with ${group.member_count} ${group.member_count === 1 ? 'member' : 'members'}`;
 
   const getAvatarLabel = (name: string) => {
     return name
@@ -93,7 +92,7 @@ export function GroupCard({ group, onPress, testID }: GroupCardProps) {
   };
 
   return (
-    <Pressable onPress={handlePress} testID={testID}>
+    <Pressable onPress={handlePress} testID={testID} accessibilityLabel={accessibilityLabel}>
       <Card style={styles.card} mode="elevated">
         <Card.Content>
           <View style={styles.header}>

@@ -16,6 +16,7 @@ import { ErrorMessage } from '@components/common/ErrorMessage';
 import { LeaderboardItem } from './components';
 import { useGroupsStore, LeaderboardEntry } from '@store/groupsStore';
 import { groupsApi } from '@services/api/groupsApi';
+import { getCompetitionTypeLabelFull, getPeriodLabel } from '@utils/groupUtils';
 import type { GroupsStackScreenProps, GroupsStackParamList } from '@navigation/types';
 
 type Props = GroupsStackScreenProps<'GroupDetail'>;
@@ -139,7 +140,7 @@ export default function GroupDetailScreen({ route }: Props) {
     Alert.alert(
       'Invite Members',
       currentGroup?.is_private
-        ? 'Share this join code with friends: ' + (currentGroup as any).join_code
+        ? 'Share this join code with friends: ' + currentGroup.join_code
         : 'This is a public group. Anyone can join!',
       [{ text: 'OK' }]
     );
@@ -168,11 +169,8 @@ export default function GroupDetailScreen({ route }: Props) {
     () => {
       if (!currentGroup) return null;
 
-      const competitionTypeLabel = {
-        daily: 'Daily Competition',
-        weekly: 'Weekly Competition',
-        monthly: 'Monthly Competition',
-      }[currentGroup.competition_type];
+      const competitionTypeLabel = getCompetitionTypeLabelFull(currentGroup.competition_type);
+      const periodLabel = getPeriodLabel(currentGroup.competition_type);
 
       return (
         <View style={styles.header}>
@@ -207,8 +205,7 @@ export default function GroupDetailScreen({ route }: Props) {
               variant="labelMedium"
               style={{ color: theme.colors.onPrimaryContainer }}
             >
-              {currentGroup.competition_type === 'daily' ? 'Today' : 'This ' + currentGroup.competition_type.charAt(0).toUpperCase() + currentGroup.competition_type.slice(1, -2)}:{' '}
-              {currentGroup.period_display}
+              {periodLabel}: {currentGroup.period_display}
             </Text>
           </View>
 
