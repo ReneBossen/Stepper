@@ -16,7 +16,6 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import { useUserStore, PrivacyLevel } from '@store/userStore';
-import { usersApi } from '@services/api/usersApi';
 import { getErrorMessage } from '@utils/errorUtils';
 import { getInitials } from '@utils/stringUtils';
 import type { SettingsStackParamList } from '@navigation/types';
@@ -26,17 +25,9 @@ type NavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'EditPro
 // Validation constants
 const DISPLAY_NAME_MIN = 1;
 const DISPLAY_NAME_MAX = 50;
-const USERNAME_MIN = 3;
-const USERNAME_MAX = 30;
-const BIO_MAX = 200;
-const LOCATION_MAX = 100;
-const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
 
 interface FormErrors {
   displayName?: string;
-  username?: string;
-  bio?: string;
-  location?: string;
 }
 
 const PRIVACY_OPTIONS: { value: PrivacyLevel; label: string; description: string }[] = [
@@ -63,9 +54,6 @@ export default function EditProfileScreen() {
 
   // Form state
   const [displayName, setDisplayName] = useState('');
-  const [username, setUsername] = useState('');
-  const [bio, setBio] = useState('');
-  const [location, setLocation] = useState('');
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [profileVisibility, setProfileVisibility] = useState<PrivacyLevel>('public');
   const [activityVisibility, setActivityVisibility] = useState<PrivacyLevel>('partial');
@@ -74,17 +62,22 @@ export default function EditProfileScreen() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
-  const [profileVisibilityMenuVisible, setProfileVisibilityMenuVisible] = useState(false);
-  const [activityVisibilityMenuVisible, setActivityVisibilityMenuVisible] = useState(false);
+  const [openMenu, setOpenMenu] = useState<'profile' | 'activity' | null>(null);
+
+  // Menu handler with small delay to avoid react-native-paper Menu animation issues
+  const handleOpenMenu = useCallback((menu: 'profile' | 'activity') => {
+    if (openMenu === menu) {
+      setOpenMenu(null);
+    } else {
+      setOpenMenu(null); // Close any open menu first
+      setTimeout(() => setOpenMenu(menu), 100); // Small delay before opening new one
+    }
+  }, [openMenu]);
 
   // Initialize form with current user data
   useEffect(() => {
     if (currentUser) {
       setDisplayName(currentUser.display_name || '');
-      setUsername(currentUser.username || currentUser.display_name?.toLowerCase().replace(/\s/g, '_') || '');
-      setBio(currentUser.bio || '');
-      setLocation(currentUser.location || '');
       setAvatarUri(currentUser.avatar_url || null);
       setProfileVisibility(currentUser.preferences.privacy_find_me);
       setActivityVisibility(currentUser.preferences.privacy_show_steps);
@@ -95,12 +88,8 @@ export default function EditProfileScreen() {
   useEffect(() => {
     if (!currentUser) return;
 
-    const originalUsername = currentUser.username || currentUser.display_name?.toLowerCase().replace(/\s/g, '_') || '';
     const hasProfileChanges =
       displayName !== (currentUser.display_name || '') ||
-      username !== originalUsername ||
-      bio !== (currentUser.bio || '') ||
-      location !== (currentUser.location || '') ||
       (avatarUri && avatarUri !== currentUser.avatar_url);
 
     const hasPreferencesChanges =
@@ -108,10 +97,10 @@ export default function EditProfileScreen() {
       activityVisibility !== currentUser.preferences.privacy_show_steps;
 
     setHasChanges(hasProfileChanges || hasPreferencesChanges);
-  }, [displayName, username, bio, location, avatarUri, profileVisibility, activityVisibility, currentUser]);
+  }, [displayName, avatarUri, profileVisibility, activityVisibility, currentUser]);
 
   // Validation
-  const validateForm = useCallback(async (): Promise<boolean> => {
+  const validateForm = useCallback((): boolean => {
     const newErrors: FormErrors = {};
 
     // Display name validation
@@ -123,46 +112,9 @@ export default function EditProfileScreen() {
       newErrors.displayName = `Display name must be at most ${DISPLAY_NAME_MAX} characters`;
     }
 
-    // Username validation
-    if (!username.trim()) {
-      newErrors.username = 'Username is required';
-    } else if (username.length < USERNAME_MIN) {
-      newErrors.username = `Username must be at least ${USERNAME_MIN} characters`;
-    } else if (username.length > USERNAME_MAX) {
-      newErrors.username = `Username must be at most ${USERNAME_MAX} characters`;
-    } else if (!USERNAME_REGEX.test(username)) {
-      newErrors.username = 'Username can only contain letters, numbers, and underscores';
-    } else {
-      // Check uniqueness if username changed
-      const originalUsername = currentUser?.username || currentUser?.display_name?.toLowerCase().replace(/\s/g, '_') || '';
-      if (username !== originalUsername) {
-        setIsCheckingUsername(true);
-        try {
-          const isAvailable = await usersApi.checkUsernameAvailable(username, currentUser?.id);
-          if (!isAvailable) {
-            newErrors.username = 'Username is already taken';
-          }
-        } catch (err) {
-          // Allow save if we can't check - server will validate
-        } finally {
-          setIsCheckingUsername(false);
-        }
-      }
-    }
-
-    // Bio validation
-    if (bio.length > BIO_MAX) {
-      newErrors.bio = `Bio must be at most ${BIO_MAX} characters`;
-    }
-
-    // Location validation
-    if (location.length > LOCATION_MAX) {
-      newErrors.location = `Location must be at most ${LOCATION_MAX} characters`;
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [displayName, username, bio, location, currentUser]);
+  }, [displayName]);
 
   // Handle image picker
   const handleChangePhoto = useCallback(async () => {
@@ -193,7 +145,7 @@ export default function EditProfileScreen() {
 
   // Handle save
   const handleSave = useCallback(async () => {
-    const isValid = await validateForm();
+    const isValid = validateForm();
     if (!isValid) return;
 
     setIsSaving(true);
@@ -208,9 +160,6 @@ export default function EditProfileScreen() {
       // Update profile
       await updateProfile({
         display_name: displayName.trim(),
-        username: username.trim(),
-        bio: bio.trim() || undefined,
-        location: location.trim() || undefined,
         avatar_url: newAvatarUrl,
       });
 
@@ -236,9 +185,6 @@ export default function EditProfileScreen() {
     currentUser,
     avatarUri,
     displayName,
-    username,
-    bio,
-    location,
     profileVisibility,
     activityVisibility,
     uploadAvatar,
@@ -288,7 +234,7 @@ export default function EditProfileScreen() {
         <Appbar.Action
           icon="check"
           onPress={handleSave}
-          disabled={isSaving || isCheckingUsername || !hasChanges}
+          disabled={isSaving || !hasChanges}
           accessibilityLabel="Save profile"
         />
       </Appbar.Header>
@@ -361,59 +307,6 @@ export default function EditProfileScreen() {
                 {errors.displayName}
               </HelperText>
             )}
-
-            <TextInput
-              label="Username"
-              value={username}
-              onChangeText={setUsername}
-              mode="outlined"
-              maxLength={USERNAME_MAX}
-              autoCapitalize="none"
-              error={!!errors.username}
-              left={<TextInput.Affix text="@" />}
-              style={styles.input}
-              accessibilityLabel="Username"
-              testID="input-username"
-            />
-            {errors.username && (
-              <HelperText type="error" visible>
-                {errors.username}
-              </HelperText>
-            )}
-
-            <TextInput
-              label="Bio"
-              value={bio}
-              onChangeText={setBio}
-              mode="outlined"
-              maxLength={BIO_MAX}
-              multiline
-              numberOfLines={3}
-              error={!!errors.bio}
-              style={styles.input}
-              accessibilityLabel="Bio"
-              testID="input-bio"
-            />
-            <HelperText type={errors.bio ? 'error' : 'info'} visible>
-              {errors.bio || `${bio.length}/${BIO_MAX} characters`}
-            </HelperText>
-
-            <TextInput
-              label="Location (optional)"
-              value={location}
-              onChangeText={setLocation}
-              mode="outlined"
-              maxLength={LOCATION_MAX}
-              error={!!errors.location}
-              style={styles.input}
-              accessibilityLabel="Location"
-              testID="input-location"
-            />
-            {errors.location && (
-              <HelperText type="error" visible>
-                {errors.location}
-              </HelperText>
-            )}
           </View>
 
           <Divider style={styles.divider} />
@@ -428,13 +321,13 @@ export default function EditProfileScreen() {
             </Text>
 
             <Menu
-              visible={profileVisibilityMenuVisible}
-              onDismiss={() => setProfileVisibilityMenuVisible(false)}
+              visible={openMenu === 'profile'}
+              onDismiss={() => setOpenMenu(null)}
               anchor={
                 <List.Item
                   title="Profile Visibility"
                   description={getPrivacyLabel(profileVisibility)}
-                  onPress={() => setProfileVisibilityMenuVisible(true)}
+                  onPress={() => handleOpenMenu('profile')}
                   right={(props) => <List.Icon {...props} icon="chevron-right" />}
                   style={styles.menuItem}
                   accessibilityLabel={`Profile visibility: ${getPrivacyLabel(profileVisibility)}`}
@@ -448,7 +341,7 @@ export default function EditProfileScreen() {
                   key={option.value}
                   onPress={() => {
                     setProfileVisibility(option.value);
-                    setProfileVisibilityMenuVisible(false);
+                    setOpenMenu(null);
                   }}
                   title={option.label}
                   leadingIcon={profileVisibility === option.value ? 'check' : undefined}
@@ -457,13 +350,13 @@ export default function EditProfileScreen() {
             </Menu>
 
             <Menu
-              visible={activityVisibilityMenuVisible}
-              onDismiss={() => setActivityVisibilityMenuVisible(false)}
+              visible={openMenu === 'activity'}
+              onDismiss={() => setOpenMenu(null)}
               anchor={
                 <List.Item
                   title="Activity Visibility"
                   description={getPrivacyLabel(activityVisibility)}
-                  onPress={() => setActivityVisibilityMenuVisible(true)}
+                  onPress={() => handleOpenMenu('activity')}
                   right={(props) => <List.Icon {...props} icon="chevron-right" />}
                   style={styles.menuItem}
                   accessibilityLabel={`Activity visibility: ${getPrivacyLabel(activityVisibility)}`}
@@ -477,7 +370,7 @@ export default function EditProfileScreen() {
                   key={option.value}
                   onPress={() => {
                     setActivityVisibility(option.value);
-                    setActivityVisibilityMenuVisible(false);
+                    setOpenMenu(null);
                   }}
                   title={option.label}
                   leadingIcon={activityVisibility === option.value ? 'check' : undefined}
@@ -492,7 +385,7 @@ export default function EditProfileScreen() {
               mode="contained"
               onPress={handleSave}
               loading={isSaving}
-              disabled={isSaving || isCheckingUsername || !hasChanges}
+              disabled={isSaving || !hasChanges}
               style={styles.saveButton}
               accessibilityLabel="Save profile changes"
               testID="save-button"

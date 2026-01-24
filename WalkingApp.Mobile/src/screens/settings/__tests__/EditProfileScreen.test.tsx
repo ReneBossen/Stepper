@@ -3,12 +3,10 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import EditProfileScreen from '../EditProfileScreen';
 import { useUserStore, UserProfile } from '@store/userStore';
-import { usersApi } from '@services/api/usersApi';
 import * as ImagePicker from 'expo-image-picker';
 
 // Mock dependencies
 jest.mock('@store/userStore');
-jest.mock('@services/api/usersApi');
 jest.mock('expo-image-picker');
 
 // Mock Alert
@@ -148,7 +146,6 @@ jest.mock('react-native-paper', () => {
 });
 
 const mockUseUserStore = useUserStore as jest.MockedFunction<typeof useUserStore>;
-const mockUsersApi = usersApi as jest.Mocked<typeof usersApi>;
 const mockImagePicker = ImagePicker as jest.Mocked<typeof ImagePicker>;
 
 describe('EditProfileScreen', () => {
@@ -158,11 +155,7 @@ describe('EditProfileScreen', () => {
 
   const mockUser: UserProfile = {
     id: 'user-123',
-    email: 'john@example.com',
     display_name: 'John Doe',
-    username: 'john_doe',
-    bio: 'Walking towards better health!',
-    location: 'San Francisco, CA',
     avatar_url: 'https://example.com/avatar.jpg',
     created_at: '2025-01-15T10:00:00Z',
     onboarding_completed: true,
@@ -192,7 +185,6 @@ describe('EditProfileScreen', () => {
     mockUpdateProfile.mockResolvedValue(mockUser);
     mockUpdatePreferences.mockResolvedValue(undefined);
     mockUploadAvatar.mockResolvedValue('https://example.com/new-avatar.jpg');
-    mockUsersApi.checkUsernameAvailable.mockResolvedValue(true);
 
     mockUseUserStore.mockImplementation((selector?: any) => {
       if (selector) {
@@ -252,28 +244,6 @@ describe('EditProfileScreen', () => {
       expect(getByTestId('input-display-name')).toBeTruthy();
       expect(getByTestId('input-display-name-input').props.value).toBe('John Doe');
     });
-
-    it('should display username field with current value', () => {
-      const { getByTestId } = render(<EditProfileScreen />);
-      expect(getByTestId('input-username')).toBeTruthy();
-      expect(getByTestId('input-username-input').props.value).toBe('john_doe');
-    });
-
-    it('should display bio field with current value', () => {
-      const { getByTestId } = render(<EditProfileScreen />);
-      expect(getByTestId('input-bio')).toBeTruthy();
-      expect(getByTestId('input-bio-input').props.value).toBe(
-        'Walking towards better health!'
-      );
-    });
-
-    it('should display location field with current value', () => {
-      const { getByTestId } = render(<EditProfileScreen />);
-      expect(getByTestId('input-location')).toBeTruthy();
-      expect(getByTestId('input-location-input').props.value).toBe(
-        'San Francisco, CA'
-      );
-    });
   });
 
   describe('validation', () => {
@@ -300,102 +270,6 @@ describe('EditProfileScreen', () => {
       await waitFor(() => {
         expect(getByTestId('helper-text-error')).toHaveTextContent(
           'Display name must be at most 50 characters'
-        );
-      });
-    });
-
-    it('should show error when username is empty', async () => {
-      const { getByTestId } = render(<EditProfileScreen />);
-
-      fireEvent.changeText(getByTestId('input-username-input'), '');
-      fireEvent.press(getByTestId('save-button'));
-
-      await waitFor(() => {
-        expect(getByTestId('helper-text-error')).toHaveTextContent(
-          'Username is required'
-        );
-      });
-    });
-
-    it('should show error when username is too short', async () => {
-      const { getByTestId } = render(<EditProfileScreen />);
-
-      fireEvent.changeText(getByTestId('input-username-input'), 'ab');
-      fireEvent.press(getByTestId('save-button'));
-
-      await waitFor(() => {
-        expect(getByTestId('helper-text-error')).toHaveTextContent(
-          'Username must be at least 3 characters'
-        );
-      });
-    });
-
-    it('should show error when username exceeds max length', async () => {
-      const { getByTestId } = render(<EditProfileScreen />);
-
-      const longUsername = 'a'.repeat(31);
-      fireEvent.changeText(getByTestId('input-username-input'), longUsername);
-      fireEvent.press(getByTestId('save-button'));
-
-      await waitFor(() => {
-        expect(getByTestId('helper-text-error')).toHaveTextContent(
-          'Username must be at most 30 characters'
-        );
-      });
-    });
-
-    it('should show error when username contains invalid characters', async () => {
-      const { getByTestId } = render(<EditProfileScreen />);
-
-      fireEvent.changeText(getByTestId('input-username-input'), 'john@doe');
-      fireEvent.press(getByTestId('save-button'));
-
-      await waitFor(() => {
-        expect(getByTestId('helper-text-error')).toHaveTextContent(
-          'Username can only contain letters, numbers, and underscores'
-        );
-      });
-    });
-
-    it('should show error when username is already taken', async () => {
-      mockUsersApi.checkUsernameAvailable.mockResolvedValue(false);
-
-      const { getByTestId } = render(<EditProfileScreen />);
-
-      fireEvent.changeText(getByTestId('input-username-input'), 'taken_username');
-      fireEvent.press(getByTestId('save-button'));
-
-      await waitFor(() => {
-        expect(getByTestId('helper-text-error')).toHaveTextContent(
-          'Username is already taken'
-        );
-      });
-    });
-
-    it('should show error when bio exceeds max length', async () => {
-      const { getByTestId } = render(<EditProfileScreen />);
-
-      const longBio = 'a'.repeat(201);
-      fireEvent.changeText(getByTestId('input-bio-input'), longBio);
-      fireEvent.press(getByTestId('save-button'));
-
-      await waitFor(() => {
-        expect(getByTestId('helper-text-error')).toHaveTextContent(
-          'Bio must be at most 200 characters'
-        );
-      });
-    });
-
-    it('should show error when location exceeds max length', async () => {
-      const { getByTestId } = render(<EditProfileScreen />);
-
-      const longLocation = 'a'.repeat(101);
-      fireEvent.changeText(getByTestId('input-location-input'), longLocation);
-      fireEvent.press(getByTestId('save-button'));
-
-      await waitFor(() => {
-        expect(getByTestId('helper-text-error')).toHaveTextContent(
-          'Location must be at most 100 characters'
         );
       });
     });
@@ -601,33 +475,6 @@ describe('EditProfileScreen', () => {
       const { getByTestId } = render(<EditProfileScreen />);
 
       fireEvent.changeText(getByTestId('input-display-name-input'), 'Jane Doe');
-
-      const saveButton = getByTestId('appbar-action-check');
-      expect(saveButton.props.disabled).toBe(false);
-    });
-
-    it('should enable save button when username changes', () => {
-      const { getByTestId } = render(<EditProfileScreen />);
-
-      fireEvent.changeText(getByTestId('input-username-input'), 'jane_doe');
-
-      const saveButton = getByTestId('appbar-action-check');
-      expect(saveButton.props.disabled).toBe(false);
-    });
-
-    it('should enable save button when bio changes', () => {
-      const { getByTestId } = render(<EditProfileScreen />);
-
-      fireEvent.changeText(getByTestId('input-bio-input'), 'New bio');
-
-      const saveButton = getByTestId('appbar-action-check');
-      expect(saveButton.props.disabled).toBe(false);
-    });
-
-    it('should enable save button when location changes', () => {
-      const { getByTestId } = render(<EditProfileScreen />);
-
-      fireEvent.changeText(getByTestId('input-location-input'), 'New York');
 
       const saveButton = getByTestId('appbar-action-check');
       expect(saveButton.props.disabled).toBe(false);

@@ -30,11 +30,7 @@ describe('usersApi', () => {
   // UserProfileData no longer includes preferences - they are in a separate table
   const mockUserProfile: UserProfileData = {
     id: '123',
-    email: 'test@example.com',
     display_name: 'Test User',
-    username: 'testuser',
-    bio: 'Test bio',
-    location: 'Test City',
     avatar_url: 'https://example.com/avatar.jpg',
     onboarding_completed: true,
     created_at: '2024-01-01T00:00:00Z',
@@ -52,6 +48,7 @@ describe('usersApi', () => {
   describe('getCurrentUser', () => {
     it('should fetch current user successfully', async () => {
       const mockSelect = jest.fn().mockReturnThis();
+      const mockEq = jest.fn().mockReturnThis();
       const mockSingle = jest.fn().mockResolvedValue({
         data: mockUserProfile,
         error: null,
@@ -59,17 +56,21 @@ describe('usersApi', () => {
 
       (mockSupabase.from as jest.Mock).mockReturnValue({
         select: mockSelect,
-        single: mockSingle,
       });
 
       mockSelect.mockReturnValue({
+        eq: mockEq,
+      });
+
+      mockEq.mockReturnValue({
         single: mockSingle,
       });
 
       const result = await usersApi.getCurrentUser();
 
       expect(mockSupabase.from).toHaveBeenCalledWith('users');
-      expect(mockSelect).toHaveBeenCalledWith('id, email, display_name, username, bio, location, avatar_url, created_at, onboarding_completed');
+      expect(mockSelect).toHaveBeenCalledWith('id, display_name, avatar_url, created_at, onboarding_completed');
+      expect(mockEq).toHaveBeenCalledWith('id', '123');
       expect(mockSingle).toHaveBeenCalled();
       expect(result).toEqual(mockUserProfile);
     });
@@ -77,6 +78,7 @@ describe('usersApi', () => {
     it('should throw error when user fetch fails', async () => {
       const mockError = { message: 'User not found' };
       const mockSelect = jest.fn().mockReturnThis();
+      const mockEq = jest.fn().mockReturnThis();
       const mockSingle = jest.fn().mockResolvedValue({
         data: null,
         error: mockError,
@@ -84,10 +86,13 @@ describe('usersApi', () => {
 
       (mockSupabase.from as jest.Mock).mockReturnValue({
         select: mockSelect,
-        single: mockSingle,
       });
 
       mockSelect.mockReturnValue({
+        eq: mockEq,
+      });
+
+      mockEq.mockReturnValue({
         single: mockSingle,
       });
 
@@ -110,7 +115,7 @@ describe('usersApi', () => {
 
   describe('updateProfile', () => {
     it('should update profile successfully', async () => {
-      const updates = { display_name: 'Updated Name', bio: 'Updated bio' };
+      const updates = { display_name: 'Updated Name' };
       const updatedProfile = { ...mockUserProfile, ...updates };
 
       const mockUpdate = jest.fn().mockReturnThis();
@@ -148,8 +153,8 @@ describe('usersApi', () => {
     });
 
     it('should handle partial updates', async () => {
-      const updates = { bio: 'New bio only' };
-      const updatedProfile = { ...mockUserProfile, bio: 'New bio only' };
+      const updates = { display_name: 'New Name Only' };
+      const updatedProfile = { ...mockUserProfile, display_name: 'New Name Only' };
 
       const mockUpdate = jest.fn().mockReturnThis();
       const mockEq = jest.fn().mockReturnThis();
@@ -178,7 +183,7 @@ describe('usersApi', () => {
       const result = await usersApi.updateProfile(updates);
 
       expect(mockUpdate).toHaveBeenCalledWith(updates);
-      expect(result.bio).toBe('New bio only');
+      expect(result.display_name).toBe('New Name Only');
     });
 
     it('should throw error when update fails', async () => {
@@ -313,9 +318,6 @@ describe('usersApi', () => {
     const mockPublicProfile = {
       id: '456',
       display_name: 'Sarah Johnson',
-      username: 'sarah.j',
-      bio: 'Morning walks!',
-      location: 'Oakland, CA',
       avatar_url: 'https://example.com/sarah.jpg',
       created_at: '2024-12-10T08:00:00Z',
     };
@@ -405,9 +407,6 @@ describe('usersApi', () => {
       const result = await usersApi.getUserProfile('456');
 
       expect(result.is_private).toBe(true);
-      // Bio and location should be undefined for private profiles
-      expect(result.bio).toBeUndefined();
-      expect(result.location).toBeUndefined();
     });
 
     it('should throw error when user not found', async () => {
@@ -641,91 +640,4 @@ describe('usersApi', () => {
     });
   });
 
-  describe('checkUsernameAvailable', () => {
-    it('should return true when username is available', async () => {
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        data: [],
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-      });
-
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-
-      const result = await usersApi.checkUsernameAvailable('newusername');
-
-      expect(mockSupabase.from).toHaveBeenCalledWith('users');
-      expect(result).toBe(true);
-    });
-
-    it('should return false when username is taken', async () => {
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        data: [{ id: '789' }],
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-      });
-
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-
-      const result = await usersApi.checkUsernameAvailable('takenusername');
-
-      expect(result).toBe(false);
-    });
-
-    it('should exclude current user when checking', async () => {
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockReturnThis();
-      const mockNeq = jest.fn().mockResolvedValue({
-        data: [],
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-      });
-
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-
-      mockEq.mockReturnValue({
-        neq: mockNeq,
-      });
-
-      const result = await usersApi.checkUsernameAvailable('myusername', '123');
-
-      expect(mockNeq).toHaveBeenCalledWith('id', '123');
-      expect(result).toBe(true);
-    });
-
-    it('should throw error on database error', async () => {
-      const mockError = { message: 'Database error' };
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        data: null,
-        error: mockError,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-      });
-
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-
-      await expect(usersApi.checkUsernameAvailable('username')).rejects.toEqual(mockError);
-    });
-  });
 });

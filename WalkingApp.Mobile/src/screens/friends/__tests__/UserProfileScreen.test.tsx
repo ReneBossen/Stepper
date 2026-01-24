@@ -305,9 +305,6 @@ describe('UserProfileScreen', () => {
   const mockProfile: PublicUserProfile = {
     id: 'user-456',
     display_name: 'Sarah Johnson',
-    username: 'sarah.j',
-    bio: 'Morning walks = clear mind!',
-    location: 'Oakland, CA',
     avatar_url: 'https://example.com/sarah-avatar.jpg',
     created_at: '2024-12-10T08:00:00Z',
     is_private: false,
@@ -417,21 +414,6 @@ describe('UserProfileScreen', () => {
       const { getAllByText } = renderUserProfileScreen();
       // Name appears in both title and profile header
       expect(getAllByText('Sarah Johnson').length).toBeGreaterThanOrEqual(1);
-    });
-
-    it('should display username', () => {
-      const { getByText } = renderUserProfileScreen();
-      expect(getByText('@sarah.j')).toBeTruthy();
-    });
-
-    it('should display bio', () => {
-      const { getByText } = renderUserProfileScreen();
-      expect(getByText('"Morning walks = clear mind!"')).toBeTruthy();
-    });
-
-    it('should display location', () => {
-      const { getByText } = renderUserProfileScreen();
-      expect(getByText('Oakland, CA')).toBeTruthy();
     });
 
     it('should display join date', () => {

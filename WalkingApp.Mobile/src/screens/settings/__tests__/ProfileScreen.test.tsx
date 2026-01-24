@@ -150,11 +150,7 @@ describe('ProfileScreen', () => {
 
   const mockUser: UserProfile = {
     id: 'user-123',
-    email: 'john@example.com',
     display_name: 'John Doe',
-    username: 'john_doe',
-    bio: 'Walking towards better health!',
-    location: 'San Francisco, CA',
     avatar_url: 'https://example.com/avatar.jpg',
     created_at: '2025-01-15T10:00:00Z',
     onboarding_completed: true,
@@ -271,21 +267,6 @@ describe('ProfileScreen', () => {
       expect(getByText('John Doe')).toBeTruthy();
     });
 
-    it('should display username', () => {
-      const { getByText } = render(<ProfileScreen />);
-      expect(getByText('@john_doe')).toBeTruthy();
-    });
-
-    it('should display bio', () => {
-      const { getByText } = render(<ProfileScreen />);
-      expect(getByText('"Walking towards better health!"')).toBeTruthy();
-    });
-
-    it('should display location', () => {
-      const { getByText } = render(<ProfileScreen />);
-      expect(getByText('San Francisco, CA')).toBeTruthy();
-    });
-
     it('should display join date', () => {
       const { getByText } = render(<ProfileScreen />);
       expect(getByText('Joined Jan 2025')).toBeTruthy();
@@ -322,7 +303,7 @@ describe('ProfileScreen', () => {
   });
 
   describe('error state', () => {
-    it('should show error message when no user is loaded', () => {
+    it('should show loading spinner when no user is loaded and not loading (user fetch will be triggered)', () => {
       mockUseUserStore.mockImplementation((selector?: any) => {
         const state = {
           ...defaultUserState,
@@ -333,7 +314,24 @@ describe('ProfileScreen', () => {
       });
 
       const { getByTestId } = render(<ProfileScreen />);
-      expect(getByTestId('error-message')).toBeTruthy();
+      // When there's no user and no error, we show loading spinner while fetchCurrentUser is called
+      expect(getByTestId('loading-spinner')).toBeTruthy();
+    });
+
+    it('should call fetchCurrentUser when no user is loaded on mount', () => {
+      mockUseUserStore.mockImplementation((selector?: any) => {
+        const state = {
+          ...defaultUserState,
+          currentUser: null,
+          isLoading: false,
+          error: null,
+        };
+        return selector ? selector(state) : state;
+      });
+
+      render(<ProfileScreen />);
+      // fetchCurrentUser should be called when no user is loaded
+      expect(mockFetchCurrentUser).toHaveBeenCalled();
     });
   });
 

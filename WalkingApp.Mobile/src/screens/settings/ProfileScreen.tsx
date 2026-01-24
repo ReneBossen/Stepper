@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, ScrollView, StyleSheet, RefreshControl } from 'react-native';
 import {
   Appbar,
@@ -30,21 +30,29 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const navigation = useNavigation<NavigationProp>();
 
-  const { currentUser, isLoading: isLoadingUser, fetchCurrentUser } = useUserStore();
+  const {
+    currentUser,
+    isLoading: isLoadingUser,
+    error: storeError,
+    fetchCurrentUser,
+    fetchCurrentUserStats,
+    fetchCurrentUserWeeklyActivity,
+    fetchCurrentUserAchievements,
+  } = useUserStore();
 
   const [stats, setStats] = useState<UserStats | null>(null);
   const [weeklyActivity, setWeeklyActivity] = useState<WeeklyActivity | null>(null);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [dataError, setDataError] = useState<string | null>(null);
 
-  const { fetchCurrentUserStats, fetchCurrentUserWeeklyActivity, fetchCurrentUserAchievements } =
-    useUserStore();
+  // Track if we've already triggered fetchCurrentUser to avoid infinite loops
+  const hasFetchedUser = useRef(false);
 
-  // Load profile data
+  // Load profile data (stats, activity, achievements)
   const loadData = useCallback(async () => {
     try {
-      setError(null);
+      setDataError(null);
       const [statsData, activityData, achievementsData] = await Promise.all([
         fetchCurrentUserStats(),
         fetchCurrentUserWeeklyActivity(),
@@ -54,10 +62,19 @@ export default function ProfileScreen() {
       setWeeklyActivity(activityData);
       setAchievements(achievementsData);
     } catch (err: unknown) {
-      setError(getErrorMessage(err));
+      setDataError(getErrorMessage(err));
     }
   }, [fetchCurrentUserStats, fetchCurrentUserWeeklyActivity, fetchCurrentUserAchievements]);
 
+  // Fetch user if not loaded on mount
+  useEffect(() => {
+    if (!currentUser && !isLoadingUser && !storeError && !hasFetchedUser.current) {
+      hasFetchedUser.current = true;
+      fetchCurrentUser();
+    }
+  }, [currentUser, isLoadingUser, storeError, fetchCurrentUser]);
+
+  // Load profile data once user is available
   useEffect(() => {
     if (currentUser) {
       loadData();
@@ -66,9 +83,12 @@ export default function ProfileScreen() {
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await Promise.all([fetchCurrentUser(), loadData()]);
+    setDataError(null);
+    hasFetchedUser.current = false; // Allow re-fetching on refresh
+    await fetchCurrentUser();
+    // loadData will be triggered by the useEffect when currentUser updates
     setIsRefreshing(false);
-  }, [fetchCurrentUser, loadData]);
+  }, [fetchCurrentUser]);
 
   const handleEditPress = useCallback(() => {
     navigation.navigate('EditProfile');
@@ -82,8 +102,9 @@ export default function ProfileScreen() {
     // Could show a modal with achievement details in the future
   }, []);
 
-  // Loading state
-  if (isLoadingUser && !currentUser && !isRefreshing) {
+  // Loading state - show spinner while loading user or if we haven't tried fetching yet
+  const isInitialLoading = !currentUser && !storeError && (isLoadingUser || !hasFetchedUser.current);
+  if (isInitialLoading && !isRefreshing) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <Appbar.Header elevated>
@@ -94,14 +115,14 @@ export default function ProfileScreen() {
     );
   }
 
-  // Error state
-  if (error && !currentUser) {
+  // Error state - user fetch failed (storeError) or data fetch failed (dataError)
+  if (storeError && !currentUser) {
     return (
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <Appbar.Header elevated>
           <Appbar.Content title="Profile" />
         </Appbar.Header>
-        <ErrorMessage message={error} onRetry={handleRefresh} />
+        <ErrorMessage message={storeError} onRetry={handleRefresh} />
       </View>
     );
   }
@@ -172,37 +193,11 @@ export default function ProfileScreen() {
           </Text>
 
           <Text
-            variant="bodyLarge"
-            style={{ color: theme.colors.onSurfaceVariant }}
+            variant="bodySmall"
+            style={{ color: theme.colors.onSurfaceVariant, marginTop: 8 }}
           >
-            @{currentUser.username || currentUser.display_name.toLowerCase().replace(/\s/g, '_')}
+            Joined {formatJoinDate(currentUser.created_at)}
           </Text>
-
-          {currentUser.bio && (
-            <Text
-              variant="bodyMedium"
-              style={[styles.bio, { color: theme.colors.onSurface }]}
-            >
-              "{currentUser.bio}"
-            </Text>
-          )}
-
-          <View style={styles.metaRow}>
-            {currentUser.location && (
-              <Text
-                variant="bodySmall"
-                style={{ color: theme.colors.onSurfaceVariant }}
-              >
-                {currentUser.location}
-              </Text>
-            )}
-            <Text
-              variant="bodySmall"
-              style={{ color: theme.colors.onSurfaceVariant }}
-            >
-              Joined {formatJoinDate(currentUser.created_at)}
-            </Text>
-          </View>
         </View>
 
         <Divider style={styles.divider} />
@@ -312,16 +307,6 @@ const styles = StyleSheet.create({
   displayName: {
     fontWeight: '700',
     marginBottom: 4,
-  },
-  bio: {
-    marginTop: 12,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 12,
   },
   divider: {
     marginVertical: 16,

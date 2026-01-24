@@ -341,13 +341,6 @@ export default function UserProfileScreen({ route }: Props) {
               {profile.display_name}
             </Text>
 
-            <Text
-              variant="bodyLarge"
-              style={{ color: theme.colors.onSurfaceVariant }}
-            >
-              @{profile.username}
-            </Text>
-
             {isFriend && friendsSince && (
               <Text
                 variant="bodySmall"
@@ -357,31 +350,12 @@ export default function UserProfileScreen({ route }: Props) {
               </Text>
             )}
 
-            {profile.bio && (
-              <Text
-                variant="bodyMedium"
-                style={[styles.bio, { color: theme.colors.onSurface }]}
-              >
-                "{profile.bio}"
-              </Text>
-            )}
-
-            <View style={styles.metaRow}>
-              {profile.location && (
-                <Text
-                  variant="bodySmall"
-                  style={{ color: theme.colors.onSurfaceVariant }}
-                >
-                  {profile.location}
-                </Text>
-              )}
-              <Text
-                variant="bodySmall"
-                style={{ color: theme.colors.onSurfaceVariant }}
-              >
-                Joined {formatJoinDate(profile.created_at)}
-              </Text>
-            </View>
+            <Text
+              variant="bodySmall"
+              style={{ color: theme.colors.onSurfaceVariant, marginTop: 8 }}
+            >
+              Joined {formatJoinDate(profile.created_at)}
+            </Text>
           </View>
 
           {/* Friend Action Button */}
@@ -500,16 +474,6 @@ const styles = StyleSheet.create({
   },
   friendsSince: {
     marginTop: 4,
-  },
-  bio: {
-    marginTop: 12,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 12,
   },
   actionSection: {
     paddingHorizontal: 24,

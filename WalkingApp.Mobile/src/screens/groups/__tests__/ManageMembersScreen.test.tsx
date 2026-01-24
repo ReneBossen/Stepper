@@ -202,9 +202,7 @@ describe('ManageMembersScreen', () => {
 
   const createMockUser = (): UserProfile => ({
     id: 'current-user-id',
-    email: 'test@example.com',
     display_name: 'Current User',
-    username: 'currentuser',
     avatar_url: undefined,
     created_at: '2024-01-01T00:00:00Z',
     onboarding_completed: true,

@@ -24,11 +24,7 @@ describe('userStore', () => {
   // Profile data (from users table)
   const mockProfileData: UserProfileData = {
     id: '123',
-    email: 'test@example.com',
     display_name: 'Test User',
-    username: 'testuser',
-    bio: 'Test bio',
-    location: 'Test City',
     avatar_url: 'https://example.com/avatar.jpg',
     onboarding_completed: true,
     created_at: '2024-01-01T00:00:00Z',
@@ -152,7 +148,7 @@ describe('userStore', () => {
 
   describe('updateProfile', () => {
     it('should update profile successfully', async () => {
-      const updates = { display_name: 'Updated Name', bio: 'Updated bio' };
+      const updates = { display_name: 'Updated Name' };
       const updatedProfileData = { ...mockProfileData, ...updates };
 
       mockUsersApi.updateProfile.mockResolvedValue(updatedProfileData);
@@ -167,7 +163,6 @@ describe('userStore', () => {
 
       expect(mockUsersApi.updateProfile).toHaveBeenCalledWith(updates);
       expect(result.current.currentUser?.display_name).toBe('Updated Name');
-      expect(result.current.currentUser?.bio).toBe('Updated bio');
       // Preferences should be preserved
       expect(result.current.currentUser?.preferences).toEqual(mockPreferences);
       expect(result.current.isLoading).toBe(false);
@@ -175,8 +170,8 @@ describe('userStore', () => {
     });
 
     it('should handle partial updates', async () => {
-      const updates = { bio: 'New bio only' };
-      const updatedProfileData = { ...mockProfileData, bio: 'New bio only' };
+      const updates = { display_name: 'New Name Only' };
+      const updatedProfileData = { ...mockProfileData, display_name: 'New Name Only' };
 
       mockUsersApi.updateProfile.mockResolvedValue(updatedProfileData);
 
@@ -188,7 +183,7 @@ describe('userStore', () => {
       });
 
       expect(mockUsersApi.updateProfile).toHaveBeenCalledWith(updates);
-      expect(result.current.currentUser?.bio).toBe('New bio only');
+      expect(result.current.currentUser?.display_name).toBe('New Name Only');
     });
 
     it('should handle update error', async () => {
@@ -460,7 +455,6 @@ describe('userStore', () => {
       });
 
       expect(result.current.currentUser?.display_name).toBe('Test User');
-      expect(result.current.currentUser?.email).toBe('test@example.com');
       expect(result.current.currentUser?.avatar_url).toBe(avatarUrl);
     });
   });
@@ -544,7 +538,6 @@ describe('userStore', () => {
         profile: {
           id: '456',
           display_name: 'Other User',
-          username: 'otheruser',
           created_at: '2024-01-01T00:00:00Z',
           is_private: false,
         },
@@ -577,9 +570,6 @@ describe('userStore', () => {
     const mockPublicProfile: PublicUserProfile = {
       id: '456',
       display_name: 'Sarah Johnson',
-      username: 'sarah.j',
-      bio: 'Morning walks!',
-      location: 'Oakland, CA',
       avatar_url: 'https://example.com/sarah.jpg',
       created_at: '2024-12-10T08:00:00Z',
       is_private: false,
@@ -808,7 +798,6 @@ describe('userStore', () => {
         profile: {
           id: '456',
           display_name: 'Other User',
-          username: 'otheruser',
           created_at: '2024-01-01T00:00:00Z',
           is_private: false,
         },
@@ -843,7 +832,6 @@ describe('userStore', () => {
         profile: {
           id: '456',
           display_name: 'Other User',
-          username: 'otheruser',
           created_at: '2024-01-01T00:00:00Z',
           is_private: false,
         },

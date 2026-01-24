@@ -6,11 +6,7 @@ import { supabase } from '../supabase';
  */
 export interface UserProfileData {
   id: string;
-  email: string;
   display_name: string;
-  username: string;
-  bio?: string;
-  location?: string;
   avatar_url?: string;
   created_at: string;
   onboarding_completed: boolean;
@@ -23,9 +19,6 @@ export interface UserProfileData {
 export interface PublicUserProfile {
   id: string;
   display_name: string;
-  username: string;
-  bio?: string;
-  location?: string;
   avatar_url?: string;
   created_at: string;
   is_private: boolean;
@@ -75,9 +68,13 @@ export const usersApi = {
    * Note: This no longer includes preferences - use userPreferencesApi for that.
    */
   getCurrentUser: async (): Promise<UserProfileData> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
     const { data, error } = await supabase
       .from('users')
-      .select('id, email, display_name, username, bio, location, avatar_url, created_at, onboarding_completed')
+      .select('id, display_name, avatar_url, created_at, onboarding_completed')
+      .eq('id', user.id)
       .single();
 
     if (error) throw error;
@@ -97,7 +94,7 @@ export const usersApi = {
       .from('users')
       .update(updates)
       .eq('id', user.id)
-      .select('id, email, display_name, username, bio, location, avatar_url, created_at, onboarding_completed')
+      .select('id, display_name, avatar_url, created_at, onboarding_completed')
       .single();
 
     if (error) throw error;
@@ -137,7 +134,7 @@ export const usersApi = {
   getUserProfile: async (userId: string): Promise<PublicUserProfile> => {
     const { data, error } = await supabase
       .from('users')
-      .select('id, display_name, username, bio, location, avatar_url, created_at')
+      .select('id, display_name, avatar_url, created_at')
       .eq('id', userId)
       .single();
 
@@ -155,9 +152,6 @@ export const usersApi = {
     return {
       id: data.id,
       display_name: data.display_name,
-      username: data.username || data.display_name,
-      bio: isPrivate ? undefined : data.bio,
-      location: isPrivate ? undefined : data.location,
       avatar_url: data.avatar_url,
       created_at: data.created_at,
       is_private: isPrivate,
@@ -315,22 +309,4 @@ export const usersApi = {
     return results;
   },
 
-  /**
-   * Check if a username is available.
-   */
-  checkUsernameAvailable: async (username: string, currentUserId?: string): Promise<boolean> => {
-    let query = supabase
-      .from('users')
-      .select('id')
-      .eq('username', username);
-
-    if (currentUserId) {
-      query = query.neq('id', currentUserId);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-    return !data || data.length === 0;
-  },
 };
