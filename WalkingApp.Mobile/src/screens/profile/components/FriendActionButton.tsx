@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Button, Text, useTheme } from 'react-native-paper';
+import { formatJoinDate } from '@utils/stringUtils';
 
 export type FriendStatus = 'none' | 'pending_sent' | 'pending_received' | 'accepted';
 
@@ -29,12 +30,6 @@ export function FriendActionButton({
   testID,
 }: FriendActionButtonProps) {
   const theme = useTheme();
-
-  // Format friends since date
-  const formatFriendsSince = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  };
 
   switch (status) {
     case 'none':
@@ -102,7 +97,7 @@ export function FriendActionButton({
               variant="bodyMedium"
               style={[styles.friendsSince, { color: theme.colors.onSurfaceVariant }]}
             >
-              Friends since {formatFriendsSince(friendsSince)}
+              Friends since {formatJoinDate(friendsSince)}
             </Text>
           )}
           <Button
