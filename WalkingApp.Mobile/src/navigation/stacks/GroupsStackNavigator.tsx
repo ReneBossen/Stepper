@@ -7,6 +7,8 @@ import GroupDetailScreen from '@screens/groups/GroupDetailScreen';
 import GroupManagementScreen from '@screens/groups/GroupManagementScreen';
 import CreateGroupScreen from '@screens/groups/CreateGroupScreen';
 import JoinGroupScreen from '@screens/groups/JoinGroupScreen';
+import ManageMembersScreen from '@screens/groups/ManageMembersScreen';
+import InviteMembersScreen from '@screens/groups/InviteMembersScreen';
 
 const Stack = createNativeStackNavigator<GroupsStackParamList>();
 
@@ -26,17 +28,27 @@ export default function GroupsStackNavigator() {
       <Stack.Screen
         name="GroupManagement"
         component={GroupManagementScreen}
-        options={{ title: 'Manage Group' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="CreateGroup"
         component={CreateGroupScreen}
-        options={{ title: 'Create Group' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="JoinGroup"
         component={JoinGroupScreen}
-        options={{ title: 'Join Group' }}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ManageMembers"
+        component={ManageMembersScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="InviteMembers"
+        component={InviteMembersScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

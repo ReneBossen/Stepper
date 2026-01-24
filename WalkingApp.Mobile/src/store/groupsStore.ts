@@ -78,6 +78,32 @@ export interface GroupDetail extends Group {
   period_display: string;
 }
 
+/**
+ * Full group details for management screen.
+ */
+export interface GroupManagementDetail {
+  id: string;
+  name: string;
+  description?: string;
+  competition_type: 'daily' | 'weekly' | 'monthly';
+  is_private: boolean;
+  require_approval: boolean;
+  join_code?: string;
+  created_by_id: string;
+  member_count: number;
+  user_role?: 'owner' | 'admin' | 'member';
+}
+
+/**
+ * Data for updating a group.
+ */
+export interface UpdateGroupData {
+  name?: string;
+  description?: string;
+  is_private?: boolean;
+  require_approval?: boolean;
+}
+
 interface GroupsState {
   // List screen state
   myGroups: GroupWithLeaderboard[];
@@ -89,6 +115,19 @@ interface GroupsState {
   leaderboard: LeaderboardEntry[];
   isLoadingDetail: boolean;
   detailError: string | null;
+
+  // Management screen state
+  managementGroup: GroupManagementDetail | null;
+  members: GroupMember[];
+  pendingMembers: GroupMember[];
+  inviteCode: string | null;
+  isLoadingManagement: boolean;
+  managementError: string | null;
+
+  // Search state
+  publicGroups: Group[];
+  isSearching: boolean;
+  searchError: string | null;
 
   // Legacy support (deprecated, use myGroups instead)
   groups: Group[];
@@ -105,6 +144,24 @@ interface GroupsState {
   joinGroupByCode: (code: string) => Promise<string>;
   leaveGroup: (groupId: string) => Promise<void>;
   clearCurrentGroup: () => void;
+
+  // Management actions
+  fetchGroupDetails: (groupId: string) => Promise<void>;
+  searchPublicGroups: (query: string) => Promise<void>;
+  updateGroup: (groupId: string, data: UpdateGroupData) => Promise<void>;
+  deleteGroup: (groupId: string) => Promise<void>;
+  fetchMembers: (groupId: string) => Promise<void>;
+  promoteMember: (groupId: string, userId: string) => Promise<void>;
+  demoteMember: (groupId: string, userId: string) => Promise<void>;
+  removeMember: (groupId: string, userId: string) => Promise<void>;
+  fetchPendingMembers: (groupId: string) => Promise<void>;
+  approveMember: (groupId: string, userId: string) => Promise<void>;
+  denyMember: (groupId: string, userId: string) => Promise<void>;
+  fetchInviteCode: (groupId: string) => Promise<void>;
+  generateInviteCode: (groupId: string) => Promise<void>;
+  inviteFriends: (groupId: string, friendIds: string[]) => Promise<void>;
+  clearManagementState: () => void;
+  clearSearch: () => void;
 }
 
 export const useGroupsStore = create<GroupsState>((set, get) => ({
@@ -118,6 +175,19 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   leaderboard: [],
   isLoadingDetail: false,
   detailError: null,
+
+  // Management screen state
+  managementGroup: null,
+  members: [],
+  pendingMembers: [],
+  inviteCode: null,
+  isLoadingManagement: false,
+  managementError: null,
+
+  // Search state
+  publicGroups: [],
+  isSearching: false,
+  searchError: null,
 
   // Legacy support
   groups: [],
@@ -248,5 +318,231 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
    */
   clearCurrentGroup: () => {
     set({ currentGroup: null, leaderboard: [] });
+  },
+
+  /**
+   * Fetch full group details for management screen.
+   */
+  fetchGroupDetails: async (groupId) => {
+    set({ isLoadingManagement: true, managementError: null });
+    try {
+      const group = await groupsApi.getGroupDetails(groupId);
+      set({ managementGroup: group, isLoadingManagement: false });
+    } catch (error: unknown) {
+      set({ managementError: getErrorMessage(error), isLoadingManagement: false });
+    }
+  },
+
+  /**
+   * Search for public groups.
+   */
+  searchPublicGroups: async (query) => {
+    set({ isSearching: true, searchError: null });
+    try {
+      const publicGroups = await groupsApi.searchPublicGroups(query);
+      set({ publicGroups, isSearching: false });
+    } catch (error: unknown) {
+      set({ searchError: getErrorMessage(error), isSearching: false });
+    }
+  },
+
+  /**
+   * Update group details.
+   */
+  updateGroup: async (groupId, data) => {
+    set({ isLoadingManagement: true, managementError: null });
+    try {
+      await groupsApi.updateGroup(groupId, data);
+      // Refresh group details
+      const group = await groupsApi.getGroupDetails(groupId);
+      set({ managementGroup: group, isLoadingManagement: false });
+      // Also refresh my groups list
+      const myGroups = await groupsApi.getMyGroups();
+      set({ myGroups });
+    } catch (error: unknown) {
+      set({ managementError: getErrorMessage(error), isLoadingManagement: false });
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a group.
+   */
+  deleteGroup: async (groupId) => {
+    set({ isLoadingManagement: true, managementError: null });
+    try {
+      await groupsApi.deleteGroup(groupId);
+      // Refresh my groups list
+      const myGroups = await groupsApi.getMyGroups();
+      set({ myGroups, isLoadingManagement: false });
+    } catch (error: unknown) {
+      set({ managementError: getErrorMessage(error), isLoadingManagement: false });
+      throw error;
+    }
+  },
+
+  /**
+   * Fetch group members.
+   */
+  fetchMembers: async (groupId) => {
+    set({ isLoadingManagement: true, managementError: null });
+    try {
+      const members = await groupsApi.getMembers(groupId);
+      set({ members, isLoadingManagement: false });
+    } catch (error: unknown) {
+      set({ managementError: getErrorMessage(error), isLoadingManagement: false });
+    }
+  },
+
+  /**
+   * Promote a member to admin.
+   */
+  promoteMember: async (groupId, userId) => {
+    set({ isLoadingManagement: true, managementError: null });
+    try {
+      await groupsApi.promoteMember(groupId, userId);
+      const members = await groupsApi.getMembers(groupId);
+      set({ members, isLoadingManagement: false });
+    } catch (error: unknown) {
+      set({ managementError: getErrorMessage(error), isLoadingManagement: false });
+      throw error;
+    }
+  },
+
+  /**
+   * Demote an admin to member.
+   */
+  demoteMember: async (groupId, userId) => {
+    set({ isLoadingManagement: true, managementError: null });
+    try {
+      await groupsApi.demoteMember(groupId, userId);
+      const members = await groupsApi.getMembers(groupId);
+      set({ members, isLoadingManagement: false });
+    } catch (error: unknown) {
+      set({ managementError: getErrorMessage(error), isLoadingManagement: false });
+      throw error;
+    }
+  },
+
+  /**
+   * Remove a member from the group.
+   */
+  removeMember: async (groupId, userId) => {
+    set({ isLoadingManagement: true, managementError: null });
+    try {
+      await groupsApi.removeMember(groupId, userId);
+      const members = await groupsApi.getMembers(groupId);
+      set({ members, isLoadingManagement: false });
+    } catch (error: unknown) {
+      set({ managementError: getErrorMessage(error), isLoadingManagement: false });
+      throw error;
+    }
+  },
+
+  /**
+   * Fetch pending member requests.
+   */
+  fetchPendingMembers: async (groupId) => {
+    set({ isLoadingManagement: true, managementError: null });
+    try {
+      const pendingMembers = await groupsApi.getPendingMembers(groupId);
+      set({ pendingMembers, isLoadingManagement: false });
+    } catch (error: unknown) {
+      set({ managementError: getErrorMessage(error), isLoadingManagement: false });
+    }
+  },
+
+  /**
+   * Approve a pending member request.
+   */
+  approveMember: async (groupId, userId) => {
+    set({ isLoadingManagement: true, managementError: null });
+    try {
+      await groupsApi.approveMember(groupId, userId);
+      const [members, pendingMembers] = await Promise.all([
+        groupsApi.getMembers(groupId),
+        groupsApi.getPendingMembers(groupId),
+      ]);
+      set({ members, pendingMembers, isLoadingManagement: false });
+    } catch (error: unknown) {
+      set({ managementError: getErrorMessage(error), isLoadingManagement: false });
+      throw error;
+    }
+  },
+
+  /**
+   * Deny a pending member request.
+   */
+  denyMember: async (groupId, userId) => {
+    set({ isLoadingManagement: true, managementError: null });
+    try {
+      await groupsApi.denyMember(groupId, userId);
+      const pendingMembers = await groupsApi.getPendingMembers(groupId);
+      set({ pendingMembers, isLoadingManagement: false });
+    } catch (error: unknown) {
+      set({ managementError: getErrorMessage(error), isLoadingManagement: false });
+      throw error;
+    }
+  },
+
+  /**
+   * Fetch the current invite code.
+   */
+  fetchInviteCode: async (groupId) => {
+    set({ isLoadingManagement: true, managementError: null });
+    try {
+      const inviteCode = await groupsApi.getInviteCode(groupId);
+      set({ inviteCode, isLoadingManagement: false });
+    } catch (error: unknown) {
+      set({ managementError: getErrorMessage(error), isLoadingManagement: false });
+    }
+  },
+
+  /**
+   * Generate a new invite code.
+   */
+  generateInviteCode: async (groupId) => {
+    set({ isLoadingManagement: true, managementError: null });
+    try {
+      const inviteCode = await groupsApi.generateInviteCode(groupId);
+      set({ inviteCode, isLoadingManagement: false });
+    } catch (error: unknown) {
+      set({ managementError: getErrorMessage(error), isLoadingManagement: false });
+      throw error;
+    }
+  },
+
+  /**
+   * Invite friends to the group.
+   */
+  inviteFriends: async (groupId, friendIds) => {
+    set({ isLoadingManagement: true, managementError: null });
+    try {
+      await groupsApi.inviteFriends(groupId, friendIds);
+      set({ isLoadingManagement: false });
+    } catch (error: unknown) {
+      set({ managementError: getErrorMessage(error), isLoadingManagement: false });
+      throw error;
+    }
+  },
+
+  /**
+   * Clear management state when leaving management screens.
+   */
+  clearManagementState: () => {
+    set({
+      managementGroup: null,
+      members: [],
+      pendingMembers: [],
+      inviteCode: null,
+      managementError: null,
+    });
+  },
+
+  /**
+   * Clear search state.
+   */
+  clearSearch: () => {
+    set({ publicGroups: [], searchError: null });
   },
 }));

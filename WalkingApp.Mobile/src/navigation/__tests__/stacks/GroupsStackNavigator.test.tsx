@@ -38,6 +38,16 @@ jest.mock('@screens/groups/JoinGroupScreen', () => ({
   default: () => <View testID="join-group-screen" />,
 }));
 
+jest.mock('@screens/groups/ManageMembersScreen', () => ({
+  __esModule: true,
+  default: () => <View testID="manage-members-screen" />,
+}));
+
+jest.mock('@screens/groups/InviteMembersScreen', () => ({
+  __esModule: true,
+  default: () => <View testID="invite-members-screen" />,
+}));
+
 import GroupsStackNavigator from '../../stacks/GroupsStackNavigator';
 
 describe('GroupsStackNavigator', () => {
@@ -64,5 +74,15 @@ describe('GroupsStackNavigator', () => {
   it('GroupsStackNavigator_WhenRendered_DisplaysJoinGroupScreen', () => {
     const { getByTestId } = render(<GroupsStackNavigator />);
     expect(getByTestId('join-group-screen')).toBeTruthy();
+  });
+
+  it('GroupsStackNavigator_WhenRendered_DisplaysManageMembersScreen', () => {
+    const { getByTestId } = render(<GroupsStackNavigator />);
+    expect(getByTestId('manage-members-screen')).toBeTruthy();
+  });
+
+  it('GroupsStackNavigator_WhenRendered_DisplaysInviteMembersScreen', () => {
+    const { getByTestId } = render(<GroupsStackNavigator />);
+    expect(getByTestId('invite-members-screen')).toBeTruthy();
   });
 });

@@ -323,7 +323,6 @@ export const groupsApi = {
         joined_at,
         users (
           display_name,
-          username,
           avatar_url
         )
       `)
@@ -334,7 +333,7 @@ export const groupsApi = {
     return (data || []).map((member: any, index: number) => ({
       user_id: member.user_id,
       display_name: member.users.display_name,
-      username: member.users.username,
+      username: member.users.display_name, // Use display_name as username fallback
       avatar_url: member.users.avatar_url,
       role: member.role,
       joined_at: member.joined_at,
@@ -466,6 +465,271 @@ export const groupsApi = {
 
     return () => {
       supabase.removeChannel(channel);
+    };
+  },
+
+  /**
+   * Search public groups by name.
+   */
+  searchPublicGroups: async (query: string): Promise<Group[]> => {
+    if (!query.trim()) return [];
+
+    const { data, error } = await supabase
+      .from('groups')
+      .select(`
+        *,
+        group_memberships(count)
+      `)
+      .eq('is_public', true)
+      .ilike('name', `%${query}%`)
+      .limit(20);
+
+    if (error) throw error;
+
+    return data?.map((group: any) => ({
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      competition_type: group.period_type,
+      is_private: !group.is_public,
+      member_count: group.group_memberships?.[0]?.count || 0,
+      created_at: group.created_at,
+    })) || [];
+  },
+
+  /**
+   * Update group details.
+   */
+  updateGroup: async (groupId: string, data: { name?: string; description?: string; is_private?: boolean; require_approval?: boolean }): Promise<void> => {
+    const updateData: Record<string, unknown> = {};
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.is_private !== undefined) updateData.is_public = !data.is_private;
+    if (data.require_approval !== undefined) updateData.require_approval = data.require_approval;
+
+    const { error } = await supabase
+      .from('groups')
+      .update(updateData)
+      .eq('id', groupId);
+
+    if (error) throw error;
+  },
+
+  /**
+   * Delete a group.
+   */
+  deleteGroup: async (groupId: string): Promise<void> => {
+    // First delete all memberships
+    await supabase
+      .from('group_memberships')
+      .delete()
+      .eq('group_id', groupId);
+
+    // Then delete the group
+    const { error } = await supabase
+      .from('groups')
+      .delete()
+      .eq('id', groupId);
+
+    if (error) throw error;
+  },
+
+  /**
+   * Promote a member to admin.
+   */
+  promoteMember: async (groupId: string, userId: string): Promise<void> => {
+    const { error } = await supabase
+      .from('group_memberships')
+      .update({ role: 'admin' })
+      .eq('group_id', groupId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+  },
+
+  /**
+   * Demote an admin to member.
+   */
+  demoteMember: async (groupId: string, userId: string): Promise<void> => {
+    const { error } = await supabase
+      .from('group_memberships')
+      .update({ role: 'member' })
+      .eq('group_id', groupId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+  },
+
+  /**
+   * Remove a member from the group.
+   */
+  removeMember: async (groupId: string, userId: string): Promise<void> => {
+    const { error } = await supabase
+      .from('group_memberships')
+      .delete()
+      .eq('group_id', groupId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+  },
+
+  /**
+   * Get pending join requests for a group.
+   */
+  getPendingMembers: async (groupId: string): Promise<GroupMember[]> => {
+    const { data, error } = await supabase
+      .from('group_memberships')
+      .select(`
+        user_id,
+        role,
+        joined_at,
+        users (
+          display_name,
+          avatar_url
+        )
+      `)
+      .eq('group_id', groupId)
+      .eq('role', 'pending');
+
+    if (error) throw error;
+
+    return (data || []).map((member: any, index: number) => ({
+      user_id: member.user_id,
+      display_name: member.users?.display_name || 'Unknown',
+      username: member.users?.display_name || '', // Use display_name as username fallback
+      avatar_url: member.users?.avatar_url,
+      role: member.role,
+      joined_at: member.joined_at,
+      steps: 0,
+      rank: index + 1,
+    }));
+  },
+
+  /**
+   * Approve a pending member request.
+   */
+  approveMember: async (groupId: string, userId: string): Promise<void> => {
+    const { error } = await supabase
+      .from('group_memberships')
+      .update({ role: 'member' })
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .eq('role', 'pending');
+
+    if (error) throw error;
+  },
+
+  /**
+   * Deny a pending member request.
+   */
+  denyMember: async (groupId: string, userId: string): Promise<void> => {
+    const { error } = await supabase
+      .from('group_memberships')
+      .delete()
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .eq('role', 'pending');
+
+    if (error) throw error;
+  },
+
+  /**
+   * Get the current invite code for a group.
+   */
+  getInviteCode: async (groupId: string): Promise<string | null> => {
+    const { data, error } = await supabase
+      .from('groups')
+      .select('join_code')
+      .eq('id', groupId)
+      .single();
+
+    if (error) throw error;
+
+    return data?.join_code || null;
+  },
+
+  /**
+   * Generate a new invite code for a group.
+   */
+  generateInviteCode: async (groupId: string): Promise<string> => {
+    const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    const { error } = await supabase
+      .from('groups')
+      .update({ join_code: newCode })
+      .eq('id', groupId);
+
+    if (error) throw error;
+
+    return newCode;
+  },
+
+  /**
+   * Invite friends to a group.
+   */
+  inviteFriends: async (groupId: string, friendIds: string[]): Promise<void> => {
+    const memberships = friendIds.map(userId => ({
+      group_id: groupId,
+      user_id: userId,
+      role: 'pending',
+    }));
+
+    const { error } = await supabase
+      .from('group_memberships')
+      .insert(memberships);
+
+    if (error) throw error;
+  },
+
+  /**
+   * Get full group details including require_approval setting.
+   */
+  getGroupDetails: async (groupId: string): Promise<{
+    id: string;
+    name: string;
+    description?: string;
+    competition_type: 'daily' | 'weekly' | 'monthly';
+    is_private: boolean;
+    require_approval: boolean;
+    join_code?: string;
+    created_by_id: string;
+    member_count: number;
+    user_role?: 'owner' | 'admin' | 'member';
+  }> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('groups')
+      .select(`
+        *,
+        group_memberships(count)
+      `)
+      .eq('id', groupId)
+      .single();
+
+    if (error) throw error;
+
+    // Get user's role in this group
+    const { data: membershipData } = await supabase
+      .from('group_memberships')
+      .select('role')
+      .eq('group_id', groupId)
+      .eq('user_id', user.id)
+      .single();
+
+    return {
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      competition_type: data.period_type,
+      is_private: !data.is_public,
+      require_approval: data.require_approval || false,
+      join_code: data.join_code,
+      created_by_id: data.created_by_id,
+      member_count: data.group_memberships?.[0]?.count || 0,
+      user_role: membershipData?.role,
     };
   },
 };
