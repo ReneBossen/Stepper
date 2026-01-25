@@ -590,7 +590,7 @@ public class GroupsControllerTests
         };
         SetupAuthenticatedUser(userId);
 
-        _mockGroupService.Setup(x => x.GetMembersAsync(userId, groupId))
+        _mockGroupService.Setup(x => x.GetMembersAsync(userId, groupId, It.IsAny<string?>()))
             .ReturnsAsync(members);
 
         // Act
@@ -603,7 +603,7 @@ public class GroupsControllerTests
         apiResponse.Success.Should().BeTrue();
         apiResponse.Data.Should().NotBeNull();
         apiResponse.Data!.Should().HaveCount(2);
-        _mockGroupService.Verify(x => x.GetMembersAsync(userId, groupId), Times.Once);
+        _mockGroupService.Verify(x => x.GetMembersAsync(userId, groupId, It.IsAny<string?>()), Times.Once);
     }
 
     [Fact]
@@ -614,7 +614,7 @@ public class GroupsControllerTests
         var groupId = Guid.NewGuid();
         SetupAuthenticatedUser(userId);
 
-        _mockGroupService.Setup(x => x.GetMembersAsync(userId, groupId))
+        _mockGroupService.Setup(x => x.GetMembersAsync(userId, groupId, It.IsAny<string?>()))
             .ThrowsAsync(new UnauthorizedAccessException("You are not a member of this group."));
 
         // Act
