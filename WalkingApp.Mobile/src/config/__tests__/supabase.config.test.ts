@@ -22,7 +22,7 @@ describe('supabaseConfig', () => {
 
 describe('apiConfig', () => {
   it('should export correct API base URL', () => {
-    expect(apiConfig.baseUrl).toBe('http://localhost:5000/api');
+    expect(apiConfig.baseUrl).toBe('http://localhost:5000');
   });
 
   it('should have default timeout of 30 seconds', () => {
