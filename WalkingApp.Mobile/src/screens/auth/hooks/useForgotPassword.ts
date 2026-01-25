@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { resetPassword } from '@services/supabase';
+import { useAuthStore } from '@store/authStore';
 
 export const useForgotPassword = () => {
   const [email, setEmail] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const validateEmail = (email: string): boolean => {
+  const resetPassword = useAuthStore((state) => state.resetPassword);
+  const isLoading = useAuthStore((state) => state.isLoading);
+
+  const validateEmail = (emailValue: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    return emailRegex.test(emailValue);
   };
 
   const handleResetPassword = async () => {
@@ -26,17 +28,13 @@ export const useForgotPassword = () => {
       return;
     }
 
-    setIsLoading(true);
-
     try {
       await resetPassword(email.trim().toLowerCase());
       setEmailSent(true);
-    } catch (err: unknown) {
+    } catch {
       // For security, show generic message even if email doesn't exist
       // We intentionally don't expose the actual error message
       setError('If an account exists with this email, you will receive a password reset link.');
-    } finally {
-      setIsLoading(false);
     }
   };
 

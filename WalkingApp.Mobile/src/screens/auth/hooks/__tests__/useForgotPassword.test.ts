@@ -1,15 +1,29 @@
 import { renderHook, act } from '@testing-library/react-native';
 import { useForgotPassword } from '../useForgotPassword';
-import * as supabaseService from '@services/supabase';
+import { useAuthStore } from '@store/authStore';
 
-// Mock the supabase service
-jest.mock('@services/supabase');
+// Mock the auth store
+jest.mock('@store/authStore');
 
-const mockResetPassword = supabaseService.resetPassword as jest.MockedFunction<typeof supabaseService.resetPassword>;
+const mockUseAuthStore = useAuthStore as jest.MockedFunction<typeof useAuthStore>;
 
 describe('useForgotPassword', () => {
+  let mockResetPassword: jest.Mock;
+  let mockIsLoading: boolean;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    mockResetPassword = jest.fn();
+    mockIsLoading = false;
+
+    // Default mock implementation
+    mockUseAuthStore.mockImplementation((selector) => {
+      const state = {
+        resetPassword: mockResetPassword,
+        isLoading: mockIsLoading,
+      };
+      return selector(state as any);
+    });
   });
 
   describe('useForgotPassword_InitialState_IsCorrect', () => {
@@ -224,25 +238,22 @@ describe('useForgotPassword', () => {
   });
 
   describe('useForgotPassword_LoadingState_UpdatesCorrectly', () => {
-    it('useForgotPassword_WhenHandleResetPasswordCalled_SetsIsLoadingTrue', async () => {
-      mockResetPassword.mockImplementation(() =>
-        new Promise((resolve) => setTimeout(() => resolve(undefined), 100))
-      );
+    it('useForgotPassword_WhenIsLoadingFromStore_ReflectsInHook', () => {
+      mockIsLoading = true;
+      mockUseAuthStore.mockImplementation((selector) => {
+        const state = {
+          resetPassword: mockResetPassword,
+          isLoading: mockIsLoading,
+        };
+        return selector(state as any);
+      });
 
       const { result } = renderHook(() => useForgotPassword());
-
-      act(() => {
-        result.current.setEmail('test@example.com');
-      });
-
-      act(() => {
-        result.current.handleResetPassword();
-      });
 
       expect(result.current.isLoading).toBe(true);
     });
 
-    it('useForgotPassword_WhenHandleResetPasswordCompletes_SetsIsLoadingFalse', async () => {
+    it('useForgotPassword_WhenHandleResetPasswordCompletes_IsLoadingFromStore', async () => {
       mockResetPassword.mockResolvedValue(undefined);
 
       const { result } = renderHook(() => useForgotPassword());
@@ -255,22 +266,7 @@ describe('useForgotPassword', () => {
         await result.current.handleResetPassword();
       });
 
-      expect(result.current.isLoading).toBe(false);
-    });
-
-    it('useForgotPassword_WhenHandleResetPasswordFails_SetsIsLoadingFalse', async () => {
-      mockResetPassword.mockRejectedValue(new Error('Network error'));
-
-      const { result } = renderHook(() => useForgotPassword());
-
-      act(() => {
-        result.current.setEmail('test@example.com');
-      });
-
-      await act(async () => {
-        await result.current.handleResetPassword();
-      });
-
+      // isLoading is now managed by the store, not the hook
       expect(result.current.isLoading).toBe(false);
     });
   });

@@ -1,6 +1,7 @@
-import { supabase } from '../supabase';
 import { API_CONFIG } from '../../config/api';
 import { ApiResponse, ApiError, ApiErrorResponse } from './types';
+import { tokenStorage } from '../tokenStorage';
+import { authApi } from './authApi';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
@@ -11,12 +12,41 @@ interface RequestOptions {
 }
 
 /**
- * Gets the current authentication token from Supabase.
- * Returns null if no session exists.
+ * Gets the current authentication token from secure storage.
+ * Automatically refreshes the token if expired.
+ *
+ * @returns The access token, or null if not authenticated
  */
 async function getAuthToken(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token ?? null;
+  const accessToken = await tokenStorage.getAccessToken();
+  if (!accessToken) {
+    return null;
+  }
+
+  // Check if token is expired and refresh if needed
+  const isExpired = await tokenStorage.isAccessTokenExpired();
+  if (isExpired) {
+    const refreshToken = await tokenStorage.getRefreshToken();
+    if (refreshToken) {
+      try {
+        const response = await authApi.refreshToken(refreshToken);
+        await tokenStorage.setTokens(
+          response.accessToken,
+          response.refreshToken,
+          response.expiresIn
+        );
+        return response.accessToken;
+      } catch {
+        // Refresh failed, clear tokens and return null
+        await tokenStorage.clearTokens();
+        return null;
+      }
+    }
+    // No refresh token available
+    return null;
+  }
+
+  return accessToken;
 }
 
 /**

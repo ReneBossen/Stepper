@@ -2,12 +2,21 @@ import { apiClient } from '../client';
 import { ApiError } from '../types';
 import { API_CONFIG } from '@config/api';
 
-// Mock the supabase client
-jest.mock('@services/supabase', () => ({
-  supabase: {
-    auth: {
-      getSession: jest.fn(),
-    },
+// Mock the token storage
+jest.mock('@services/tokenStorage', () => ({
+  tokenStorage: {
+    getAccessToken: jest.fn(),
+    getRefreshToken: jest.fn(),
+    isAccessTokenExpired: jest.fn(),
+    setTokens: jest.fn(),
+    clearTokens: jest.fn(),
+  },
+}));
+
+// Mock the auth API
+jest.mock('../authApi', () => ({
+  authApi: {
+    refreshToken: jest.fn(),
   },
 }));
 
@@ -20,9 +29,15 @@ jest.mock('@config/api', () => ({
 }));
 
 // Import after mocking
-import { supabase } from '@services/supabase';
+import { tokenStorage } from '@services/tokenStorage';
+import { authApi } from '../authApi';
 
-const mockGetSession = supabase.auth.getSession as jest.Mock;
+const mockGetAccessToken = tokenStorage.getAccessToken as jest.Mock;
+const mockGetRefreshToken = tokenStorage.getRefreshToken as jest.Mock;
+const mockIsAccessTokenExpired = tokenStorage.isAccessTokenExpired as jest.Mock;
+const mockSetTokens = tokenStorage.setTokens as jest.Mock;
+const mockClearTokens = tokenStorage.clearTokens as jest.Mock;
+const mockRefreshToken = authApi.refreshToken as jest.Mock;
 
 // Store original fetch
 const originalFetch = global.fetch;
@@ -38,11 +53,10 @@ describe('apiClient', () => {
     mockFetch = jest.fn();
     global.fetch = mockFetch;
 
-    // Default: no session
-    mockGetSession.mockResolvedValue({
-      data: { session: null },
-      error: null,
-    });
+    // Default: no token stored
+    mockGetAccessToken.mockResolvedValue(null);
+    mockGetRefreshToken.mockResolvedValue(null);
+    mockIsAccessTokenExpired.mockResolvedValue(false);
   });
 
   afterEach(() => {
@@ -51,15 +65,9 @@ describe('apiClient', () => {
   });
 
   describe('Auth token injection', () => {
-    it('should add Authorization header when session exists', async () => {
-      mockGetSession.mockResolvedValue({
-        data: {
-          session: {
-            access_token: 'test-jwt-token-12345',
-          },
-        },
-        error: null,
-      });
+    it('should add Authorization header when token exists and is not expired', async () => {
+      mockGetAccessToken.mockResolvedValue('test-jwt-token-12345');
+      mockIsAccessTokenExpired.mockResolvedValue(false);
 
       mockFetch.mockResolvedValue({
         ok: true,
@@ -79,11 +87,8 @@ describe('apiClient', () => {
       );
     });
 
-    it('should not add Authorization header when no session exists', async () => {
-      mockGetSession.mockResolvedValue({
-        data: { session: null },
-        error: null,
-      });
+    it('should not add Authorization header when no token exists', async () => {
+      mockGetAccessToken.mockResolvedValue(null);
 
       mockFetch.mockResolvedValue({
         ok: true,
@@ -103,15 +108,61 @@ describe('apiClient', () => {
       );
     });
 
-    it('should not add Authorization header when session access_token is null', async () => {
-      mockGetSession.mockResolvedValue({
-        data: {
-          session: {
-            access_token: null,
-          },
-        },
-        error: null,
+    it('should refresh token when expired and use new token', async () => {
+      mockGetAccessToken.mockResolvedValue('old-expired-token');
+      mockIsAccessTokenExpired.mockResolvedValue(true);
+      mockGetRefreshToken.mockResolvedValue('valid-refresh-token');
+      mockRefreshToken.mockResolvedValue({
+        accessToken: 'new-access-token',
+        refreshToken: 'new-refresh-token',
+        expiresIn: 3600,
+        user: { id: '123', email: 'test@test.com', displayName: 'Test' },
       });
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ success: true, data: null, errors: [] }),
+      });
+
+      await apiClient.get('/users/me');
+
+      expect(mockRefreshToken).toHaveBeenCalledWith('valid-refresh-token');
+      expect(mockSetTokens).toHaveBeenCalledWith('new-access-token', 'new-refresh-token', 3600);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer new-access-token',
+          }),
+        })
+      );
+    });
+
+    it('should clear tokens and return null when refresh fails', async () => {
+      mockGetAccessToken.mockResolvedValue('old-expired-token');
+      mockIsAccessTokenExpired.mockResolvedValue(true);
+      mockGetRefreshToken.mockResolvedValue('invalid-refresh-token');
+      mockRefreshToken.mockRejectedValue(new Error('Refresh failed'));
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ success: true, data: null, errors: [] }),
+      });
+
+      await apiClient.get('/public/endpoint');
+
+      expect(mockClearTokens).toHaveBeenCalled();
+      const callArgs = mockFetch.mock.calls[0];
+      const headers = callArgs[1].headers;
+      expect(headers['Authorization']).toBeUndefined();
+    });
+
+    it('should return null when expired but no refresh token available', async () => {
+      mockGetAccessToken.mockResolvedValue('old-expired-token');
+      mockIsAccessTokenExpired.mockResolvedValue(true);
+      mockGetRefreshToken.mockResolvedValue(null);
 
       mockFetch.mockResolvedValue({
         ok: true,
@@ -599,14 +650,8 @@ describe('apiClient', () => {
 
   describe('File upload', () => {
     it('should send FormData correctly', async () => {
-      mockGetSession.mockResolvedValue({
-        data: {
-          session: {
-            access_token: 'upload-token',
-          },
-        },
-        error: null,
-      });
+      mockGetAccessToken.mockResolvedValue('upload-token');
+      mockIsAccessTokenExpired.mockResolvedValue(false);
 
       mockFetch.mockResolvedValue({
         ok: true,
@@ -661,14 +706,8 @@ describe('apiClient', () => {
     });
 
     it('should include Authorization header for FormData uploads when authenticated', async () => {
-      mockGetSession.mockResolvedValue({
-        data: {
-          session: {
-            access_token: 'form-data-token',
-          },
-        },
-        error: null,
-      });
+      mockGetAccessToken.mockResolvedValue('form-data-token');
+      mockIsAccessTokenExpired.mockResolvedValue(false);
 
       mockFetch.mockResolvedValue({
         ok: true,

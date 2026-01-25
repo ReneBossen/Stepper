@@ -1,51 +1,35 @@
 // Create mocks that can be tracked
-const mockGetSession = jest.fn();
-const mockGetUser = jest.fn();
-const mockSignInWithPassword = jest.fn();
-const mockSignUp = jest.fn();
-const mockSignOut = jest.fn();
-const mockResetPasswordForEmail = jest.fn();
 const mockSignInWithOAuth = jest.fn();
-const mockSignInWithIdToken = jest.fn();
-const mockSetSession = jest.fn();
 const mockOnAuthStateChange = jest.fn(() => ({
   data: { subscription: { unsubscribe: jest.fn() } },
 }));
 
 // Track createClient calls
-let createClientCalls: any[] = [];
+let createClientCalls: unknown[] = [];
 
 // Mock @supabase/supabase-js before importing
 jest.mock('@supabase/supabase-js', () => ({
-  createClient: jest.fn((...args: any[]) => {
+  createClient: jest.fn((...args: unknown[]) => {
     createClientCalls.push(args);
     return {
       auth: {
-        getSession: mockGetSession,
-        getUser: mockGetUser,
-        signInWithPassword: mockSignInWithPassword,
-        signUp: mockSignUp,
-        signOut: mockSignOut,
-        resetPasswordForEmail: mockResetPasswordForEmail,
         signInWithOAuth: mockSignInWithOAuth,
-        signInWithIdToken: mockSignInWithIdToken,
-        setSession: mockSetSession,
         onAuthStateChange: mockOnAuthStateChange,
+        // These are kept for compatibility with existing code that still uses them
+        getUser: jest.fn(),
+        setSession: jest.fn(),
+        updateUser: jest.fn(),
+      },
+      // For database operations
+      from: jest.fn(),
+      storage: {
+        from: jest.fn(),
       },
     };
   }),
 }));
 
-import {
-  supabase,
-  getSession,
-  getCurrentUser,
-  signInWithEmail,
-  signUpWithEmail,
-  signOut,
-  resetPassword,
-} from '../supabase';
-import { ExpoSecureStoreAdapter } from '../secureStore';
+import { supabase, signInWithGoogleOAuth } from '../supabase';
 
 describe('Supabase Client', () => {
   beforeEach(() => {
@@ -54,14 +38,10 @@ describe('Supabase Client', () => {
 
   it('should create Supabase client with correct URL and key', () => {
     expect(createClientCalls.length).toBeGreaterThan(0);
-    const [url, key, config] = createClientCalls[0];
+    const [url, key] = createClientCalls[0] as [string, string, unknown];
 
     expect(url).toBe('https://test.supabase.co');
     expect(key).toBe('test-anon-key');
-    expect(config.auth.storage).toBe(ExpoSecureStoreAdapter);
-    expect(config.auth.autoRefreshToken).toBe(true);
-    expect(config.auth.persistSession).toBe(true);
-    expect(config.auth.detectSessionInUrl).toBe(false);
   });
 
   it('should export supabase client instance', () => {
@@ -69,381 +49,97 @@ describe('Supabase Client', () => {
     expect(supabase.auth).toBeDefined();
   });
 
-  it('should configure auth with SecureStore adapter', () => {
+  it('should disable auto refresh token (handled by tokenStorage)', () => {
     expect(createClientCalls.length).toBeGreaterThan(0);
-    const config = createClientCalls[0][2];
-    expect(config?.auth?.storage).toBe(ExpoSecureStoreAdapter);
+    const config = (createClientCalls[0] as [string, string, { auth?: { autoRefreshToken?: boolean } }])[2];
+    expect(config?.auth?.autoRefreshToken).toBe(false);
   });
 
-  it('should enable auto refresh token', () => {
+  it('should disable session persistence (handled by tokenStorage)', () => {
     expect(createClientCalls.length).toBeGreaterThan(0);
-    const config = createClientCalls[0][2];
-    expect(config?.auth?.autoRefreshToken).toBe(true);
-  });
-
-  it('should enable session persistence', () => {
-    expect(createClientCalls.length).toBeGreaterThan(0);
-    const config = createClientCalls[0][2];
-    expect(config?.auth?.persistSession).toBe(true);
+    const config = (createClientCalls[0] as [string, string, { auth?: { persistSession?: boolean } }])[2];
+    expect(config?.auth?.persistSession).toBe(false);
   });
 
   it('should disable session detection in URL', () => {
     expect(createClientCalls.length).toBeGreaterThan(0);
-    const config = createClientCalls[0][2];
+    const config = (createClientCalls[0] as [string, string, { auth?: { detectSessionInUrl?: boolean } }])[2];
     expect(config?.auth?.detectSessionInUrl).toBe(false);
   });
+
+  it('should not use ExpoSecureStoreAdapter (tokens handled separately)', () => {
+    expect(createClientCalls.length).toBeGreaterThan(0);
+    const config = (createClientCalls[0] as [string, string, { auth?: { storage?: unknown } }])[2];
+    expect(config?.auth?.storage).toBeUndefined();
+  });
 });
 
-describe('getSession', () => {
+describe('signInWithGoogleOAuth', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should return session when successful', async () => {
-    const mockSession = {
-      access_token: 'mock-token',
-      refresh_token: 'mock-refresh',
-      user: { id: '123', email: 'test@example.com' },
-    };
-
-    mockGetSession.mockResolvedValue({
-      data: { session: mockSession },
-      error: null,
-    });
-
-    const result = await getSession();
-
-    expect(mockGetSession).toHaveBeenCalled();
-    expect(result).toEqual(mockSession);
-  });
-
-  it('should return null when session does not exist', async () => {
-    mockGetSession.mockResolvedValue({
-      data: { session: null },
-      error: null,
-    });
-
-    const result = await getSession();
-
-    expect(result).toBeNull();
-  });
-
-  it('should handle errors and return null', async () => {
-    const mockError = { message: 'Session error' };
-    mockGetSession.mockResolvedValue({
-      data: { session: null },
-      error: mockError,
-    });
-
-    const result = await getSession();
-
-    expect(console.error).toHaveBeenCalledWith('Error getting session:', mockError);
-    expect(result).toBeNull();
-  });
-
-  it('should handle network errors gracefully', async () => {
-    const networkError = new Error('Network error');
-    mockGetSession.mockRejectedValue(networkError);
-
-    await expect(getSession()).rejects.toThrow('Network error');
-  });
-});
-
-describe('getCurrentUser', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should return user when successful', async () => {
-    const mockUser = {
-      id: '123',
-      email: 'test@example.com',
-      user_metadata: { display_name: 'Test User' },
-    };
-
-    mockGetUser.mockResolvedValue({
-      data: { user: mockUser },
-      error: null,
-    });
-
-    const result = await getCurrentUser();
-
-    expect(mockGetUser).toHaveBeenCalled();
-    expect(result).toEqual(mockUser);
-  });
-
-  it('should return null when user does not exist', async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: null },
-      error: null,
-    });
-
-    const result = await getCurrentUser();
-
-    expect(result).toBeNull();
-  });
-
-  it('should handle errors and return null', async () => {
-    const mockError = { message: 'User error' };
-    mockGetUser.mockResolvedValue({
-      data: { user: null },
-      error: mockError,
-    });
-
-    const result = await getCurrentUser();
-
-    expect(console.error).toHaveBeenCalledWith('Error getting user:', mockError);
-    expect(result).toBeNull();
-  });
-
-  it('should handle authentication errors', async () => {
-    const authError = { message: 'Invalid token' };
-    mockGetUser.mockResolvedValue({
-      data: { user: null },
-      error: authError,
-    });
-
-    const result = await getCurrentUser();
-
-    expect(result).toBeNull();
-  });
-});
-
-describe('signInWithEmail', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should sign in successfully with valid credentials', async () => {
+  it('should call signInWithOAuth with google provider', async () => {
     const mockData = {
-      user: { id: '123', email: 'test@example.com' },
-      session: { access_token: 'token' },
+      url: 'https://accounts.google.com/oauth...',
+      provider: 'google',
     };
 
-    mockSignInWithPassword.mockResolvedValue({
+    mockSignInWithOAuth.mockResolvedValue({
       data: mockData,
       error: null,
     });
 
-    const result = await signInWithEmail('test@example.com', 'password123');
+    const result = await signInWithGoogleOAuth();
 
-    expect(mockSignInWithPassword).toHaveBeenCalledWith({
-      email: 'test@example.com',
-      password: 'password123',
-    });
-    expect(result).toEqual(mockData);
-  });
-
-  it('should throw error when credentials are invalid', async () => {
-    const mockError = { message: 'Invalid login credentials' };
-    mockSignInWithPassword.mockResolvedValue({
-      data: null,
-      error: mockError,
-    });
-
-    await expect(
-      signInWithEmail('test@example.com', 'wrongpassword')
-    ).rejects.toEqual(mockError);
-  });
-
-  it('should throw error when email is not found', async () => {
-    const mockError = { message: 'User not found' };
-    mockSignInWithPassword.mockResolvedValue({
-      data: null,
-      error: mockError,
-    });
-
-    await expect(
-      signInWithEmail('nonexistent@example.com', 'password123')
-    ).rejects.toEqual(mockError);
-  });
-
-  it('should handle network errors', async () => {
-    const networkError = new Error('Network request failed');
-    mockSignInWithPassword.mockRejectedValue(networkError);
-
-    await expect(
-      signInWithEmail('test@example.com', 'password123')
-    ).rejects.toThrow('Network request failed');
-  });
-
-  it('should call signInWithPassword with correct parameters', async () => {
-    mockSignInWithPassword.mockResolvedValue({
-      data: { user: {}, session: {} },
-      error: null,
-    });
-
-    await signInWithEmail('user@test.com', 'secure-password');
-
-    expect(mockSignInWithPassword).toHaveBeenCalledWith({
-      email: 'user@test.com',
-      password: 'secure-password',
-    });
-  });
-});
-
-describe('signUpWithEmail', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should sign up successfully with valid data', async () => {
-    const mockData = {
-      user: { id: '123', email: 'newuser@example.com' },
-      session: { access_token: 'token' },
-    };
-
-    mockSignUp.mockResolvedValue({
-      data: mockData,
-      error: null,
-    });
-
-    const result = await signUpWithEmail(
-      'newuser@example.com',
-      'password123',
-      'New User'
-    );
-
-    expect(mockSignUp).toHaveBeenCalledWith({
-      email: 'newuser@example.com',
-      password: 'password123',
+    expect(mockSignInWithOAuth).toHaveBeenCalledWith({
+      provider: 'google',
       options: {
-        data: {
-          display_name: 'New User',
-        },
+        redirectTo: 'walkingapp://',
+        skipBrowserRedirect: false,
       },
     });
     expect(result).toEqual(mockData);
   });
 
-  it('should throw error when email already exists', async () => {
-    const mockError = { message: 'User already registered' };
-    mockSignUp.mockResolvedValue({
+  it('should throw error when OAuth fails', async () => {
+    const mockError = { message: 'OAuth configuration error' };
+    mockSignInWithOAuth.mockResolvedValue({
       data: null,
       error: mockError,
     });
 
-    await expect(
-      signUpWithEmail('existing@example.com', 'password123', 'Existing User')
-    ).rejects.toEqual(mockError);
-  });
-
-  it('should throw error when password is too weak', async () => {
-    const mockError = { message: 'Password must be at least 6 characters' };
-    mockSignUp.mockResolvedValue({
-      data: null,
-      error: mockError,
-    });
-
-    await expect(
-      signUpWithEmail('test@example.com', '123', 'Test User')
-    ).rejects.toEqual(mockError);
-  });
-
-  it('should include display name in user metadata', async () => {
-    mockSignUp.mockResolvedValue({
-      data: { user: {}, session: {} },
-      error: null,
-    });
-
-    await signUpWithEmail('test@example.com', 'password123', 'John Doe');
-
-    const call = mockSignUp.mock.calls[0][0];
-    expect(call.options.data.display_name).toBe('John Doe');
-  });
-
-  it('should handle special characters in display name', async () => {
-    mockSignUp.mockResolvedValue({
-      data: { user: {}, session: {} },
-      error: null,
-    });
-
-    await signUpWithEmail('test@example.com', 'password123', "O'Brien-Smith");
-
-    const call = mockSignUp.mock.calls[0][0];
-    expect(call.options.data.display_name).toBe("O'Brien-Smith");
-  });
-});
-
-describe('signOut', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should sign out successfully', async () => {
-    mockSignOut.mockResolvedValue({ error: null });
-
-    await signOut();
-
-    expect(mockSignOut).toHaveBeenCalled();
-  });
-
-  it('should throw error when sign out fails', async () => {
-    const mockError = { message: 'Sign out failed' };
-    mockSignOut.mockResolvedValue({ error: mockError });
-
-    await expect(signOut()).rejects.toEqual(mockError);
-  });
-
-  it('should handle network errors during sign out', async () => {
-    const networkError = new Error('Network error');
-    mockSignOut.mockRejectedValue(networkError);
-
-    await expect(signOut()).rejects.toThrow('Network error');
-  });
-
-  it('should call signOut with global scope', async () => {
-    mockSignOut.mockResolvedValue({ error: null });
-
-    await signOut();
-
-    expect(mockSignOut).toHaveBeenCalledWith({ scope: 'global' });
-  });
-});
-
-describe('resetPassword', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should send password reset email successfully', async () => {
-    mockResetPasswordForEmail.mockResolvedValue({ error: null });
-
-    await resetPassword('test@example.com');
-
-    expect(mockResetPasswordForEmail).toHaveBeenCalledWith(
-      'test@example.com',
-      { redirectTo: 'walkingapp://reset-password' }
-    );
-  });
-
-  it('should throw error when email is invalid', async () => {
-    const mockError = { message: 'Invalid email' };
-    mockResetPasswordForEmail.mockResolvedValue({ error: mockError });
-
-    await expect(resetPassword('invalid-email')).rejects.toEqual(mockError);
-  });
-
-  it('should throw error when email does not exist', async () => {
-    const mockError = { message: 'User not found' };
-    mockResetPasswordForEmail.mockResolvedValue({ error: mockError });
-
-    await expect(resetPassword('nonexistent@example.com')).rejects.toEqual(mockError);
+    await expect(signInWithGoogleOAuth()).rejects.toEqual(mockError);
   });
 
   it('should use correct redirect URL for deep linking', async () => {
-    mockResetPasswordForEmail.mockResolvedValue({ error: null });
+    mockSignInWithOAuth.mockResolvedValue({
+      data: { url: 'https://...' },
+      error: null,
+    });
 
-    await resetPassword('test@example.com');
+    await signInWithGoogleOAuth();
 
-    const call = mockResetPasswordForEmail.mock.calls[0];
-    expect(call[1].redirectTo).toBe('walkingapp://reset-password');
+    const call = mockSignInWithOAuth.mock.calls[0][0];
+    expect(call.options.redirectTo).toBe('walkingapp://');
+  });
+
+  it('should not skip browser redirect', async () => {
+    mockSignInWithOAuth.mockResolvedValue({
+      data: { url: 'https://...' },
+      error: null,
+    });
+
+    await signInWithGoogleOAuth();
+
+    const call = mockSignInWithOAuth.mock.calls[0][0];
+    expect(call.options.skipBrowserRedirect).toBe(false);
   });
 
   it('should handle network errors', async () => {
     const networkError = new Error('Network error');
-    mockResetPasswordForEmail.mockRejectedValue(networkError);
+    mockSignInWithOAuth.mockRejectedValue(networkError);
 
-    await expect(resetPassword('test@example.com')).rejects.toThrow('Network error');
+    await expect(signInWithGoogleOAuth()).rejects.toThrow('Network error');
   });
 });
