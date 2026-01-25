@@ -5,6 +5,7 @@ using WalkingApp.Api.Common.Database;
 using WalkingApp.Api.Friends;
 using WalkingApp.Api.Friends.Discovery;
 using WalkingApp.Api.Groups;
+using WalkingApp.Api.Notifications;
 using WalkingApp.Api.Steps;
 using WalkingApp.Api.Users;
 
@@ -109,6 +110,19 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<IActivityRepository, ActivityRepository>();
         services.AddScoped<IActivityService, ActivityService>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers notification-related services in the dependency injection container.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddNotificationServices(this IServiceCollection services)
+    {
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<INotificationService, NotificationService>();
 
         return services;
     }

@@ -34,6 +34,9 @@ builder.Services.AddAuthServices();
 // Add activity services
 builder.Services.AddActivityServices();
 
+// Add notification services
+builder.Services.AddNotificationServices();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
