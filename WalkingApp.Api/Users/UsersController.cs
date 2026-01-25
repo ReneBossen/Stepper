@@ -9,7 +9,7 @@ namespace WalkingApp.Api.Users;
 /// Controller for user profile management endpoints.
 /// </summary>
 [ApiController]
-[Route("api/users")]
+[Route("api/v1/users")]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;

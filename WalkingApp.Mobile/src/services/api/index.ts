@@ -1,3 +1,8 @@
+// Re-export HTTP client and types
+export { apiClient } from './client';
+export { ApiError } from './types';
+export type { ApiResponse, ApiErrorResponse } from './types';
+
 // Re-export all API services for convenience
 export { usersApi } from './usersApi';
 export { userPreferencesApi } from './userPreferencesApi';

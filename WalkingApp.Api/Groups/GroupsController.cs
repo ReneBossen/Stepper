@@ -9,7 +9,7 @@ namespace WalkingApp.Api.Groups;
 /// Controller for group-related operations.
 /// </summary>
 [ApiController]
-[Route("api/groups")]
+[Route("api/v1/groups")]
 public class GroupsController : ControllerBase
 {
     private readonly IGroupService _groupService;

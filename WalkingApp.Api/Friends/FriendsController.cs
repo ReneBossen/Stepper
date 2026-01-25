@@ -9,7 +9,7 @@ namespace WalkingApp.Api.Friends;
 /// Controller for friend-related operations.
 /// </summary>
 [ApiController]
-[Route("api/friends")]
+[Route("api/v1/friends")]
 public class FriendsController : ControllerBase
 {
     private readonly IFriendService _friendService;

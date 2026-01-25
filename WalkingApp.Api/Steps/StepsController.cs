@@ -9,7 +9,7 @@ namespace WalkingApp.Api.Steps;
 /// Controller for step tracking endpoints.
 /// </summary>
 [ApiController]
-[Route("api/steps")]
+[Route("api/v1/steps")]
 public class StepsController : ControllerBase
 {
     private readonly IStepService _stepService;

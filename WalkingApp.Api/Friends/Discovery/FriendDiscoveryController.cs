@@ -9,7 +9,7 @@ namespace WalkingApp.Api.Friends.Discovery;
 /// Controller for friend discovery operations.
 /// </summary>
 [ApiController]
-[Route("api/friends/discovery")]
+[Route("api/v1/friends/discovery")]
 public class FriendDiscoveryController : ControllerBase
 {
     private readonly IFriendDiscoveryService _discoveryService;
