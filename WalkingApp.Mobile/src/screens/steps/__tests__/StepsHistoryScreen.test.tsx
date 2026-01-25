@@ -134,7 +134,6 @@ describe('StepsHistoryScreen', () => {
   const mockFetchDailyHistory = jest.fn();
 
   const createMockEntry = (overrides: Partial<DailyStepEntry> = {}): DailyStepEntry => ({
-    id: 'entry-1',
     date: '2024-01-15',
     steps: 8500,
     distanceMeters: 6800,
@@ -143,7 +142,6 @@ describe('StepsHistoryScreen', () => {
 
   const createMockEntries = (count: number): DailyStepEntry[] => {
     return Array.from({ length: count }, (_, index) => ({
-      id: `entry-${index}`,
       date: `2024-01-${String(15 - index).padStart(2, '0')}`,
       steps: 8000 + index * 500,
       distanceMeters: (8000 + index * 500) * 0.8,
@@ -237,7 +235,7 @@ describe('StepsHistoryScreen', () => {
 
     it('should render FlatList for history items', () => {
       const { getByTestId } = render(<StepsHistoryScreen />);
-      expect(getByTestId('history-item-entry-0')).toBeTruthy();
+      expect(getByTestId('history-item-2024-01-15')).toBeTruthy();
     });
   });
 
@@ -345,7 +343,7 @@ describe('StepsHistoryScreen', () => {
       const { queryByTestId, queryByText } = render(<StepsHistoryScreen />);
       // FlatList ListEmptyComponent renders when there's no data
       // The exact text might be in empty component which may not render in test
-      expect(queryByTestId('history-item-entry-0')).toBeNull();
+      expect(queryByTestId('history-item-2024-01-15')).toBeNull();
     });
 
     it('should not render history items when empty', () => {
@@ -358,7 +356,7 @@ describe('StepsHistoryScreen', () => {
       });
 
       const { queryByTestId } = render(<StepsHistoryScreen />);
-      expect(queryByTestId('history-item-entry-0')).toBeNull();
+      expect(queryByTestId('history-item-2024-01-15')).toBeNull();
     });
   });
 
@@ -422,7 +420,7 @@ describe('StepsHistoryScreen', () => {
   describe('history list', () => {
     it('should render history items', () => {
       const { getByTestId } = render(<StepsHistoryScreen />);
-      expect(getByTestId('history-item-entry-0')).toBeTruthy();
+      expect(getByTestId('history-item-2024-01-15')).toBeTruthy();
     });
 
     it('should pass correct props to history items', () => {
@@ -467,8 +465,8 @@ describe('StepsHistoryScreen', () => {
     it('should render all history items from store', () => {
       const { getByTestId } = render(<StepsHistoryScreen />);
       // Verify that history items are rendered
-      expect(getByTestId('history-item-entry-0')).toBeTruthy();
-      expect(getByTestId('history-item-entry-6')).toBeTruthy();
+      expect(getByTestId('history-item-2024-01-15')).toBeTruthy();
+      expect(getByTestId('history-item-2024-01-09')).toBeTruthy();
     });
 
     it('should update list when data changes', () => {
@@ -482,10 +480,10 @@ describe('StepsHistoryScreen', () => {
       });
 
       const { getByTestId, queryByTestId } = render(<StepsHistoryScreen />);
-      expect(getByTestId('history-item-entry-0')).toBeTruthy();
-      expect(getByTestId('history-item-entry-2')).toBeTruthy();
+      expect(getByTestId('history-item-2024-01-15')).toBeTruthy();
+      expect(getByTestId('history-item-2024-01-13')).toBeTruthy();
       // Entry 3 should not exist since we only have 3 entries (0, 1, 2)
-      expect(queryByTestId('history-item-entry-3')).toBeNull();
+      expect(queryByTestId('history-item-2024-01-12')).toBeNull();
     });
   });
 });

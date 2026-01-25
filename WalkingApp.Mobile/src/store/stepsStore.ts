@@ -1,29 +1,22 @@
 import { create } from 'zustand';
-import { stepsApi } from '@services/api/stepsApi';
+import {
+  stepsApi,
+  StepEntry,
+  StepStats,
+  DailyStepsResponse,
+  RecordStepsRequest,
+} from '@services/api/stepsApi';
 import { getErrorMessage } from '@utils/errorUtils';
 
-export interface StepEntry {
-  id: string;
-  user_id: string;
-  date: string;
-  step_count: number;
-  distance_meters: number;
-  created_at: string;
-}
-
-export interface StepStats {
-  today: number;
-  week: number;
-  month: number;
-  average: number;
-  streak: number;
-}
+// Re-export types for consumers
+export type { StepEntry, StepStats, DailyStepsResponse, RecordStepsRequest };
 
 /**
  * Represents a daily step entry for history display.
+ * This is a simpler view model for UI display purposes.
  */
 export interface DailyStepEntry {
-  id: string;
+  id?: string;
   date: string;
   steps: number;
   distanceMeters: number;
@@ -31,6 +24,7 @@ export interface DailyStepEntry {
 
 interface StepsState {
   todaySteps: number;
+  todayDistance: number;
   stats: StepStats | null;
   history: StepEntry[];
   dailyHistory: DailyStepEntry[];
@@ -40,15 +34,36 @@ interface StepsState {
   historyError: string | null;
 
   // Actions
-  addSteps: (steps: number, distanceMeters: number) => Promise<void>;
+  addSteps: (steps: number, distanceMeters: number, source?: string) => Promise<void>;
   fetchTodaySteps: () => Promise<void>;
   fetchStats: () => Promise<void>;
   fetchHistory: (period: 'daily' | 'weekly' | 'monthly') => Promise<void>;
   fetchDailyHistory: (startDate: string, endDate: string) => Promise<void>;
 }
 
+/**
+ * Calculates the start date for a given period relative to today.
+ *
+ * @param period - The time period ('daily', 'weekly', or 'monthly')
+ * @returns The start date in YYYY-MM-DD format
+ */
+function getStartDateForPeriod(period: 'daily' | 'weekly' | 'monthly'): string {
+  const daysAgo = period === 'monthly' ? 30 : 7;
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  return date.toISOString().split('T')[0];
+}
+
+/**
+ * Gets today's date in YYYY-MM-DD format.
+ */
+function getTodayString(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
 export const useStepsStore = create<StepsState>((set) => ({
   todaySteps: 0,
+  todayDistance: 0,
   stats: null,
   history: [],
   dailyHistory: [],
@@ -57,12 +72,22 @@ export const useStepsStore = create<StepsState>((set) => ({
   error: null,
   historyError: null,
 
-  addSteps: async (steps, distanceMeters) => {
+  addSteps: async (steps, distanceMeters, source) => {
     set({ isLoading: true, error: null });
     try {
-      await stepsApi.addSteps(steps, distanceMeters);
+      const request: RecordStepsRequest = {
+        stepCount: steps,
+        distanceMeters,
+        date: getTodayString(),
+        source,
+      };
+      await stepsApi.addSteps(request);
       const today = await stepsApi.getTodaySteps();
-      set({ todaySteps: today.step_count, isLoading: false });
+      set({
+        todaySteps: today.totalSteps,
+        todayDistance: today.totalDistanceMeters,
+        isLoading: false,
+      });
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
       throw error;
@@ -73,7 +98,11 @@ export const useStepsStore = create<StepsState>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const today = await stepsApi.getTodaySteps();
-      set({ todaySteps: today.step_count, isLoading: false });
+      set({
+        todaySteps: today.totalSteps,
+        todayDistance: today.totalDistanceMeters,
+        isLoading: false,
+      });
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
     }
@@ -92,8 +121,10 @@ export const useStepsStore = create<StepsState>((set) => ({
   fetchHistory: async (period) => {
     set({ isLoading: true, error: null });
     try {
-      const history = await stepsApi.getHistory(period);
-      set({ history, isLoading: false });
+      const startDate = getStartDateForPeriod(period);
+      const endDate = getTodayString();
+      const response = await stepsApi.getHistory({ startDate, endDate });
+      set({ history: response.items, isLoading: false });
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
     }
@@ -102,7 +133,13 @@ export const useStepsStore = create<StepsState>((set) => ({
   fetchDailyHistory: async (startDate, endDate) => {
     set({ isHistoryLoading: true, historyError: null });
     try {
-      const dailyHistory = await stepsApi.getDailyHistory(startDate, endDate);
+      const dailySummaries = await stepsApi.getDailyHistory({ startDate, endDate });
+      // Transform to DailyStepEntry format for UI
+      const dailyHistory: DailyStepEntry[] = dailySummaries.map((summary) => ({
+        date: summary.date,
+        steps: summary.totalSteps,
+        distanceMeters: summary.totalDistanceMeters,
+      }));
       set({ dailyHistory, isHistoryLoading: false });
     } catch (error: unknown) {
       set({ historyError: getErrorMessage(error), isHistoryLoading: false });

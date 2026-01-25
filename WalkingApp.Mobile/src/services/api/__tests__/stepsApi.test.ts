@@ -1,15 +1,22 @@
-import { stepsApi } from '../stepsApi';
-import { supabase } from '@services/supabase';
-import { StepEntry, StepStats } from '@store/stepsStore';
+import {
+  stepsApi,
+  StepEntry,
+  StepStats,
+  DailyStepsResponse,
+  StepHistoryResponse,
+} from '../stepsApi';
+import { apiClient } from '../client';
 
-// Mock the supabase client
-jest.mock('@services/supabase', () => ({
-  supabase: {
-    from: jest.fn(),
+// Mock the apiClient
+jest.mock('../client', () => ({
+  apiClient: {
+    get: jest.fn(),
+    post: jest.fn(),
+    delete: jest.fn(),
   },
 }));
 
-const mockSupabase = supabase as jest.Mocked<typeof supabase>;
+const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
 
 describe('stepsApi', () => {
   beforeEach(() => {
@@ -17,285 +24,165 @@ describe('stepsApi', () => {
   });
 
   describe('addSteps', () => {
-    it('should add steps for today successfully', async () => {
+    it('should add steps successfully', async () => {
       const mockEntry: StepEntry = {
         id: '123',
-        user_id: 'user-123',
+        stepCount: 8500,
+        distanceMeters: 6800,
         date: '2024-01-15',
-        step_count: 8500,
-        distance_meters: 6800,
-        created_at: '2024-01-15T10:00:00Z',
+        recordedAt: '2024-01-15T10:00:00Z',
+        source: null,
       };
 
-      const mockUpsert = jest.fn().mockReturnThis();
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockSingle = jest.fn().mockResolvedValue({
-        data: mockEntry,
-        error: null,
+      mockApiClient.post.mockResolvedValue(mockEntry);
+
+      const result = await stepsApi.addSteps({
+        stepCount: 8500,
+        distanceMeters: 6800,
+        date: '2024-01-15',
       });
 
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        upsert: mockUpsert,
-        select: mockSelect,
-        single: mockSingle,
+      expect(mockApiClient.post).toHaveBeenCalledWith('/api/v1/steps', {
+        stepCount: 8500,
+        distanceMeters: 6800,
+        date: '2024-01-15',
       });
-
-      mockUpsert.mockReturnValue({
-        select: mockSelect,
-      });
-
-      mockSelect.mockReturnValue({
-        single: mockSingle,
-      });
-
-      const result = await stepsApi.addSteps(8500, 6800);
-
-      expect(mockSupabase.from).toHaveBeenCalledWith('step_entries');
-      expect(mockUpsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          step_count: 8500,
-          distance_meters: 6800,
-          date: expect.any(String),
-        })
-      );
       expect(result).toEqual(mockEntry);
     });
 
-    it('should use today date for upsert', async () => {
-      const today = new Date('2024-01-15T12:00:00Z');
-      const dateSpy = jest.spyOn(global, 'Date').mockImplementation(() => today as any);
+    it('should add steps with source successfully', async () => {
+      const mockEntry: StepEntry = {
+        id: '123',
+        stepCount: 5000,
+        distanceMeters: 4000,
+        date: '2024-01-15',
+        recordedAt: '2024-01-15T10:00:00Z',
+        source: 'health-app',
+      };
 
-      const mockUpsert = jest.fn().mockReturnThis();
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockSingle = jest.fn().mockResolvedValue({
-        data: {} as StepEntry,
-        error: null,
+      mockApiClient.post.mockResolvedValue(mockEntry);
+
+      const result = await stepsApi.addSteps({
+        stepCount: 5000,
+        distanceMeters: 4000,
+        date: '2024-01-15',
+        source: 'health-app',
       });
 
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        upsert: mockUpsert,
-        select: mockSelect,
-        single: mockSingle,
+      expect(mockApiClient.post).toHaveBeenCalledWith('/api/v1/steps', {
+        stepCount: 5000,
+        distanceMeters: 4000,
+        date: '2024-01-15',
+        source: 'health-app',
       });
-
-      mockUpsert.mockReturnValue({
-        select: mockSelect,
-      });
-
-      mockSelect.mockReturnValue({
-        single: mockSingle,
-      });
-
-      await stepsApi.addSteps(1000, 800);
-
-      expect(mockUpsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          date: '2024-01-15',
-        })
-      );
-
-      dateSpy.mockRestore();
+      expect(result).toEqual(mockEntry);
     });
 
     it('should throw error when add steps fails', async () => {
-      const mockError = { message: 'Insert failed' };
+      const mockError = new Error('Failed to add steps');
+      mockApiClient.post.mockRejectedValue(mockError);
 
-      const mockUpsert = jest.fn().mockReturnThis();
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockSingle = jest.fn().mockResolvedValue({
-        data: null,
-        error: mockError,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        upsert: mockUpsert,
-        select: mockSelect,
-        single: mockSingle,
-      });
-
-      mockUpsert.mockReturnValue({
-        select: mockSelect,
-      });
-
-      mockSelect.mockReturnValue({
-        single: mockSingle,
-      });
-
-      await expect(stepsApi.addSteps(1000, 800)).rejects.toEqual(mockError);
+      await expect(
+        stepsApi.addSteps({
+          stepCount: 1000,
+          distanceMeters: 800,
+          date: '2024-01-15',
+        })
+      ).rejects.toThrow('Failed to add steps');
     });
   });
 
   describe('getTodaySteps', () => {
     it('should get today steps successfully', async () => {
-      const mockEntry: StepEntry = {
-        id: '123',
-        user_id: 'user-123',
+      const mockResponse: DailyStepsResponse = {
         date: '2024-01-15',
-        step_count: 8500,
-        distance_meters: 6800,
-        created_at: '2024-01-15T10:00:00Z',
+        totalSteps: 8500,
+        totalDistanceMeters: 6800,
       };
 
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockReturnThis();
-      const mockSingle = jest.fn().mockResolvedValue({
-        data: mockEntry,
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
-        single: mockSingle,
-      });
-
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-
-      mockEq.mockReturnValue({
-        single: mockSingle,
-      });
+      mockApiClient.get.mockResolvedValue(mockResponse);
 
       const result = await stepsApi.getTodaySteps();
 
-      expect(mockSupabase.from).toHaveBeenCalledWith('step_entries');
-      expect(mockSelect).toHaveBeenCalledWith('*');
-      expect(mockEq).toHaveBeenCalledWith('date', expect.any(String));
-      expect(result).toEqual(mockEntry);
+      expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/steps/today');
+      expect(result).toEqual(mockResponse);
     });
 
-    it('should return default entry when no steps recorded', async () => {
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockReturnThis();
-      const mockSingle = jest.fn().mockResolvedValue({
-        data: null,
-        error: { code: 'PGRST116' }, // No rows returned
-      });
+    it('should return zero values when no steps recorded', async () => {
+      const mockResponse: DailyStepsResponse = {
+        date: '2024-01-15',
+        totalSteps: 0,
+        totalDistanceMeters: 0,
+      };
 
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
-        single: mockSingle,
-      });
-
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-
-      mockEq.mockReturnValue({
-        single: mockSingle,
-      });
+      mockApiClient.get.mockResolvedValue(mockResponse);
 
       const result = await stepsApi.getTodaySteps();
 
-      expect(result.step_count).toBe(0);
-      expect(result.distance_meters).toBe(0);
+      expect(result.totalSteps).toBe(0);
+      expect(result.totalDistanceMeters).toBe(0);
     });
 
-    it('should throw error for non-PGRST116 errors', async () => {
-      const mockError = { message: 'Database error', code: 'OTHER_ERROR' };
+    it('should throw error when fetch fails', async () => {
+      const mockError = new Error('Failed to fetch today steps');
+      mockApiClient.get.mockRejectedValue(mockError);
 
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockReturnThis();
-      const mockSingle = jest.fn().mockResolvedValue({
-        data: null,
-        error: mockError,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
-        single: mockSingle,
-      });
-
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-
-      mockEq.mockReturnValue({
-        single: mockSingle,
-      });
-
-      await expect(stepsApi.getTodaySteps()).rejects.toEqual(mockError);
+      await expect(stepsApi.getTodaySteps()).rejects.toThrow(
+        'Failed to fetch today steps'
+      );
     });
   });
 
   describe('getStats', () => {
-    it('should calculate stats successfully', async () => {
-      const todayData = { step_count: 8500 };
-      const weekData = [
-        { step_count: 8500 },
-        { step_count: 9000 },
-        { step_count: 7500 },
-        { step_count: 10000 },
-        { step_count: 8000 },
-        { step_count: 9500 },
-        { step_count: 8000 },
-      ];
-      const monthData = [...weekData, ...Array(23).fill({ step_count: 8000 })];
-      const allData = [
-        { date: '2024-01-15', step_count: 8500 },
-        { date: '2024-01-14', step_count: 9000 },
-        { date: '2024-01-13', step_count: 7500 },
-      ];
+    it('should get stats successfully', async () => {
+      const mockStats: StepStats = {
+        todaySteps: 8500,
+        todayDistance: 6800,
+        weekSteps: 60500,
+        weekDistance: 48400,
+        monthSteps: 255000,
+        monthDistance: 204000,
+        currentStreak: 5,
+        longestStreak: 14,
+        dailyGoal: 10000,
+      };
 
-      let callCount = 0;
-      (mockSupabase.from as jest.Mock).mockImplementation(() => {
-        callCount++;
-
-        if (callCount === 1) {
-          // Today stats
-          return {
-            select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockReturnThis(),
-            single: jest.fn().mockResolvedValue({ data: todayData, error: null }),
-          };
-        } else if (callCount === 2) {
-          // Week stats
-          return {
-            select: jest.fn().mockReturnThis(),
-            gte: jest.fn().mockResolvedValue({ data: weekData, error: null }),
-          };
-        } else if (callCount === 3) {
-          // Month stats
-          return {
-            select: jest.fn().mockReturnThis(),
-            gte: jest.fn().mockResolvedValue({ data: monthData, error: null }),
-          };
-        } else {
-          // All data for streak
-          return {
-            select: jest.fn().mockReturnThis(),
-            order: jest.fn().mockResolvedValue({ data: allData, error: null }),
-          };
-        }
-      });
+      mockApiClient.get.mockResolvedValue(mockStats);
 
       const result = await stepsApi.getStats();
 
-      expect(result.today).toBe(8500);
-      expect(result.week).toBe(60500);
-      expect(result.month).toBeGreaterThan(0);
-      expect(result.average).toBeGreaterThan(0);
-      expect(result.streak).toBeGreaterThanOrEqual(0);
+      expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/steps/stats');
+      expect(result).toEqual(mockStats);
     });
 
     it('should handle zero stats', async () => {
-      (mockSupabase.from as jest.Mock).mockImplementation(() => ({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        gte: jest.fn().mockResolvedValue({ data: null, error: null }),
-        single: jest.fn().mockResolvedValue({ data: null, error: null }),
-        order: jest.fn().mockResolvedValue({ data: null, error: null }),
-      }));
+      const mockStats: StepStats = {
+        todaySteps: 0,
+        todayDistance: 0,
+        weekSteps: 0,
+        weekDistance: 0,
+        monthSteps: 0,
+        monthDistance: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+        dailyGoal: 10000,
+      };
+
+      mockApiClient.get.mockResolvedValue(mockStats);
 
       const result = await stepsApi.getStats();
 
-      expect(result.today).toBe(0);
-      expect(result.week).toBe(0);
-      expect(result.month).toBe(0);
-      expect(result.average).toBe(0);
+      expect(result.todaySteps).toBe(0);
+      expect(result.weekSteps).toBe(0);
+      expect(result.monthSteps).toBe(0);
+      expect(result.currentStreak).toBe(0);
+    });
+
+    it('should throw error when fetch stats fails', async () => {
+      const mockError = new Error('Failed to fetch stats');
+      mockApiClient.get.mockRejectedValue(mockError);
+
+      await expect(stepsApi.getStats()).rejects.toThrow('Failed to fetch stats');
     });
   });
 
@@ -303,159 +190,195 @@ describe('stepsApi', () => {
     const mockHistory: StepEntry[] = [
       {
         id: '1',
-        user_id: 'user-123',
+        stepCount: 8500,
+        distanceMeters: 6800,
         date: '2024-01-15',
-        step_count: 8500,
-        distance_meters: 6800,
-        created_at: '2024-01-15T10:00:00Z',
+        recordedAt: '2024-01-15T10:00:00Z',
+        source: null,
       },
       {
         id: '2',
-        user_id: 'user-123',
+        stepCount: 9200,
+        distanceMeters: 7360,
         date: '2024-01-14',
-        step_count: 9200,
-        distance_meters: 7360,
-        created_at: '2024-01-14T10:00:00Z',
+        recordedAt: '2024-01-14T10:00:00Z',
+        source: null,
+      },
+    ];
+
+    it('should fetch history with required params', async () => {
+      const mockResponse: StepHistoryResponse = {
+        items: mockHistory,
+        totalCount: 2,
+        page: 1,
+        pageSize: 50,
+      };
+
+      mockApiClient.get.mockResolvedValue(mockResponse);
+
+      const result = await stepsApi.getHistory({
+        startDate: '2024-01-01',
+        endDate: '2024-01-15',
+      });
+
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        '/api/v1/steps/history?startDate=2024-01-01&endDate=2024-01-15'
+      );
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should fetch history with pagination params', async () => {
+      const mockResponse: StepHistoryResponse = {
+        items: mockHistory,
+        totalCount: 100,
+        page: 2,
+        pageSize: 20,
+      };
+
+      mockApiClient.get.mockResolvedValue(mockResponse);
+
+      const result = await stepsApi.getHistory({
+        startDate: '2024-01-01',
+        endDate: '2024-01-15',
+        page: 2,
+        pageSize: 20,
+      });
+
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        '/api/v1/steps/history?startDate=2024-01-01&endDate=2024-01-15&page=2&pageSize=20'
+      );
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should handle empty history', async () => {
+      const mockResponse: StepHistoryResponse = {
+        items: [],
+        totalCount: 0,
+        page: 1,
+        pageSize: 50,
+      };
+
+      mockApiClient.get.mockResolvedValue(mockResponse);
+
+      const result = await stepsApi.getHistory({
+        startDate: '2024-01-01',
+        endDate: '2024-01-15',
+      });
+
+      expect(result.items).toEqual([]);
+      expect(result.totalCount).toBe(0);
+    });
+
+    it('should throw error when fetch history fails', async () => {
+      const mockError = new Error('Failed to fetch history');
+      mockApiClient.get.mockRejectedValue(mockError);
+
+      await expect(
+        stepsApi.getHistory({
+          startDate: '2024-01-01',
+          endDate: '2024-01-15',
+        })
+      ).rejects.toThrow('Failed to fetch history');
+    });
+  });
+
+  describe('getDailyHistory', () => {
+    const mockDailyHistory: DailyStepsResponse[] = [
+      {
+        date: '2024-01-15',
+        totalSteps: 8500,
+        totalDistanceMeters: 6800,
+      },
+      {
+        date: '2024-01-14',
+        totalSteps: 9200,
+        totalDistanceMeters: 7360,
       },
     ];
 
     it('should fetch daily history successfully', async () => {
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockGte = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockResolvedValue({
-        data: mockHistory,
-        error: null,
+      mockApiClient.get.mockResolvedValue(mockDailyHistory);
+
+      const result = await stepsApi.getDailyHistory({
+        startDate: '2024-01-01',
+        endDate: '2024-01-15',
       });
 
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        gte: mockGte,
-        order: mockOrder,
-      });
-
-      mockSelect.mockReturnValue({
-        gte: mockGte,
-      });
-
-      mockGte.mockReturnValue({
-        order: mockOrder,
-      });
-
-      const result = await stepsApi.getHistory('daily');
-
-      expect(mockSupabase.from).toHaveBeenCalledWith('step_entries');
-      expect(mockSelect).toHaveBeenCalledWith('*');
-      expect(mockGte).toHaveBeenCalledWith('date', expect.any(String));
-      expect(mockOrder).toHaveBeenCalledWith('date', { ascending: false });
-      expect(result).toEqual(mockHistory);
+      expect(mockApiClient.get).toHaveBeenCalledWith(
+        '/api/v1/steps/daily?startDate=2024-01-01&endDate=2024-01-15'
+      );
+      expect(result).toEqual(mockDailyHistory);
     });
 
-    it('should fetch weekly history successfully', async () => {
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockGte = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockResolvedValue({
-        data: mockHistory,
-        error: null,
+    it('should handle empty daily history', async () => {
+      mockApiClient.get.mockResolvedValue([]);
+
+      const result = await stepsApi.getDailyHistory({
+        startDate: '2024-01-01',
+        endDate: '2024-01-15',
       });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        gte: mockGte,
-        order: mockOrder,
-      });
-
-      mockSelect.mockReturnValue({
-        gte: mockGte,
-      });
-
-      mockGte.mockReturnValue({
-        order: mockOrder,
-      });
-
-      const result = await stepsApi.getHistory('weekly');
-
-      expect(result).toEqual(mockHistory);
-    });
-
-    it('should fetch monthly history successfully', async () => {
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockGte = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockResolvedValue({
-        data: mockHistory,
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        gte: mockGte,
-        order: mockOrder,
-      });
-
-      mockSelect.mockReturnValue({
-        gte: mockGte,
-      });
-
-      mockGte.mockReturnValue({
-        order: mockOrder,
-      });
-
-      const result = await stepsApi.getHistory('monthly');
-
-      expect(result).toEqual(mockHistory);
-    });
-
-    it('should handle empty history', async () => {
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockGte = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockResolvedValue({
-        data: null,
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        gte: mockGte,
-        order: mockOrder,
-      });
-
-      mockSelect.mockReturnValue({
-        gte: mockGte,
-      });
-
-      mockGte.mockReturnValue({
-        order: mockOrder,
-      });
-
-      const result = await stepsApi.getHistory('daily');
 
       expect(result).toEqual([]);
     });
 
-    it('should throw error when fetch history fails', async () => {
-      const mockError = { message: 'Fetch failed' };
+    it('should throw error when fetch daily history fails', async () => {
+      const mockError = new Error('Failed to fetch daily history');
+      mockApiClient.get.mockRejectedValue(mockError);
 
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockGte = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockResolvedValue({
-        data: null,
-        error: mockError,
-      });
+      await expect(
+        stepsApi.getDailyHistory({
+          startDate: '2024-01-01',
+          endDate: '2024-01-15',
+        })
+      ).rejects.toThrow('Failed to fetch daily history');
+    });
+  });
 
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        gte: mockGte,
-        order: mockOrder,
-      });
+  describe('getEntry', () => {
+    it('should get a specific entry successfully', async () => {
+      const mockEntry: StepEntry = {
+        id: '123',
+        stepCount: 8500,
+        distanceMeters: 6800,
+        date: '2024-01-15',
+        recordedAt: '2024-01-15T10:00:00Z',
+        source: null,
+      };
 
-      mockSelect.mockReturnValue({
-        gte: mockGte,
-      });
+      mockApiClient.get.mockResolvedValue(mockEntry);
 
-      mockGte.mockReturnValue({
-        order: mockOrder,
-      });
+      const result = await stepsApi.getEntry('123');
 
-      await expect(stepsApi.getHistory('weekly')).rejects.toEqual(mockError);
+      expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/steps/123');
+      expect(result).toEqual(mockEntry);
+    });
+
+    it('should throw error when entry not found', async () => {
+      const mockError = new Error('Entry not found');
+      mockApiClient.get.mockRejectedValue(mockError);
+
+      await expect(stepsApi.getEntry('invalid-id')).rejects.toThrow(
+        'Entry not found'
+      );
+    });
+  });
+
+  describe('deleteEntry', () => {
+    it('should delete an entry successfully', async () => {
+      mockApiClient.delete.mockResolvedValue(undefined);
+
+      await stepsApi.deleteEntry('123');
+
+      expect(mockApiClient.delete).toHaveBeenCalledWith('/api/v1/steps/123');
+    });
+
+    it('should throw error when delete fails', async () => {
+      const mockError = new Error('Failed to delete entry');
+      mockApiClient.delete.mockRejectedValue(mockError);
+
+      await expect(stepsApi.deleteEntry('123')).rejects.toThrow(
+        'Failed to delete entry'
+      );
     });
   });
 });

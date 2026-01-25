@@ -1,6 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
-import { useStepsStore, StepEntry, StepStats, DailyStepEntry } from '../stepsStore';
-import { stepsApi } from '@services/api/stepsApi';
+import { useStepsStore, StepStats, DailyStepEntry } from '../stepsStore';
+import { stepsApi, StepEntry, DailyStepsResponse, StepHistoryResponse } from '@services/api/stepsApi';
 
 // Mock the steps API
 jest.mock('@services/api/stepsApi');
@@ -10,25 +10,41 @@ const mockStepsApi = stepsApi as jest.Mocked<typeof stepsApi>;
 describe('stepsStore', () => {
   const mockStepEntry: StepEntry = {
     id: '123',
-    user_id: 'user-123',
+    stepCount: 8500,
+    distanceMeters: 6800,
     date: '2024-01-15',
-    step_count: 8500,
-    distance_meters: 6800,
-    created_at: '2024-01-15T10:00:00Z',
+    recordedAt: '2024-01-15T10:00:00Z',
+    source: null,
+  };
+
+  const mockTodayResponse: DailyStepsResponse = {
+    date: '2024-01-15',
+    totalSteps: 8500,
+    totalDistanceMeters: 6800,
   };
 
   const mockStats: StepStats = {
-    today: 8500,
-    week: 52000,
-    month: 220000,
-    average: 7333,
-    streak: 5,
+    todaySteps: 8500,
+    todayDistance: 6800,
+    weekSteps: 52000,
+    weekDistance: 41600,
+    monthSteps: 220000,
+    monthDistance: 176000,
+    currentStreak: 5,
+    longestStreak: 14,
+    dailyGoal: 10000,
   };
 
   const mockDailyHistory: DailyStepEntry[] = [
-    { id: '1', date: '2024-01-15', steps: 8500, distanceMeters: 6800 },
-    { id: '2', date: '2024-01-14', steps: 9200, distanceMeters: 7360 },
-    { id: '3', date: '2024-01-13', steps: 7800, distanceMeters: 6240 },
+    { date: '2024-01-15', steps: 8500, distanceMeters: 6800 },
+    { date: '2024-01-14', steps: 9200, distanceMeters: 7360 },
+    { date: '2024-01-13', steps: 7800, distanceMeters: 6240 },
+  ];
+
+  const mockDailySummaries: DailyStepsResponse[] = [
+    { date: '2024-01-15', totalSteps: 8500, totalDistanceMeters: 6800 },
+    { date: '2024-01-14', totalSteps: 9200, totalDistanceMeters: 7360 },
+    { date: '2024-01-13', totalSteps: 7800, totalDistanceMeters: 6240 },
   ];
 
   beforeEach(() => {
@@ -36,6 +52,7 @@ describe('stepsStore', () => {
     // Reset store state before each test
     useStepsStore.setState({
       todaySteps: 0,
+      todayDistance: 0,
       stats: null,
       history: [],
       dailyHistory: [],
@@ -51,6 +68,7 @@ describe('stepsStore', () => {
       const { result } = renderHook(() => useStepsStore());
 
       expect(result.current.todaySteps).toBe(0);
+      expect(result.current.todayDistance).toBe(0);
       expect(result.current.stats).toBeNull();
       expect(result.current.history).toEqual([]);
       expect(result.current.dailyHistory).toEqual([]);
@@ -63,10 +81,14 @@ describe('stepsStore', () => {
 
   describe('addSteps', () => {
     it('should add steps successfully and update today steps', async () => {
-      const updatedEntry = { ...mockStepEntry, step_count: 10000 };
+      const updatedTodayResponse: DailyStepsResponse = {
+        date: '2024-01-15',
+        totalSteps: 10000,
+        totalDistanceMeters: 8000,
+      };
 
       mockStepsApi.addSteps.mockResolvedValue(mockStepEntry);
-      mockStepsApi.getTodaySteps.mockResolvedValue(updatedEntry);
+      mockStepsApi.getTodaySteps.mockResolvedValue(updatedTodayResponse);
 
       const { result } = renderHook(() => useStepsStore());
 
@@ -74,9 +96,16 @@ describe('stepsStore', () => {
         await result.current.addSteps(1500, 1200);
       });
 
-      expect(mockStepsApi.addSteps).toHaveBeenCalledWith(1500, 1200);
+      expect(mockStepsApi.addSteps).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stepCount: 1500,
+          distanceMeters: 1200,
+          date: expect.any(String),
+        })
+      );
       expect(mockStepsApi.getTodaySteps).toHaveBeenCalled();
       expect(result.current.todaySteps).toBe(10000);
+      expect(result.current.todayDistance).toBe(8000);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
     });
@@ -85,7 +114,7 @@ describe('stepsStore', () => {
       mockStepsApi.addSteps.mockImplementation(() =>
         new Promise((resolve) => setTimeout(() => resolve(mockStepEntry), 100))
       );
-      mockStepsApi.getTodaySteps.mockResolvedValue(mockStepEntry);
+      mockStepsApi.getTodaySteps.mockResolvedValue(mockTodayResponse);
 
       const { result } = renderHook(() => useStepsStore());
 
@@ -120,7 +149,7 @@ describe('stepsStore', () => {
 
     it('should handle zero steps', async () => {
       mockStepsApi.addSteps.mockResolvedValue(mockStepEntry);
-      mockStepsApi.getTodaySteps.mockResolvedValue(mockStepEntry);
+      mockStepsApi.getTodaySteps.mockResolvedValue(mockTodayResponse);
 
       const { result } = renderHook(() => useStepsStore());
 
@@ -128,12 +157,17 @@ describe('stepsStore', () => {
         await result.current.addSteps(0, 0);
       });
 
-      expect(mockStepsApi.addSteps).toHaveBeenCalledWith(0, 0);
+      expect(mockStepsApi.addSteps).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stepCount: 0,
+          distanceMeters: 0,
+        })
+      );
     });
 
     it('should clear previous errors on new add', async () => {
       mockStepsApi.addSteps.mockResolvedValue(mockStepEntry);
-      mockStepsApi.getTodaySteps.mockResolvedValue(mockStepEntry);
+      mockStepsApi.getTodaySteps.mockResolvedValue(mockTodayResponse);
 
       const { result } = renderHook(() => useStepsStore());
 
@@ -149,7 +183,7 @@ describe('stepsStore', () => {
 
   describe('fetchTodaySteps', () => {
     it('should fetch today steps successfully', async () => {
-      mockStepsApi.getTodaySteps.mockResolvedValue(mockStepEntry);
+      mockStepsApi.getTodaySteps.mockResolvedValue(mockTodayResponse);
 
       const { result } = renderHook(() => useStepsStore());
 
@@ -159,13 +193,18 @@ describe('stepsStore', () => {
 
       expect(mockStepsApi.getTodaySteps).toHaveBeenCalled();
       expect(result.current.todaySteps).toBe(8500);
+      expect(result.current.todayDistance).toBe(6800);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
     });
 
     it('should handle zero steps for today', async () => {
-      const zeroEntry = { ...mockStepEntry, step_count: 0 };
-      mockStepsApi.getTodaySteps.mockResolvedValue(zeroEntry);
+      const zeroResponse: DailyStepsResponse = {
+        date: '2024-01-15',
+        totalSteps: 0,
+        totalDistanceMeters: 0,
+      };
+      mockStepsApi.getTodaySteps.mockResolvedValue(zeroResponse);
 
       const { result } = renderHook(() => useStepsStore());
 
@@ -174,6 +213,7 @@ describe('stepsStore', () => {
       });
 
       expect(result.current.todaySteps).toBe(0);
+      expect(result.current.todayDistance).toBe(0);
     });
 
     it('should handle fetch error', async () => {
@@ -194,7 +234,7 @@ describe('stepsStore', () => {
 
     it('should set loading state during fetch', async () => {
       mockStepsApi.getTodaySteps.mockImplementation(() =>
-        new Promise((resolve) => setTimeout(() => resolve(mockStepEntry), 100))
+        new Promise((resolve) => setTimeout(() => resolve(mockTodayResponse), 100))
       );
 
       const { result } = renderHook(() => useStepsStore());
@@ -229,11 +269,15 @@ describe('stepsStore', () => {
 
     it('should handle stats with all zeros', async () => {
       const zeroStats: StepStats = {
-        today: 0,
-        week: 0,
-        month: 0,
-        average: 0,
-        streak: 0,
+        todaySteps: 0,
+        todayDistance: 0,
+        weekSteps: 0,
+        weekDistance: 0,
+        monthSteps: 0,
+        monthDistance: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+        dailyGoal: 10000,
       };
       mockStepsApi.getStats.mockResolvedValue(zeroStats);
 
@@ -268,26 +312,32 @@ describe('stepsStore', () => {
 
       const { result } = renderHook(() => useStepsStore());
 
-      useStepsStore.setState({ todaySteps: 5000 });
+      useStepsStore.setState({ todaySteps: 5000, todayDistance: 4000 });
 
       await act(async () => {
         await result.current.fetchStats();
       });
 
       expect(result.current.todaySteps).toBe(5000);
+      expect(result.current.todayDistance).toBe(4000);
       expect(result.current.stats).toEqual(mockStats);
     });
   });
 
   describe('fetchHistory', () => {
-    const mockHistory: StepEntry[] = [
-      { ...mockStepEntry, id: '1', date: '2024-01-15', step_count: 8500 },
-      { ...mockStepEntry, id: '2', date: '2024-01-14', step_count: 9200 },
-      { ...mockStepEntry, id: '3', date: '2024-01-13', step_count: 7800 },
-    ];
+    const mockHistoryResponse: StepHistoryResponse = {
+      items: [
+        { ...mockStepEntry, id: '1', date: '2024-01-15', stepCount: 8500 },
+        { ...mockStepEntry, id: '2', date: '2024-01-14', stepCount: 9200 },
+        { ...mockStepEntry, id: '3', date: '2024-01-13', stepCount: 7800 },
+      ],
+      totalCount: 3,
+      page: 1,
+      pageSize: 50,
+    };
 
     it('should fetch daily history successfully', async () => {
-      mockStepsApi.getHistory.mockResolvedValue(mockHistory);
+      mockStepsApi.getHistory.mockResolvedValue(mockHistoryResponse);
 
       const { result } = renderHook(() => useStepsStore());
 
@@ -295,14 +345,19 @@ describe('stepsStore', () => {
         await result.current.fetchHistory('daily');
       });
 
-      expect(mockStepsApi.getHistory).toHaveBeenCalledWith('daily');
-      expect(result.current.history).toEqual(mockHistory);
+      expect(mockStepsApi.getHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          startDate: expect.any(String),
+          endDate: expect.any(String),
+        })
+      );
+      expect(result.current.history).toEqual(mockHistoryResponse.items);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
     });
 
     it('should fetch weekly history successfully', async () => {
-      mockStepsApi.getHistory.mockResolvedValue(mockHistory);
+      mockStepsApi.getHistory.mockResolvedValue(mockHistoryResponse);
 
       const { result } = renderHook(() => useStepsStore());
 
@@ -310,12 +365,12 @@ describe('stepsStore', () => {
         await result.current.fetchHistory('weekly');
       });
 
-      expect(mockStepsApi.getHistory).toHaveBeenCalledWith('weekly');
-      expect(result.current.history).toEqual(mockHistory);
+      expect(mockStepsApi.getHistory).toHaveBeenCalled();
+      expect(result.current.history).toEqual(mockHistoryResponse.items);
     });
 
     it('should fetch monthly history successfully', async () => {
-      mockStepsApi.getHistory.mockResolvedValue(mockHistory);
+      mockStepsApi.getHistory.mockResolvedValue(mockHistoryResponse);
 
       const { result } = renderHook(() => useStepsStore());
 
@@ -323,12 +378,18 @@ describe('stepsStore', () => {
         await result.current.fetchHistory('monthly');
       });
 
-      expect(mockStepsApi.getHistory).toHaveBeenCalledWith('monthly');
-      expect(result.current.history).toEqual(mockHistory);
+      expect(mockStepsApi.getHistory).toHaveBeenCalled();
+      expect(result.current.history).toEqual(mockHistoryResponse.items);
     });
 
     it('should handle empty history', async () => {
-      mockStepsApi.getHistory.mockResolvedValue([]);
+      const emptyResponse: StepHistoryResponse = {
+        items: [],
+        totalCount: 0,
+        page: 1,
+        pageSize: 50,
+      };
+      mockStepsApi.getHistory.mockResolvedValue(emptyResponse);
 
       const { result } = renderHook(() => useStepsStore());
 
@@ -356,10 +417,15 @@ describe('stepsStore', () => {
     });
 
     it('should replace previous history on new fetch', async () => {
-      const oldHistory = [{ ...mockStepEntry, id: 'old' }];
-      const newHistory = [{ ...mockStepEntry, id: 'new' }];
+      const oldHistory: StepEntry[] = [{ ...mockStepEntry, id: 'old' }];
+      const newResponse: StepHistoryResponse = {
+        items: [{ ...mockStepEntry, id: 'new' }],
+        totalCount: 1,
+        page: 1,
+        pageSize: 50,
+      };
 
-      mockStepsApi.getHistory.mockResolvedValue(newHistory);
+      mockStepsApi.getHistory.mockResolvedValue(newResponse);
 
       const { result } = renderHook(() => useStepsStore());
 
@@ -369,13 +435,13 @@ describe('stepsStore', () => {
         await result.current.fetchHistory('daily');
       });
 
-      expect(result.current.history).toEqual(newHistory);
+      expect(result.current.history).toEqual(newResponse.items);
       expect(result.current.history).not.toContainEqual(oldHistory[0]);
     });
 
     it('should set loading state during history fetch', async () => {
       mockStepsApi.getHistory.mockImplementation(() =>
-        new Promise((resolve) => setTimeout(() => resolve(mockHistory), 100))
+        new Promise((resolve) => setTimeout(() => resolve(mockHistoryResponse), 100))
       );
 
       const { result } = renderHook(() => useStepsStore());
@@ -394,7 +460,7 @@ describe('stepsStore', () => {
 
   describe('fetchDailyHistory', () => {
     it('should fetch daily history successfully', async () => {
-      mockStepsApi.getDailyHistory.mockResolvedValue(mockDailyHistory);
+      mockStepsApi.getDailyHistory.mockResolvedValue(mockDailySummaries);
 
       const { result } = renderHook(() => useStepsStore());
 
@@ -402,7 +468,10 @@ describe('stepsStore', () => {
         await result.current.fetchDailyHistory('2024-01-09', '2024-01-15');
       });
 
-      expect(mockStepsApi.getDailyHistory).toHaveBeenCalledWith('2024-01-09', '2024-01-15');
+      expect(mockStepsApi.getDailyHistory).toHaveBeenCalledWith({
+        startDate: '2024-01-09',
+        endDate: '2024-01-15',
+      });
       expect(result.current.dailyHistory).toEqual(mockDailyHistory);
       expect(result.current.isHistoryLoading).toBe(false);
       expect(result.current.historyError).toBeNull();
@@ -410,7 +479,7 @@ describe('stepsStore', () => {
 
     it('should set isHistoryLoading state during fetch', async () => {
       mockStepsApi.getDailyHistory.mockImplementation(() =>
-        new Promise((resolve) => setTimeout(() => resolve(mockDailyHistory), 100))
+        new Promise((resolve) => setTimeout(() => resolve(mockDailySummaries), 100))
       );
 
       const { result } = renderHook(() => useStepsStore());
@@ -456,7 +525,7 @@ describe('stepsStore', () => {
     });
 
     it('should clear previous historyError on new fetch', async () => {
-      mockStepsApi.getDailyHistory.mockResolvedValue(mockDailyHistory);
+      mockStepsApi.getDailyHistory.mockResolvedValue(mockDailySummaries);
 
       const { result } = renderHook(() => useStepsStore());
 
@@ -473,11 +542,11 @@ describe('stepsStore', () => {
       const oldHistory: DailyStepEntry[] = [
         { id: 'old', date: '2024-01-01', steps: 1000, distanceMeters: 800 },
       ];
-      const newHistory: DailyStepEntry[] = [
-        { id: 'new', date: '2024-01-15', steps: 8000, distanceMeters: 6400 },
+      const newSummaries: DailyStepsResponse[] = [
+        { date: '2024-01-15', totalSteps: 8000, totalDistanceMeters: 6400 },
       ];
 
-      mockStepsApi.getDailyHistory.mockResolvedValue(newHistory);
+      mockStepsApi.getDailyHistory.mockResolvedValue(newSummaries);
 
       const { result } = renderHook(() => useStepsStore());
 
@@ -487,13 +556,15 @@ describe('stepsStore', () => {
         await result.current.fetchDailyHistory('2024-01-09', '2024-01-15');
       });
 
-      expect(result.current.dailyHistory).toEqual(newHistory);
+      expect(result.current.dailyHistory).toEqual([
+        { date: '2024-01-15', steps: 8000, distanceMeters: 6400 },
+      ]);
       expect(result.current.dailyHistory).not.toContainEqual(oldHistory[0]);
     });
 
     it('should not affect main isLoading state', async () => {
       mockStepsApi.getDailyHistory.mockImplementation(() =>
-        new Promise((resolve) => setTimeout(() => resolve(mockDailyHistory), 100))
+        new Promise((resolve) => setTimeout(() => resolve(mockDailySummaries), 100))
       );
 
       const { result } = renderHook(() => useStepsStore());
@@ -529,7 +600,7 @@ describe('stepsStore', () => {
     });
 
     it('should handle different date ranges', async () => {
-      mockStepsApi.getDailyHistory.mockResolvedValue(mockDailyHistory);
+      mockStepsApi.getDailyHistory.mockResolvedValue(mockDailySummaries);
 
       const { result } = renderHook(() => useStepsStore());
 
@@ -537,14 +608,17 @@ describe('stepsStore', () => {
         await result.current.fetchDailyHistory('2024-01-01', '2024-01-31');
       });
 
-      expect(mockStepsApi.getDailyHistory).toHaveBeenCalledWith('2024-01-01', '2024-01-31');
+      expect(mockStepsApi.getDailyHistory).toHaveBeenCalledWith({
+        startDate: '2024-01-01',
+        endDate: '2024-01-31',
+      });
     });
 
     it('should handle single day range', async () => {
-      const singleDayHistory: DailyStepEntry[] = [
-        { id: '1', date: '2024-01-15', steps: 10000, distanceMeters: 8000 },
+      const singleDaySummary: DailyStepsResponse[] = [
+        { date: '2024-01-15', totalSteps: 10000, totalDistanceMeters: 8000 },
       ];
-      mockStepsApi.getDailyHistory.mockResolvedValue(singleDayHistory);
+      mockStepsApi.getDailyHistory.mockResolvedValue(singleDaySummary);
 
       const { result } = renderHook(() => useStepsStore());
 
@@ -552,7 +626,9 @@ describe('stepsStore', () => {
         await result.current.fetchDailyHistory('2024-01-15', '2024-01-15');
       });
 
-      expect(result.current.dailyHistory).toEqual(singleDayHistory);
+      expect(result.current.dailyHistory).toEqual([
+        { date: '2024-01-15', steps: 10000, distanceMeters: 8000 },
+      ]);
     });
   });
 });

@@ -25,3 +25,12 @@ export type {
   Achievement,
   MutualGroup,
 } from './usersApi';
+export type {
+  StepEntry,
+  StepStats,
+  DailyStepsResponse,
+  StepHistoryResponse,
+  RecordStepsRequest,
+  StepHistoryParams,
+  DailyHistoryParams,
+} from './stepsApi';
