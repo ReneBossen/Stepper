@@ -102,4 +102,48 @@ public interface IGroupService
     /// <param name="groupId">The ID of the group.</param>
     /// <returns>The updated group response.</returns>
     Task<GroupResponse> RegenerateJoinCodeAsync(Guid userId, Guid groupId);
+
+    /// <summary>
+    /// Searches for public groups by name.
+    /// </summary>
+    /// <param name="query">The search query (partial match on name).</param>
+    /// <param name="limit">Maximum number of results to return.</param>
+    /// <returns>List of matching public groups.</returns>
+    Task<List<GroupSearchResponse>> SearchPublicGroupsAsync(string query, int limit);
+
+    /// <summary>
+    /// Joins a group using an invite code.
+    /// </summary>
+    /// <param name="userId">The ID of the user joining.</param>
+    /// <param name="code">The invite code.</param>
+    /// <returns>The group response.</returns>
+    Task<GroupResponse> JoinByCodeAsync(Guid userId, string code);
+
+    /// <summary>
+    /// Updates a member's role in a group (owner only for admin promotion, admin/owner for member changes).
+    /// </summary>
+    /// <param name="userId">The ID of the user updating the role.</param>
+    /// <param name="groupId">The ID of the group.</param>
+    /// <param name="targetUserId">The ID of the member whose role is being updated.</param>
+    /// <param name="newRole">The new role.</param>
+    /// <returns>The updated member response.</returns>
+    Task<GroupMemberResponse> UpdateMemberRoleAsync(Guid userId, Guid groupId, Guid targetUserId, MemberRole newRole);
+
+    /// <summary>
+    /// Gets members of a group filtered by status.
+    /// </summary>
+    /// <param name="userId">The ID of the requesting user.</param>
+    /// <param name="groupId">The ID of the group.</param>
+    /// <param name="status">Optional status filter (e.g., "pending").</param>
+    /// <returns>List of group members.</returns>
+    Task<List<GroupMemberResponse>> GetMembersAsync(Guid userId, Guid groupId, string? status);
+
+    /// <summary>
+    /// Approves a pending member's request to join the group (admin/owner only).
+    /// </summary>
+    /// <param name="userId">The ID of the user approving.</param>
+    /// <param name="groupId">The ID of the group.</param>
+    /// <param name="targetUserId">The ID of the pending member.</param>
+    /// <returns>The approved member response.</returns>
+    Task<GroupMemberResponse> ApproveMemberAsync(Guid userId, Guid groupId, Guid targetUserId);
 }

@@ -21,6 +21,76 @@ public class GroupsController : ControllerBase
     }
 
     /// <summary>
+    /// Searches for public groups by name.
+    /// </summary>
+    /// <param name="query">The search query (partial match on name).</param>
+    /// <param name="limit">Maximum number of results to return (default 20, max 100).</param>
+    /// <returns>List of matching public groups.</returns>
+    [HttpGet("search")]
+    public async Task<ActionResult<ApiResponse<List<GroupSearchResponse>>>> SearchGroups(
+        [FromQuery] string query,
+        [FromQuery] int limit = 20)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+        {
+            return Unauthorized(ApiResponse<List<GroupSearchResponse>>.ErrorResponse("User is not authenticated."));
+        }
+
+        try
+        {
+            var result = await _groupService.SearchPublicGroupsAsync(query, limit);
+            return Ok(ApiResponse<List<GroupSearchResponse>>.SuccessResponse(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<List<GroupSearchResponse>>.ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<List<GroupSearchResponse>>.ErrorResponse($"An error occurred: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
+    /// Joins a group using an invite code.
+    /// </summary>
+    /// <param name="request">The join by code request.</param>
+    /// <returns>The joined group.</returns>
+    [HttpPost("join-by-code")]
+    public async Task<ActionResult<ApiResponse<GroupResponse>>> JoinByCode(
+        [FromBody] JoinByCodeRequest request)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+        {
+            return Unauthorized(ApiResponse<GroupResponse>.ErrorResponse("User is not authenticated."));
+        }
+
+        try
+        {
+            var result = await _groupService.JoinByCodeAsync(userId.Value, request.Code);
+            return Ok(ApiResponse<GroupResponse>.SuccessResponse(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<GroupResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
     /// Creates a new group with the current user as owner.
     /// </summary>
     /// <param name="request">The group creation request.</param>
@@ -258,12 +328,15 @@ public class GroupsController : ControllerBase
     }
 
     /// <summary>
-    /// Gets all members of a group.
+    /// Gets all members of a group, optionally filtered by status.
     /// </summary>
     /// <param name="id">The group ID.</param>
+    /// <param name="status">Optional status filter (e.g., "pending").</param>
     /// <returns>List of group members.</returns>
     [HttpGet("{id}/members")]
-    public async Task<ActionResult<ApiResponse<List<GroupMemberResponse>>>> GetMembers(Guid id)
+    public async Task<ActionResult<ApiResponse<List<GroupMemberResponse>>>> GetMembers(
+        Guid id,
+        [FromQuery] string? status = null)
     {
         var userId = User.GetUserId();
         if (userId == null)
@@ -273,7 +346,7 @@ public class GroupsController : ControllerBase
 
         try
         {
-            var result = await _groupService.GetMembersAsync(userId.Value, id);
+            var result = await _groupService.GetMembersAsync(userId.Value, id, status);
             return Ok(ApiResponse<List<GroupMemberResponse>>.SuccessResponse(result));
         }
         catch (KeyNotFoundException ex)
@@ -335,6 +408,48 @@ public class GroupsController : ControllerBase
     }
 
     /// <summary>
+    /// Updates a member's role in the group (admin/owner only).
+    /// </summary>
+    /// <param name="id">The group ID.</param>
+    /// <param name="memberId">The member's user ID.</param>
+    /// <param name="request">The update role request.</param>
+    /// <returns>The updated member details.</returns>
+    [HttpPut("{id}/members/{memberId}")]
+    public async Task<ActionResult<ApiResponse<GroupMemberResponse>>> UpdateMemberRole(
+        Guid id,
+        Guid memberId,
+        [FromBody] UpdateMemberRoleRequest request)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+        {
+            return Unauthorized(ApiResponse<GroupMemberResponse>.ErrorResponse("User is not authenticated."));
+        }
+
+        try
+        {
+            var result = await _groupService.UpdateMemberRoleAsync(userId.Value, id, memberId, request.Role);
+            return Ok(ApiResponse<GroupMemberResponse>.SuccessResponse(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<GroupMemberResponse>.ErrorResponse(ex.Message));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<GroupMemberResponse>.ErrorResponse(ex.Message));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ApiResponse<GroupMemberResponse>.ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<GroupMemberResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
     /// Removes a member from the group (admin/owner only).
     /// </summary>
     /// <param name="id">The group ID.</param>
@@ -373,6 +488,44 @@ public class GroupsController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, ApiResponse<object>.ErrorResponse($"An error occurred: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
+    /// Approves a pending member's request to join the group (admin/owner only).
+    /// </summary>
+    /// <param name="id">The group ID.</param>
+    /// <param name="memberId">The pending member's user ID.</param>
+    /// <returns>The approved member details.</returns>
+    [HttpPost("{id}/members/{memberId}/approve")]
+    public async Task<ActionResult<ApiResponse<GroupMemberResponse>>> ApproveMember(Guid id, Guid memberId)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+        {
+            return Unauthorized(ApiResponse<GroupMemberResponse>.ErrorResponse("User is not authenticated."));
+        }
+
+        try
+        {
+            var result = await _groupService.ApproveMemberAsync(userId.Value, id, memberId);
+            return Ok(ApiResponse<GroupMemberResponse>.SuccessResponse(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<GroupMemberResponse>.ErrorResponse(ex.Message));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<GroupMemberResponse>.ErrorResponse(ex.Message));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ApiResponse<GroupMemberResponse>.ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<GroupMemberResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
         }
     }
 

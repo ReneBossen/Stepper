@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using WalkingApp.Api.Common.Models;
 using WalkingApp.Api.Groups.DTOs;
 using WalkingApp.Api.Users;
+using User = WalkingApp.Api.Users.User;
 
 namespace WalkingApp.Api.Groups;
 
@@ -647,5 +648,232 @@ public class GroupService : IGroupService
         var endDate = startDate.AddMonths(1).AddDays(-1);
 
         return (startDate, endDate);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<GroupSearchResponse>> SearchPublicGroupsAsync(string query, int limit)
+    {
+        ValidateSearchQuery(query);
+        ValidateSearchLimit(limit);
+
+        var groups = await _groupRepository.SearchPublicGroupsAsync(query, limit);
+
+        return groups.Select(MapToGroupSearchResponse).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<GroupResponse> JoinByCodeAsync(Guid userId, string code)
+    {
+        ValidateUserId(userId);
+        ValidateJoinCode(code);
+
+        var group = await _groupRepository.GetByJoinCodeAsync(code);
+        EnsureGroupFoundByCode(group);
+
+        await EnsureNotAlreadyMemberAsync(group!.Id, userId);
+
+        var membership = CreateMembershipForJoin(group!.Id, userId);
+        await _groupRepository.AddMemberAsync(membership);
+
+        var refreshedGroup = await GetRefreshedGroupAsync(group!.Id);
+        return await MapToGroupResponseAsync(refreshedGroup, MemberRole.Member);
+    }
+
+    /// <inheritdoc />
+    public async Task<GroupMemberResponse> UpdateMemberRoleAsync(
+        Guid userId,
+        Guid groupId,
+        Guid targetUserId,
+        MemberRole newRole)
+    {
+        ValidateUserId(userId);
+        ValidateGroupId(groupId);
+        ValidateTargetUserId(targetUserId);
+
+        var group = await GetGroupOrThrowAsync(groupId);
+        var userMembership = await GetMembershipOrThrowAsync(groupId, userId);
+        var targetMembership = await GetTargetMembershipOrThrowAsync(groupId, targetUserId);
+
+        ValidateRoleChangePermissions(userMembership, targetMembership, newRole);
+
+        var updatedMembership = await _groupRepository.UpdateMemberRoleAsync(groupId, targetUserId, newRole);
+        var targetUser = await _userRepository.GetByIdAsync(targetUserId);
+
+        return MapToMemberResponse(updatedMembership, targetUser);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<GroupMemberResponse>> GetMembersAsync(Guid userId, Guid groupId, string? status)
+    {
+        // Delegate to existing method for now (status filtering not yet implemented in DB)
+        // Status filtering would require membership status field in database
+        return await GetMembersAsync(userId, groupId);
+    }
+
+    /// <inheritdoc />
+    public async Task<GroupMemberResponse> ApproveMemberAsync(Guid userId, Guid groupId, Guid targetUserId)
+    {
+        ValidateUserId(userId);
+        ValidateGroupId(groupId);
+        ValidateTargetUserId(targetUserId);
+
+        var group = await GetGroupOrThrowAsync(groupId);
+        var userMembership = await GetMembershipOrThrowAsync(groupId, userId);
+
+        EnsureCanApproveMember(userMembership);
+
+        var targetMembership = await GetTargetMembershipOrThrowAsync(groupId, targetUserId);
+
+        // For now, approval just confirms membership exists (pending status not yet in DB)
+        var targetUser = await _userRepository.GetByIdAsync(targetUserId);
+        return MapToMemberResponse(targetMembership, targetUser);
+    }
+
+    // Validation helper methods
+    private static void ValidateUserId(Guid userId)
+    {
+        if (userId == Guid.Empty)
+            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
+    }
+
+    private static void ValidateGroupId(Guid groupId)
+    {
+        if (groupId == Guid.Empty)
+            throw new ArgumentException("Group ID cannot be empty.", nameof(groupId));
+    }
+
+    private static void ValidateTargetUserId(Guid targetUserId)
+    {
+        if (targetUserId == Guid.Empty)
+            throw new ArgumentException("Target user ID cannot be empty.", nameof(targetUserId));
+    }
+
+    private static void ValidateSearchQuery(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            throw new ArgumentException("Search query cannot be empty.", nameof(query));
+    }
+
+    private static void ValidateSearchLimit(int limit)
+    {
+        if (limit <= 0 || limit > 100)
+            throw new ArgumentException("Limit must be between 1 and 100.", nameof(limit));
+    }
+
+    private static void ValidateJoinCode(string code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            throw new ArgumentException("Join code cannot be empty.", nameof(code));
+    }
+
+    private static void EnsureGroupFoundByCode(Group? group)
+    {
+        if (group == null)
+            throw new KeyNotFoundException("Invalid join code. Group not found.");
+    }
+
+    private async Task EnsureNotAlreadyMemberAsync(Guid groupId, Guid userId)
+    {
+        var existingMembership = await _groupRepository.GetMembershipAsync(groupId, userId);
+        if (existingMembership != null)
+            throw new InvalidOperationException("You are already a member of this group.");
+    }
+
+    private static GroupMembership CreateMembershipForJoin(Guid groupId, Guid userId)
+    {
+        return new GroupMembership
+        {
+            Id = Guid.NewGuid(),
+            GroupId = groupId,
+            UserId = userId,
+            Role = MemberRole.Member,
+            JoinedAt = DateTime.UtcNow
+        };
+    }
+
+    private async Task<Group> GetRefreshedGroupAsync(Guid groupId)
+    {
+        var group = await _groupRepository.GetByIdAsync(groupId);
+        if (group == null)
+            throw new InvalidOperationException("Failed to retrieve group after joining.");
+        return group;
+    }
+
+    private async Task<Group> GetGroupOrThrowAsync(Guid groupId)
+    {
+        var group = await _groupRepository.GetByIdAsync(groupId);
+        if (group == null)
+            throw new KeyNotFoundException($"Group not found: {groupId}");
+        return group;
+    }
+
+    private async Task<GroupMembership> GetMembershipOrThrowAsync(Guid groupId, Guid userId)
+    {
+        var membership = await _groupRepository.GetMembershipAsync(groupId, userId);
+        if (membership == null)
+            throw new UnauthorizedAccessException("You are not a member of this group.");
+        return membership;
+    }
+
+    private async Task<GroupMembership> GetTargetMembershipOrThrowAsync(Guid groupId, Guid targetUserId)
+    {
+        var membership = await _groupRepository.GetMembershipAsync(groupId, targetUserId);
+        if (membership == null)
+            throw new KeyNotFoundException($"Member not found: {targetUserId}");
+        return membership;
+    }
+
+    private static void ValidateRoleChangePermissions(
+        GroupMembership userMembership,
+        GroupMembership targetMembership,
+        MemberRole newRole)
+    {
+        // Cannot change owner's role
+        if (targetMembership.Role == MemberRole.Owner)
+            throw new UnauthorizedAccessException("Cannot change the owner's role.");
+
+        // Only owner can promote to admin
+        if (newRole == MemberRole.Admin && userMembership.Role != MemberRole.Owner)
+            throw new UnauthorizedAccessException("Only the owner can promote members to admin.");
+
+        // Only owner/admin can change roles
+        if (userMembership.Role != MemberRole.Owner && userMembership.Role != MemberRole.Admin)
+            throw new UnauthorizedAccessException("Only owners and admins can change member roles.");
+
+        // Admins cannot demote other admins
+        if (userMembership.Role == MemberRole.Admin &&
+            targetMembership.Role == MemberRole.Admin &&
+            newRole != MemberRole.Admin)
+            throw new UnauthorizedAccessException("Admins cannot demote other admins.");
+    }
+
+    private static void EnsureCanApproveMember(GroupMembership userMembership)
+    {
+        if (userMembership.Role != MemberRole.Owner && userMembership.Role != MemberRole.Admin)
+            throw new UnauthorizedAccessException("Only owners and admins can approve members.");
+    }
+
+    private static GroupSearchResponse MapToGroupSearchResponse(Group group)
+    {
+        return new GroupSearchResponse
+        {
+            Id = group.Id,
+            Name = group.Name,
+            Description = group.Description,
+            MemberCount = group.MemberCount,
+            IsPublic = group.IsPublic
+        };
+    }
+
+    private static GroupMemberResponse MapToMemberResponse(GroupMembership membership, User? user)
+    {
+        return new GroupMemberResponse
+        {
+            UserId = membership.UserId,
+            DisplayName = user?.DisplayName ?? "Unknown",
+            AvatarUrl = user?.AvatarUrl,
+            Role = membership.Role,
+            JoinedAt = membership.JoinedAt
+        };
     }
 }

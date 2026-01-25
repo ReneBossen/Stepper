@@ -322,6 +322,30 @@ public class GroupRepository : IGroupRepository
         return response.Models.Count;
     }
 
+    /// <inheritdoc />
+    public async Task<List<Group>> SearchPublicGroupsAsync(string query, int limit)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(query);
+
+        var client = await GetAuthenticatedClientAsync();
+
+        var response = await client
+            .From<GroupEntity>()
+            .Where(x => x.IsPublic == true)
+            .Filter("name", Supabase.Postgrest.Constants.Operator.ILike, $"%{query}%")
+            .Limit(limit)
+            .Get();
+
+        var groups = new List<Group>();
+        foreach (var entity in response.Models)
+        {
+            var memberCount = await GetMemberCountAsync(entity.Id);
+            groups.Add(entity.ToGroup(memberCount));
+        }
+
+        return groups;
+    }
+
     private async Task<Supabase.Client> GetAuthenticatedClientAsync()
     {
         if (_httpContextAccessor.HttpContext?.Items.TryGetValue("SupabaseToken", out var tokenObj) != true)

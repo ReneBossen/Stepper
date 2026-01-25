@@ -107,4 +107,12 @@ public interface IGroupRepository
     /// <param name="groupId">The group ID.</param>
     /// <returns>The member count.</returns>
     Task<int> GetMemberCountAsync(Guid groupId);
+
+    /// <summary>
+    /// Searches public groups by name.
+    /// </summary>
+    /// <param name="query">The search query (partial match on name).</param>
+    /// <param name="limit">Maximum number of results to return.</param>
+    /// <returns>List of matching public groups.</returns>
+    Task<List<Group>> SearchPublicGroupsAsync(string query, int limit);
 }
