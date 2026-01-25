@@ -18,7 +18,32 @@
       "Bash(git pull:*)",
       "Bash(npm install:*)",
       "Bash(git commit:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm start)",
+      "WebSearch",
+      "WebFetch(domain:callstack.github.io)",
+      "WebFetch(domain:oss.callstack.com)",
+      "Bash(npm run lint)",
+      "WebFetch(domain:docs.expo.dev)",
+      "Bash(if not exist \"E:\\\\Github Projects\\\\Stepper\\\\supabase\\\\migrations\" mkdir \"E:\\\\Github Projects\\\\Stepper\\\\supabase\\\\migrations\")",
+      "Bash(npx supabase --version)",
+      "Bash(npx supabase:*)",
+      "Bash(npm run android:*)",
+      "Bash(timeout:*)",
+      "Bash(git diff:*)",
+      "Bash(gh pr create:*)",
+      "WebFetch(domain:supabase.com)",
+      "Bash(cd:*)",
+      "Bash(test:*)",
+      "Bash(npm run seed:*)",
+      "Bash(git log:*)",
+      "Bash(grep:*)",
+      "Bash(git stash:*)",
+      "Bash(ls -la \"E:\\\\Github Projects\\\\Stepper\\\\docs\\\\migrations\"\" | grep -E \"021)",
+      "Bash(notification \")",
+      "Bash(ls -la \"E:\\\\Github Projects\\\\Stepper\\\\supabase\\\\migrations\"\" | grep -E \"180000)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)"
     ]
   }
 }
