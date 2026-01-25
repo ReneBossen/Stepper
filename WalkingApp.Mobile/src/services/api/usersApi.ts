@@ -1,3 +1,4 @@
+import { apiClient } from './client';
 import { supabase } from '../supabase';
 
 /**
@@ -62,74 +63,110 @@ export interface MutualGroup {
   name: string;
 }
 
+/**
+ * Backend API response shape for user profile.
+ * Uses camelCase from .NET backend.
+ */
+interface BackendProfileResponse {
+  id: string;
+  displayName: string;
+  avatarUrl?: string;
+  createdAt: string;
+  onboardingCompleted: boolean;
+  preferences?: {
+    units: string;
+    dailyStepGoal: number;
+    notifications: {
+      dailyReminder: boolean;
+      friendRequests: boolean;
+      groupInvites: boolean;
+      achievements: boolean;
+    };
+    privacy: {
+      showStepsToFriends: boolean;
+      showGroupActivity: boolean;
+      allowFriendRequests: boolean;
+      privateProfile: boolean;
+    };
+  };
+}
+
+/**
+ * Backend API response shape for avatar upload.
+ */
+interface BackendAvatarResponse {
+  avatarUrl: string;
+}
+
+/**
+ * Maps backend profile response (camelCase) to mobile format (snake_case).
+ */
+function mapProfileResponse(backend: BackendProfileResponse): UserProfileData {
+  return {
+    id: backend.id,
+    display_name: backend.displayName,
+    avatar_url: backend.avatarUrl,
+    created_at: backend.createdAt,
+    onboarding_completed: backend.onboardingCompleted,
+  };
+}
+
 export const usersApi = {
   /**
-   * Fetches the current user's profile from the users table.
+   * Fetches the current user's profile from the backend API.
    * Note: This no longer includes preferences - use userPreferencesApi for that.
    */
   getCurrentUser: async (): Promise<UserProfileData> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, display_name, avatar_url, created_at, onboarding_completed')
-      .eq('id', user.id)
-      .single();
-
-    if (error) throw error;
-    return data;
+    const response = await apiClient.get<BackendProfileResponse>('/api/v1/users/me');
+    return mapProfileResponse(response);
   },
 
   /**
-   * Updates the current user's profile in the users table.
+   * Updates the current user's profile via the backend API.
    * Note: To update preferences, use userPreferencesApi.updatePreferences().
    */
   updateProfile: async (updates: Partial<UserProfileData>): Promise<UserProfileData> => {
-    // Get current user ID for WHERE clause
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    // Map snake_case to camelCase for the request
+    const requestBody: Record<string, unknown> = {};
+    if (updates.display_name !== undefined) {
+      requestBody.displayName = updates.display_name;
+    }
+    if (updates.avatar_url !== undefined) {
+      requestBody.avatarUrl = updates.avatar_url;
+    }
+    if (updates.onboarding_completed !== undefined) {
+      requestBody.onboardingCompleted = updates.onboarding_completed;
+    }
 
-    const { data, error } = await supabase
-      .from('users')
-      .update(updates)
-      .eq('id', user.id)
-      .select('id, display_name, avatar_url, created_at, onboarding_completed')
-      .single();
-
-    if (error) throw error;
-    return data;
+    const response = await apiClient.put<BackendProfileResponse>('/api/v1/users/me', requestBody);
+    return mapProfileResponse(response);
   },
 
+  /**
+   * Uploads a new avatar image via the backend API.
+   * The backend handles storage and returns the public URL.
+   */
   uploadAvatar: async (uri: string): Promise<string> => {
-    // Get current user ID for folder structure
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    const formData = new FormData();
+    const filename = uri.split('/').pop() || 'avatar.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : 'image/jpeg';
 
-    // Upload to Supabase Storage with user-specific folder
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    const fileName = `${user.id}/avatar-${Date.now()}.jpg`;
+    formData.append('file', {
+      uri,
+      name: filename,
+      type,
+    } as unknown as Blob);
 
-    const { data, error } = await supabase.storage
-      .from('avatars')
-      .upload(fileName, blob, {
-        upsert: true, // Replace existing file if it exists
-        contentType: 'image/jpeg',
-      });
-
-    if (error) throw error;
-
-    const { data: publicUrl } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(data.path);
-
-    return publicUrl.publicUrl;
+    const response = await apiClient.upload<BackendAvatarResponse>('/api/v1/users/me/avatar', formData);
+    return response.avatarUrl;
   },
 
   /**
    * Fetches another user's public profile.
    * Returns limited data based on privacy settings.
+   * Note: This still uses Supabase directly as there's no dedicated backend endpoint
+   * that returns all the privacy-aware public profile data.
    */
   getUserProfile: async (userId: string): Promise<PublicUserProfile> => {
     const { data, error } = await supabase
@@ -160,6 +197,7 @@ export const usersApi = {
 
   /**
    * Fetches user stats (friends count, groups count, badges count).
+   * Note: This still uses Supabase directly as there's no dedicated backend endpoint.
    */
   getUserStats: async (userId: string): Promise<UserStats> => {
     // Get friends count - count accepted friendships
@@ -188,6 +226,7 @@ export const usersApi = {
 
   /**
    * Fetches weekly activity summary for a user.
+   * Note: This still uses Supabase directly as there's no dedicated backend endpoint.
    */
   getWeeklyActivity: async (userId: string): Promise<WeeklyActivity> => {
     // Calculate date range for current week (last 7 days)
@@ -259,6 +298,7 @@ export const usersApi = {
 
   /**
    * Fetches mutual groups between current user and another user.
+   * Note: This still uses Supabase directly as there's no dedicated backend endpoint.
    */
   getMutualGroups: async (otherUserId: string): Promise<MutualGroup[]> => {
     const { data: { user } } = await supabase.auth.getUser();
