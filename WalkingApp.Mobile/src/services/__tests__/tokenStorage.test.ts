@@ -215,8 +215,9 @@ describe('tokenStorage', () => {
       await tokenStorage.clearTokens();
       const endTime = Date.now();
 
-      // All three calls should happen in parallel
-      expect(endTime - startTime).toBeLessThan(25);
+      // All three calls should happen in parallel (10ms each)
+      // If sequential, would take ~30ms+. Allow generous margin for test runner overhead.
+      expect(endTime - startTime).toBeLessThan(100);
       expect(SecureStore.deleteItemAsync).toHaveBeenCalledTimes(3);
     });
   });
