@@ -54,4 +54,19 @@ public interface IStepRepository
     /// <param name="id">The step entry ID.</param>
     /// <returns>True if deleted, false if not found.</returns>
     Task<bool> DeleteAsync(Guid id);
+
+    /// <summary>
+    /// Gets the user's daily step goal from user preferences.
+    /// </summary>
+    /// <param name="userId">The user ID.</param>
+    /// <returns>The daily step goal, or the default value (10000) if not set.</returns>
+    Task<int> GetDailyGoalAsync(Guid userId);
+
+    /// <summary>
+    /// Gets all daily summaries for a user, ordered by date descending.
+    /// Used for streak calculations.
+    /// </summary>
+    /// <param name="userId">The user ID.</param>
+    /// <returns>All daily step summaries for the user.</returns>
+    Task<List<DailyStepSummary>> GetAllDailySummariesAsync(Guid userId);
 }

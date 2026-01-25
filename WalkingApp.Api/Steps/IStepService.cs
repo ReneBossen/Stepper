@@ -56,4 +56,11 @@ public interface IStepService
     /// <param name="entryId">The step entry ID to delete.</param>
     /// <returns>True if deleted, false if not found.</returns>
     Task<bool> DeleteEntryAsync(Guid userId, Guid entryId);
+
+    /// <summary>
+    /// Gets comprehensive step statistics for a user.
+    /// </summary>
+    /// <param name="userId">The user ID.</param>
+    /// <returns>Step statistics including today, week, month totals and streaks.</returns>
+    Task<StepStatsResponse> GetStatsAsync(Guid userId);
 }

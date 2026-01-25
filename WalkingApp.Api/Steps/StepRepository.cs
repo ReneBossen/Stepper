@@ -11,6 +11,8 @@ namespace WalkingApp.Api.Steps;
 /// </summary>
 public class StepRepository : IStepRepository
 {
+    private const int DefaultDailyGoal = 10000;
+
     private readonly ISupabaseClientFactory _clientFactory;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
@@ -151,6 +153,52 @@ public class StepRepository : IStepRepository
             return false;
         }
         // Let other exceptions bubble up to be handled by global exception handler
+    }
+
+    /// <inheritdoc />
+    public async Task<int> GetDailyGoalAsync(Guid userId)
+    {
+        var client = await GetAuthenticatedClientAsync();
+
+        var response = await client
+            .From<UserPreferencesEntity>()
+            .Where(x => x.Id == userId)
+            .Single();
+
+        return response?.DailyStepGoal ?? DefaultDailyGoal;
+    }
+
+    /// <inheritdoc />
+    public async Task<List<DailyStepSummary>> GetAllDailySummariesAsync(Guid userId)
+    {
+        var client = await GetAuthenticatedClientAsync();
+
+        // Use database function to get all summaries for the user
+        // We query from the beginning of time to today
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var startDate = new DateOnly(2020, 1, 1); // Reasonable start date
+
+        var response = await client.Rpc("get_daily_step_summary", new Dictionary<string, object>
+        {
+            { "p_user_id", userId },
+            { "p_start_date", startDate.ToString("yyyy-MM-dd") },
+            { "p_end_date", today.ToString("yyyy-MM-dd") }
+        });
+
+        var summaries = System.Text.Json.JsonSerializer
+            .Deserialize<List<DailySummaryResult>>(response.Content ?? string.Empty)
+            ?? [];
+
+        return summaries
+            .Select(r => new DailyStepSummary
+            {
+                Date = DateOnly.Parse(r.Date),
+                TotalSteps = (int)r.TotalSteps,
+                TotalDistanceMeters = r.TotalDistanceMeters,
+                EntryCount = (int)r.EntryCount
+            })
+            .OrderByDescending(s => s.Date)
+            .ToList();
     }
 
     private async Task<Supabase.Client> GetAuthenticatedClientAsync()
