@@ -1,15 +1,17 @@
 import { notificationsApi } from '../notificationsApi';
-import { supabase } from '@services/supabase';
+import { apiClient } from '../client';
 import { Notification } from '@store/notificationsStore';
 
-// Mock the supabase client
-jest.mock('@services/supabase', () => ({
-  supabase: {
-    from: jest.fn(),
+// Mock the apiClient
+jest.mock('../client', () => ({
+  apiClient: {
+    get: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn(),
   },
 }));
 
-const mockSupabase = supabase as jest.Mocked<typeof supabase>;
+const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
 
 describe('notificationsApi', () => {
   beforeEach(() => {
@@ -18,78 +20,68 @@ describe('notificationsApi', () => {
 
   describe('getNotifications', () => {
     it('should fetch notifications successfully', async () => {
-      const mockNotifications: Notification[] = [
-        {
-          id: 'notif-1',
-          user_id: 'user-123',
-          type: 'friend_request',
-          title: 'New Friend Request',
-          message: 'John Doe sent you a friend request',
-          is_read: false,
-          data: { from_user_id: 'user-456' },
-          created_at: '2024-01-15T10:00:00Z',
-        },
-        {
-          id: 'notif-2',
-          user_id: 'user-123',
-          type: 'goal_achieved',
-          title: 'Goal Achieved!',
-          message: 'You reached your daily step goal',
-          is_read: true,
-          created_at: '2024-01-14T18:00:00Z',
-        },
-      ];
+      const mockBackendResponse = {
+        items: [
+          {
+            id: 'notif-1',
+            userId: 'user-123',
+            type: 'friend_request',
+            title: 'New Friend Request',
+            message: 'John Doe sent you a friend request',
+            isRead: false,
+            data: '{"from_user_id":"user-456"}',
+            createdAt: '2024-01-15T10:00:00Z',
+          },
+          {
+            id: 'notif-2',
+            userId: 'user-123',
+            type: 'goal_achieved',
+            title: 'Goal Achieved!',
+            message: 'You reached your daily step goal',
+            isRead: true,
+            data: null,
+            createdAt: '2024-01-14T18:00:00Z',
+          },
+        ],
+        totalCount: 2,
+        unreadCount: 1,
+        hasMore: false,
+      };
 
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockReturnThis();
-      const mockLimit = jest.fn().mockResolvedValue({
-        data: mockNotifications,
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        order: mockOrder,
-        limit: mockLimit,
-      });
-
-      mockSelect.mockReturnValue({
-        order: mockOrder,
-      });
-
-      mockOrder.mockReturnValue({
-        limit: mockLimit,
-      });
+      mockApiClient.get.mockResolvedValue(mockBackendResponse);
 
       const result = await notificationsApi.getNotifications();
 
-      expect(mockSupabase.from).toHaveBeenCalledWith('notifications');
-      expect(mockSelect).toHaveBeenCalledWith('*');
-      expect(mockOrder).toHaveBeenCalledWith('created_at', { ascending: false });
-      expect(mockLimit).toHaveBeenCalledWith(50);
-      expect(result).toEqual(mockNotifications);
+      expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/notifications?limit=50&offset=0');
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({
+        id: 'notif-1',
+        user_id: 'user-123',
+        type: 'friend_request',
+        title: 'New Friend Request',
+        message: 'John Doe sent you a friend request',
+        is_read: false,
+        data: { from_user_id: 'user-456' },
+        created_at: '2024-01-15T10:00:00Z',
+      });
+      expect(result[1]).toEqual({
+        id: 'notif-2',
+        user_id: 'user-123',
+        type: 'goal_achieved',
+        title: 'Goal Achieved!',
+        message: 'You reached your daily step goal',
+        is_read: true,
+        data: undefined,
+        created_at: '2024-01-14T18:00:00Z',
+      });
     });
 
     it('should handle empty notifications list', async () => {
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockReturnThis();
-      const mockLimit = jest.fn().mockResolvedValue({
-        data: null,
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        order: mockOrder,
-        limit: mockLimit,
-      });
-
-      mockSelect.mockReturnValue({
-        order: mockOrder,
-      });
-
-      mockOrder.mockReturnValue({
-        limit: mockLimit,
+      mockApiClient.get.mockResolvedValue({
+        items: [],
+        totalCount: 0,
+        unreadCount: 0,
+        hasMore: false,
       });
 
       const result = await notificationsApi.getNotifications();
@@ -98,148 +90,98 @@ describe('notificationsApi', () => {
     });
 
     it('should throw error when fetch fails', async () => {
-      const mockError = { message: 'Fetch failed' };
+      const apiError = new Error('Network error');
+      mockApiClient.get.mockRejectedValue(apiError);
 
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockReturnThis();
-      const mockLimit = jest.fn().mockResolvedValue({
-        data: null,
-        error: mockError,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        order: mockOrder,
-        limit: mockLimit,
-      });
-
-      mockSelect.mockReturnValue({
-        order: mockOrder,
-      });
-
-      mockOrder.mockReturnValue({
-        limit: mockLimit,
-      });
-
-      await expect(notificationsApi.getNotifications()).rejects.toEqual(mockError);
+      await expect(notificationsApi.getNotifications()).rejects.toThrow('Network error');
     });
 
-    it('should limit to 50 notifications', async () => {
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockReturnThis();
-      const mockLimit = jest.fn().mockResolvedValue({
-        data: [],
-        error: null,
+    it('should map camelCase response to snake_case', async () => {
+      mockApiClient.get.mockResolvedValue({
+        items: [
+          {
+            id: 'notif-1',
+            userId: 'user-abc',
+            type: 'general',
+            title: 'Test Title',
+            message: 'Test Message',
+            isRead: true,
+            createdAt: '2024-01-20T12:00:00Z',
+          },
+        ],
+        totalCount: 1,
+        unreadCount: 0,
+        hasMore: false,
       });
 
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        order: mockOrder,
-        limit: mockLimit,
-      });
+      const result = await notificationsApi.getNotifications();
 
-      mockSelect.mockReturnValue({
-        order: mockOrder,
-      });
-
-      mockOrder.mockReturnValue({
-        limit: mockLimit,
-      });
-
-      await notificationsApi.getNotifications();
-
-      expect(mockLimit).toHaveBeenCalledWith(50);
+      expect(result[0].user_id).toBe('user-abc');
+      expect(result[0].is_read).toBe(true);
+      expect(result[0].created_at).toBe('2024-01-20T12:00:00Z');
     });
 
-    it('should order by created_at descending', async () => {
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockOrder = jest.fn().mockReturnThis();
-      const mockLimit = jest.fn().mockResolvedValue({
-        data: [],
-        error: null,
+    it('should handle invalid JSON in data field gracefully', async () => {
+      mockApiClient.get.mockResolvedValue({
+        items: [
+          {
+            id: 'notif-1',
+            userId: 'user-123',
+            type: 'general',
+            title: 'Test',
+            message: 'Test',
+            isRead: false,
+            data: 'invalid-json{',
+            createdAt: '2024-01-20T12:00:00Z',
+          },
+        ],
+        totalCount: 1,
+        unreadCount: 1,
+        hasMore: false,
       });
 
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        order: mockOrder,
-        limit: mockLimit,
+      const result = await notificationsApi.getNotifications();
+
+      expect(result[0].data).toBeUndefined();
+    });
+
+    it('should parse valid JSON in data field', async () => {
+      mockApiClient.get.mockResolvedValue({
+        items: [
+          {
+            id: 'notif-1',
+            userId: 'user-123',
+            type: 'friend_accepted',
+            title: 'Friend Accepted',
+            message: 'Your request was accepted',
+            isRead: false,
+            data: '{"friend_id":"friend-123","friend_name":"Jane"}',
+            createdAt: '2024-01-20T12:00:00Z',
+          },
+        ],
+        totalCount: 1,
+        unreadCount: 1,
+        hasMore: false,
       });
 
-      mockSelect.mockReturnValue({
-        order: mockOrder,
-      });
+      const result = await notificationsApi.getNotifications();
 
-      mockOrder.mockReturnValue({
-        limit: mockLimit,
-      });
-
-      await notificationsApi.getNotifications();
-
-      expect(mockOrder).toHaveBeenCalledWith('created_at', { ascending: false });
+      expect(result[0].data).toEqual({ friend_id: 'friend-123', friend_name: 'Jane' });
     });
   });
 
   describe('getUnreadCount', () => {
     it('should fetch unread count successfully', async () => {
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        count: 5,
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
-      });
-
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
+      mockApiClient.get.mockResolvedValue({ count: 5 });
 
       const result = await notificationsApi.getUnreadCount();
 
-      expect(mockSupabase.from).toHaveBeenCalledWith('notifications');
-      expect(mockSelect).toHaveBeenCalledWith('*', { count: 'exact', head: true });
-      expect(mockEq).toHaveBeenCalledWith('is_read', false);
+      expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/notifications/unread/count');
       expect(result).toBe(5);
     });
 
     it('should return zero when no unread notifications', async () => {
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        count: 0,
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
-      });
-
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-
-      const result = await notificationsApi.getUnreadCount();
-
-      expect(result).toBe(0);
-    });
-
-    it('should return zero when count is null', async () => {
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        count: null,
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
-      });
-
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
+      mockApiClient.get.mockResolvedValue({ count: 0 });
 
       const result = await notificationsApi.getUnreadCount();
 
@@ -247,196 +189,77 @@ describe('notificationsApi', () => {
     });
 
     it('should throw error when fetch fails', async () => {
-      const mockError = { message: 'Count failed' };
+      const apiError = new Error('Count failed');
+      mockApiClient.get.mockRejectedValue(apiError);
 
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        count: null,
-        error: mockError,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-        eq: mockEq,
-      });
-
-      mockSelect.mockReturnValue({
-        eq: mockEq,
-      });
-
-      await expect(notificationsApi.getUnreadCount()).rejects.toEqual(mockError);
+      await expect(notificationsApi.getUnreadCount()).rejects.toThrow('Count failed');
     });
   });
 
   describe('markAsRead', () => {
     it('should mark notification as read successfully', async () => {
-      const mockUpdate = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        update: mockUpdate,
-        eq: mockEq,
-      });
-
-      mockUpdate.mockReturnValue({
-        eq: mockEq,
-      });
+      mockApiClient.put.mockResolvedValue(undefined);
 
       await notificationsApi.markAsRead('notif-123');
 
-      expect(mockSupabase.from).toHaveBeenCalledWith('notifications');
-      expect(mockUpdate).toHaveBeenCalledWith({ is_read: true });
-      expect(mockEq).toHaveBeenCalledWith('id', 'notif-123');
+      expect(mockApiClient.put).toHaveBeenCalledWith('/api/v1/notifications/notif-123/read');
     });
 
     it('should throw error when update fails', async () => {
-      const mockError = { message: 'Update failed' };
+      const apiError = new Error('Update failed');
+      mockApiClient.put.mockRejectedValue(apiError);
 
-      const mockUpdate = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        error: mockError,
-      });
+      await expect(notificationsApi.markAsRead('notif-123')).rejects.toThrow('Update failed');
+    });
 
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        update: mockUpdate,
-        eq: mockEq,
-      });
+    it('should use the correct notification ID in the URL', async () => {
+      mockApiClient.put.mockResolvedValue(undefined);
 
-      mockUpdate.mockReturnValue({
-        eq: mockEq,
-      });
+      await notificationsApi.markAsRead('specific-notif-id');
 
-      await expect(notificationsApi.markAsRead('notif-123')).rejects.toEqual(mockError);
+      expect(mockApiClient.put).toHaveBeenCalledWith('/api/v1/notifications/specific-notif-id/read');
     });
   });
 
   describe('markAllAsRead', () => {
-    it('should mark all unread notifications as read successfully', async () => {
-      const mockUpdate = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        update: mockUpdate,
-        eq: mockEq,
-      });
-
-      mockUpdate.mockReturnValue({
-        eq: mockEq,
-      });
+    it('should mark all notifications as read successfully', async () => {
+      mockApiClient.put.mockResolvedValue(undefined);
 
       await notificationsApi.markAllAsRead();
 
-      expect(mockSupabase.from).toHaveBeenCalledWith('notifications');
-      expect(mockUpdate).toHaveBeenCalledWith({ is_read: true });
-      expect(mockEq).toHaveBeenCalledWith('is_read', false);
+      expect(mockApiClient.put).toHaveBeenCalledWith('/api/v1/notifications/read-all');
     });
 
     it('should throw error when update fails', async () => {
-      const mockError = { message: 'Bulk update failed' };
+      const apiError = new Error('Bulk update failed');
+      mockApiClient.put.mockRejectedValue(apiError);
 
-      const mockUpdate = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        error: mockError,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        update: mockUpdate,
-        eq: mockEq,
-      });
-
-      mockUpdate.mockReturnValue({
-        eq: mockEq,
-      });
-
-      await expect(notificationsApi.markAllAsRead()).rejects.toEqual(mockError);
-    });
-
-    it('should only update unread notifications', async () => {
-      const mockUpdate = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        update: mockUpdate,
-        eq: mockEq,
-      });
-
-      mockUpdate.mockReturnValue({
-        eq: mockEq,
-      });
-
-      await notificationsApi.markAllAsRead();
-
-      expect(mockEq).toHaveBeenCalledWith('is_read', false);
+      await expect(notificationsApi.markAllAsRead()).rejects.toThrow('Bulk update failed');
     });
   });
 
   describe('deleteNotification', () => {
     it('should delete notification successfully', async () => {
-      const mockDelete = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        delete: mockDelete,
-        eq: mockEq,
-      });
-
-      mockDelete.mockReturnValue({
-        eq: mockEq,
-      });
+      mockApiClient.delete.mockResolvedValue(undefined);
 
       await notificationsApi.deleteNotification('notif-123');
 
-      expect(mockSupabase.from).toHaveBeenCalledWith('notifications');
-      expect(mockDelete).toHaveBeenCalled();
-      expect(mockEq).toHaveBeenCalledWith('id', 'notif-123');
+      expect(mockApiClient.delete).toHaveBeenCalledWith('/api/v1/notifications/notif-123');
     });
 
     it('should throw error when delete fails', async () => {
-      const mockError = { message: 'Delete failed' };
+      const apiError = new Error('Delete failed');
+      mockApiClient.delete.mockRejectedValue(apiError);
 
-      const mockDelete = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        error: mockError,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        delete: mockDelete,
-        eq: mockEq,
-      });
-
-      mockDelete.mockReturnValue({
-        eq: mockEq,
-      });
-
-      await expect(notificationsApi.deleteNotification('notif-123')).rejects.toEqual(mockError);
+      await expect(notificationsApi.deleteNotification('notif-123')).rejects.toThrow('Delete failed');
     });
 
-    it('should delete only the specified notification', async () => {
-      const mockDelete = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        delete: mockDelete,
-        eq: mockEq,
-      });
-
-      mockDelete.mockReturnValue({
-        eq: mockEq,
-      });
+    it('should use the correct notification ID in the URL', async () => {
+      mockApiClient.delete.mockResolvedValue(undefined);
 
       await notificationsApi.deleteNotification('specific-notif-id');
 
-      expect(mockEq).toHaveBeenCalledWith('id', 'specific-notif-id');
+      expect(mockApiClient.delete).toHaveBeenCalledWith('/api/v1/notifications/specific-notif-id');
     });
   });
 });
