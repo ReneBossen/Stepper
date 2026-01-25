@@ -186,6 +186,190 @@ public class StepService : IStepService
         return await _stepRepository.DeleteAsync(entryId);
     }
 
+    /// <inheritdoc />
+    public async Task<StepStatsResponse> GetStatsAsync(Guid userId)
+    {
+        ValidateUserId(userId);
+
+        var dailyGoal = await _stepRepository.GetDailyGoalAsync(userId);
+        var allSummaries = await _stepRepository.GetAllDailySummariesAsync(userId);
+
+        var todayStats = CalculateTodayStats(allSummaries);
+        var weekStats = CalculateWeekStats(allSummaries);
+        var monthStats = CalculateMonthStats(allSummaries);
+        var (currentStreak, longestStreak) = CalculateStreaks(allSummaries, dailyGoal);
+
+        return new StepStatsResponse(
+            TodaySteps: todayStats.Steps,
+            TodayDistance: todayStats.Distance,
+            WeekSteps: weekStats.Steps,
+            WeekDistance: weekStats.Distance,
+            MonthSteps: monthStats.Steps,
+            MonthDistance: monthStats.Distance,
+            CurrentStreak: currentStreak,
+            LongestStreak: longestStreak,
+            DailyGoal: dailyGoal
+        );
+    }
+
+    private static void ValidateUserId(Guid userId)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
+        }
+    }
+
+    private static (int Steps, double Distance) CalculateTodayStats(List<DailyStepSummary> summaries)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var todaySummary = summaries.FirstOrDefault(s => s.Date == today);
+
+        return todaySummary != null
+            ? (todaySummary.TotalSteps, todaySummary.TotalDistanceMeters)
+            : (0, 0.0);
+    }
+
+    private static (int Steps, double Distance) CalculateWeekStats(List<DailyStepSummary> summaries)
+    {
+        var (weekStart, weekEnd) = GetCurrentWeekRange();
+        return CalculatePeriodStats(summaries, weekStart, weekEnd);
+    }
+
+    private static (int Steps, double Distance) CalculateMonthStats(List<DailyStepSummary> summaries)
+    {
+        var (monthStart, monthEnd) = GetCurrentMonthRange();
+        return CalculatePeriodStats(summaries, monthStart, monthEnd);
+    }
+
+    private static (int Steps, double Distance) CalculatePeriodStats(
+        List<DailyStepSummary> summaries,
+        DateOnly start,
+        DateOnly end)
+    {
+        var periodSummaries = summaries
+            .Where(s => s.Date >= start && s.Date <= end)
+            .ToList();
+
+        var totalSteps = periodSummaries.Sum(s => s.TotalSteps);
+        var totalDistance = periodSummaries.Sum(s => s.TotalDistanceMeters);
+
+        return (totalSteps, totalDistance);
+    }
+
+    private static (DateOnly Start, DateOnly End) GetCurrentWeekRange()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var dayOfWeek = today.DayOfWeek;
+
+        // Calculate Monday of current week (Monday = 0 for our purposes)
+        var daysFromMonday = dayOfWeek == DayOfWeek.Sunday ? 6 : (int)dayOfWeek - 1;
+        var monday = today.AddDays(-daysFromMonday);
+        var sunday = monday.AddDays(6);
+
+        return (monday, sunday);
+    }
+
+    private static (DateOnly Start, DateOnly End) GetCurrentMonthRange()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var monthStart = new DateOnly(today.Year, today.Month, 1);
+        var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+        return (monthStart, monthEnd);
+    }
+
+    private static (int Current, int Longest) CalculateStreaks(
+        List<DailyStepSummary> summaries,
+        int dailyGoal)
+    {
+        if (summaries.Count == 0)
+        {
+            return (0, 0);
+        }
+
+        // Summaries are already ordered by date descending
+        var sortedSummaries = summaries.OrderByDescending(s => s.Date).ToList();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var currentStreak = CalculateCurrentStreak(sortedSummaries, dailyGoal, today);
+        var longestStreak = CalculateLongestStreak(sortedSummaries, dailyGoal);
+
+        return (currentStreak, longestStreak);
+    }
+
+    private static int CalculateCurrentStreak(
+        List<DailyStepSummary> sortedSummaries,
+        int dailyGoal,
+        DateOnly today)
+    {
+        var currentStreak = 0;
+        var expectedDate = today;
+
+        foreach (var summary in sortedSummaries)
+        {
+            // Allow for missing today (streak continues from yesterday)
+            if (summary.Date == expectedDate || summary.Date == expectedDate.AddDays(-1))
+            {
+                if (summary.TotalSteps >= dailyGoal)
+                {
+                    currentStreak++;
+                    expectedDate = summary.Date.AddDays(-1);
+                }
+                else
+                {
+                    break;
+                }
+            }
+            else if (summary.Date < expectedDate.AddDays(-1))
+            {
+                // Gap in dates, streak is broken
+                break;
+            }
+        }
+
+        return currentStreak;
+    }
+
+    private static int CalculateLongestStreak(
+        List<DailyStepSummary> sortedSummaries,
+        int dailyGoal)
+    {
+        // Sort ascending for forward calculation
+        var ascendingSummaries = sortedSummaries.OrderBy(s => s.Date).ToList();
+
+        var longestStreak = 0;
+        var currentStreak = 0;
+        DateOnly? lastDate = null;
+
+        foreach (var summary in ascendingSummaries)
+        {
+            var metGoal = summary.TotalSteps >= dailyGoal;
+
+            if (metGoal)
+            {
+                if (lastDate == null || summary.Date == lastDate.Value.AddDays(1))
+                {
+                    currentStreak++;
+                }
+                else
+                {
+                    currentStreak = 1;
+                }
+
+                longestStreak = Math.Max(longestStreak, currentStreak);
+                lastDate = summary.Date;
+            }
+            else
+            {
+                currentStreak = 0;
+                lastDate = null;
+            }
+        }
+
+        return longestStreak;
+    }
+
     private static void ValidateRecordStepsRequest(RecordStepsRequest request)
     {
         if (request.StepCount < MinStepCount || request.StepCount > MaxStepCount)

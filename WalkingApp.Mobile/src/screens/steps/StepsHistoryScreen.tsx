@@ -125,13 +125,13 @@ export default function StepsHistoryScreen() {
         entry={item}
         dailyGoal={dailyGoal}
         units={units}
-        testID={`history-item-${item.id}`}
+        testID={`history-item-${item.date}`}
       />
     ),
     [dailyGoal, units]
   );
 
-  const keyExtractor = useCallback((item: DailyStepEntry) => item.id, []);
+  const keyExtractor = useCallback((item: DailyStepEntry) => item.date, []);
 
   // Map viewMode for chart display (custom uses monthly-style chart)
   const chartViewMode = viewMode === 'custom' ? 'monthly' : viewMode;

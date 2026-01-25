@@ -145,18 +145,15 @@ export const useHomeData = (): UseHomeDataReturn => {
   const units = currentUser?.preferences?.units ?? 'metric';
   const displayName = currentUser?.display_name ?? 'User';
 
-  // Calculate today's distance from stats or use a default
-  // STEPS_PER_KILOMETER: Average of approximately 1300 steps per kilometer
-  // (varies by height/stride length, but 1300 is a reasonable average for adults)
-  const STEPS_PER_KILOMETER = 1300;
-  const todayDistance = stats?.today ? Math.round((stats.today / STEPS_PER_KILOMETER) * 1000) : 0;
+  // Use today's distance from stats (backend provides this)
+  const todayDistance = stats?.todayDistance ?? 0;
 
   // Weekly stats
-  const weeklyTotal = stats?.week ?? 0;
+  const weeklyTotal = stats?.weekSteps ?? 0;
   const weeklyAverage = weeklyTotal > 0 ? Math.round(weeklyTotal / 7) : 0;
 
   // Streak
-  const streak = stats?.streak ?? 0;
+  const streak = stats?.currentStreak ?? 0;
 
   return {
     todaySteps,

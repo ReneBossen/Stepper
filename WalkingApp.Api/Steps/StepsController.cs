@@ -56,6 +56,31 @@ public class StepsController : ControllerBase
     }
 
     /// <summary>
+    /// Gets comprehensive step statistics for the authenticated user.
+    /// </summary>
+    /// <returns>Step statistics including today, week, month totals and streaks.</returns>
+    [HttpGet("stats")]
+    public async Task<ActionResult<ApiResponse<StepStatsResponse>>> GetStats()
+    {
+        var userId = User.GetUserId();
+
+        if (userId == null)
+        {
+            return Unauthorized(ApiResponse<StepStatsResponse>.ErrorResponse("User is not authenticated."));
+        }
+
+        try
+        {
+            var stats = await _stepService.GetStatsAsync(userId.Value);
+            return Ok(ApiResponse<StepStatsResponse>.SuccessResponse(stats));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<StepStatsResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
     /// Gets today's step summary.
     /// </summary>
     /// <returns>Today's step summary.</returns>
