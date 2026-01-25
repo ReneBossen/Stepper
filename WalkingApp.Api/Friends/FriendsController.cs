@@ -181,6 +181,43 @@ public class FriendsController : ControllerBase
     }
 
     /// <summary>
+    /// Cancels an outgoing friend request.
+    /// </summary>
+    /// <param name="requestId">The ID of the friend request to cancel.</param>
+    /// <returns>No content.</returns>
+    [HttpDelete("requests/{requestId}")]
+    public async Task<ActionResult<ApiResponse<object>>> CancelRequest(Guid requestId)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+        {
+            return Unauthorized(ApiResponse<object>.ErrorResponse("User is not authenticated."));
+        }
+
+        try
+        {
+            await _friendService.CancelRequestAsync(userId.Value, requestId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.ErrorResponse(ex.Message));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ApiResponse<object>.ErrorResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<object>.ErrorResponse($"An error occurred: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
     /// Gets the list of friends for the current user.
     /// </summary>
     /// <returns>The friend list.</returns>

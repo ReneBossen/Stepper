@@ -852,6 +852,114 @@ public class FriendServiceTests
 
     #endregion
 
+    #region CancelRequestAsync Tests
+
+    [Fact]
+    public async Task CancelRequestAsync_WithValidRequest_CancelsRequest()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+
+        _mockFriendRepository.Setup(x => x.CancelRequestAsync(requestId, userId))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _sut.CancelRequestAsync(userId, requestId);
+
+        // Assert
+        _mockFriendRepository.Verify(x => x.CancelRequestAsync(requestId, userId), Times.Once);
+    }
+
+    [Fact]
+    public async Task CancelRequestAsync_WithEmptyUserId_ThrowsArgumentException()
+    {
+        // Arrange
+        var requestId = Guid.NewGuid();
+
+        // Act
+        var act = async () => await _sut.CancelRequestAsync(Guid.Empty, requestId);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("User ID cannot be empty.*");
+        _mockFriendRepository.Verify(x => x.CancelRequestAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CancelRequestAsync_WithEmptyRequestId_ThrowsArgumentException()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+
+        // Act
+        var act = async () => await _sut.CancelRequestAsync(userId, Guid.Empty);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("Request ID cannot be empty.*");
+        _mockFriendRepository.Verify(x => x.CancelRequestAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CancelRequestAsync_WhenRequestNotFound_ThrowsKeyNotFoundException()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+
+        _mockFriendRepository.Setup(x => x.CancelRequestAsync(requestId, userId))
+            .ThrowsAsync(new KeyNotFoundException($"Friend request not found: {requestId}"));
+
+        // Act
+        var act = async () => await _sut.CancelRequestAsync(userId, requestId);
+
+        // Assert
+        await act.Should().ThrowAsync<KeyNotFoundException>()
+            .WithMessage($"Friend request not found: {requestId}");
+        _mockFriendRepository.Verify(x => x.CancelRequestAsync(requestId, userId), Times.Once);
+    }
+
+    [Fact]
+    public async Task CancelRequestAsync_WhenNotRequester_ThrowsUnauthorizedAccessException()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+
+        _mockFriendRepository.Setup(x => x.CancelRequestAsync(requestId, userId))
+            .ThrowsAsync(new UnauthorizedAccessException("Only the requester can cancel this request."));
+
+        // Act
+        var act = async () => await _sut.CancelRequestAsync(userId, requestId);
+
+        // Assert
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("Only the requester can cancel this request.");
+        _mockFriendRepository.Verify(x => x.CancelRequestAsync(requestId, userId), Times.Once);
+    }
+
+    [Fact]
+    public async Task CancelRequestAsync_WhenRequestNotPending_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+
+        _mockFriendRepository.Setup(x => x.CancelRequestAsync(requestId, userId))
+            .ThrowsAsync(new InvalidOperationException("Cannot cancel request with status: accepted"));
+
+        // Act
+        var act = async () => await _sut.CancelRequestAsync(userId, requestId);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Cannot cancel request with status: accepted");
+        _mockFriendRepository.Verify(x => x.CancelRequestAsync(requestId, userId), Times.Once);
+    }
+
+    #endregion
+
     #region GetFriendStepsAsync - Additional Edge Cases
 
     [Fact]

@@ -344,7 +344,8 @@ describe('friendsStore', () => {
         await result.current.acceptRequest('user-3');
       });
 
-      expect(mockFriendsApi.acceptRequest).toHaveBeenCalledWith('user-3');
+      // Store looks up request ID from user ID, so API is called with request-1
+      expect(mockFriendsApi.acceptRequest).toHaveBeenCalledWith('request-1');
       expect(mockFriendsApi.getFriends).toHaveBeenCalled();
       expect(result.current.requests).toEqual([]);
       expect(result.current.isLoading).toBe(false);
@@ -375,8 +376,12 @@ describe('friendsStore', () => {
     it('should handle accept error', async () => {
       const error = new Error('Accept failed');
       mockFriendsApi.acceptRequest.mockRejectedValue(error);
+      mockFriendsApi.getRequests.mockResolvedValue(mockRequests);
 
       const { result } = renderHook(() => useFriendsStore());
+
+      // Set up requests so the store can find the request ID
+      useFriendsStore.setState({ requests: mockRequests });
 
       try {
         await act(async () => {
@@ -419,7 +424,8 @@ describe('friendsStore', () => {
         await result.current.declineRequest('user-3');
       });
 
-      expect(mockFriendsApi.declineRequest).toHaveBeenCalledWith('user-3');
+      // Store looks up request ID from user ID, so API is called with request-1
+      expect(mockFriendsApi.declineRequest).toHaveBeenCalledWith('request-1');
       expect(result.current.requests).toEqual([]);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
@@ -448,8 +454,12 @@ describe('friendsStore', () => {
     it('should handle decline error', async () => {
       const error = new Error('Decline failed');
       mockFriendsApi.declineRequest.mockRejectedValue(error);
+      mockFriendsApi.getRequests.mockResolvedValue(mockRequests);
 
       const { result } = renderHook(() => useFriendsStore());
+
+      // Set up requests so the store can find the request ID
+      useFriendsStore.setState({ requests: mockRequests });
 
       try {
         await act(async () => {

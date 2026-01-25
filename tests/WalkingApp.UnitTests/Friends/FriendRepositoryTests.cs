@@ -326,4 +326,27 @@ public class FriendRepositoryTests
     }
 
     #endregion
+
+    #region Authentication Token Tests - CancelRequestAsync
+
+    [Fact]
+    public async Task CancelRequestAsync_WithMissingTokenKey_ThrowsUnauthorizedAccessException()
+    {
+        // Arrange
+        var requestId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        _mockHttpContext.Setup(x => x.Items).Returns(new Dictionary<object, object?>());
+        _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(_mockHttpContext.Object);
+        var sut = new FriendRepository(_mockClientFactory.Object, _mockHttpContextAccessor.Object);
+
+        // Act
+        var act = async () => await sut.CancelRequestAsync(requestId, userId);
+
+        // Assert
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("User is not authenticated.");
+        _mockClientFactory.Verify(x => x.CreateClientAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    #endregion
 }
