@@ -285,6 +285,37 @@ public class FriendRepository : IFriendRepository
         return created.ToFriendship();
     }
 
+    /// <inheritdoc />
+    public async Task CancelRequestAsync(Guid requestId, Guid userId)
+    {
+        var client = await GetAuthenticatedClientAsync();
+
+        var existing = await client
+            .From<FriendshipEntity>()
+            .Where(x => x.Id == requestId)
+            .Single();
+
+        if (existing == null)
+        {
+            throw new KeyNotFoundException($"Friend request not found: {requestId}");
+        }
+
+        if (existing.RequesterId != userId)
+        {
+            throw new UnauthorizedAccessException("Only the requester can cancel this request.");
+        }
+
+        if (existing.Status != "pending")
+        {
+            throw new InvalidOperationException($"Cannot cancel request with status: {existing.Status}");
+        }
+
+        await client
+            .From<FriendshipEntity>()
+            .Where(x => x.Id == requestId)
+            .Delete();
+    }
+
     private async Task<Client> GetAuthenticatedClientAsync()
     {
         if (_httpContextAccessor.HttpContext?.Items.TryGetValue("SupabaseToken", out var tokenObj) != true)

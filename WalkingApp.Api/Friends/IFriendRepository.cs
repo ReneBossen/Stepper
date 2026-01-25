@@ -72,4 +72,11 @@ public interface IFriendRepository
     /// <param name="blockedUserId">The ID of the user being blocked.</param>
     /// <returns>The created/updated friendship with blocked status.</returns>
     Task<Friendship> BlockUserAsync(Guid userId, Guid blockedUserId);
+
+    /// <summary>
+    /// Cancels an outgoing friend request.
+    /// </summary>
+    /// <param name="requestId">The ID of the friend request.</param>
+    /// <param name="userId">The ID of the user canceling the request (must be requester).</param>
+    Task CancelRequestAsync(Guid requestId, Guid userId);
 }

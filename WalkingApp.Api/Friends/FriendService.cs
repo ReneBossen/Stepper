@@ -372,4 +372,20 @@ public class FriendService : IFriendService
             FriendsSince = friendship.AcceptedAt ?? friendship.CreatedAt
         };
     }
+
+    /// <inheritdoc />
+    public async Task CancelRequestAsync(Guid userId, Guid requestId)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
+        }
+
+        if (requestId == Guid.Empty)
+        {
+            throw new ArgumentException("Request ID cannot be empty.", nameof(requestId));
+        }
+
+        await _friendRepository.CancelRequestAsync(requestId, userId);
+    }
 }
