@@ -4,7 +4,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { ThemeProvider } from '@theme/ThemeProvider';
 import { useAppTheme } from '@hooks/useAppTheme';
 import RootNavigator from '@navigation/RootNavigator';
-import { supabase } from '@services/supabase';
 import { useAuthStore } from '@store/authStore';
 import { useUserStore } from '@store/userStore';
 import { validateConfig } from '@config/supabase.config';
@@ -18,14 +17,11 @@ function AppContent() {
   const { navigationTheme } = useAppTheme();
   const [isReady, setIsReady] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
-  const setSession = useAuthStore((state) => state.setSession);
+  const restoreSession = useAuthStore((state) => state.restoreSession);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const fetchCurrentUser = useUserStore((state) => state.fetchCurrentUser);
-  const clearUser = useUserStore((state) => state.clearUser);
 
   useEffect(() => {
-    let subscription: any = null;
-    let isSigningOut = false;
-
     async function prepare() {
       try {
         // Validate configuration
@@ -40,46 +36,8 @@ function AppContent() {
           return;
         }
 
-        // Check initial session
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-
-        // Fetch user profile if authenticated
-        if (session) {
-          await fetchCurrentUser();
-        }
-
-        // Setup auth state listener
-        const {
-          data: { subscription: authSubscription },
-        } = supabase.auth.onAuthStateChange(async (event, session) => {
-          if (event === 'SIGNED_OUT') {
-            isSigningOut = true;
-            setSession(null);
-            clearUser();
-            // Reset the isSigningOut flag after 1000ms to allow for any pending auth state
-            // change events to complete. This delay prevents false SIGNED_IN events that may
-            // be triggered by Supabase session restoration immediately after sign-out from
-            // being processed as genuine sign-in events.
-            setTimeout(() => {
-              isSigningOut = false;
-            }, 1000);
-            return;
-          }
-
-          // Ignore SIGNED_IN events that happen right after SIGNED_OUT (session restoration)
-          if (event === 'SIGNED_IN' && isSigningOut) {
-            return;
-          }
-
-          setSession(session);
-
-          if (event === 'SIGNED_IN' && session) {
-            await fetchCurrentUser();
-          }
-        });
-
-        subscription = authSubscription;
+        // Restore session from stored tokens
+        await restoreSession();
 
         setIsReady(true);
         await SplashScreen.hideAsync();
@@ -94,14 +52,14 @@ function AppContent() {
     }
 
     prepare();
-
-    // Cleanup function returned directly from useEffect
-    return () => {
-      if (subscription) {
-        subscription.unsubscribe();
-      }
-    };
   }, []);
+
+  // Fetch user profile when authentication state changes to authenticated
+  useEffect(() => {
+    if (isAuthenticated && isReady) {
+      fetchCurrentUser();
+    }
+  }, [isAuthenticated, isReady, fetchCurrentUser]);
 
   if (!isReady) {
     return null;
