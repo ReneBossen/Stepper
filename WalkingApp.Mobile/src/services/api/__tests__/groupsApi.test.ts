@@ -1,475 +1,715 @@
 import { groupsApi } from '../groupsApi';
+import { apiClient } from '../client';
 import { supabase } from '@services/supabase';
-import { Group, GroupMember, CreateGroupData } from '@store/groupsStore';
+import { Group, GroupMember, CreateGroupData, GroupWithLeaderboard, LeaderboardEntry } from '@store/groupsStore';
 
-// Mock user ID for tests
-const MOCK_USER_ID = 'current-user-id';
-
-// Mock the supabase client
-jest.mock('@services/supabase', () => ({
-  supabase: {
-    auth: {
-      getUser: jest.fn(),
-    },
-    from: jest.fn(),
-    rpc: jest.fn(),
+// Mock the apiClient
+jest.mock('../client', () => ({
+  apiClient: {
+    get: jest.fn(),
+    post: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn(),
   },
 }));
 
-const mockSupabase = supabase as jest.Mocked<typeof supabase>;
-const mockGetUser = supabase.auth.getUser as jest.Mock;
+// Mock supabase for real-time subscription (which still uses Supabase)
+jest.mock('@services/supabase', () => ({
+  supabase: {
+    channel: jest.fn().mockReturnThis(),
+    on: jest.fn().mockReturnThis(),
+    subscribe: jest.fn().mockReturnThis(),
+    removeChannel: jest.fn(),
+  },
+}));
+
+const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
 
 describe('groupsApi', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Default: user is authenticated
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: MOCK_USER_ID } },
-      error: null,
-    });
   });
 
-  describe('getGroups', () => {
-    it('should fetch groups successfully', async () => {
-      const mockData = [
-        {
-          id: 'group-1',
-          name: 'Morning Walkers',
-          description: 'Early bird group',
-          competition_type: 'daily',
-          is_private: false,
-          created_at: '2024-01-01T00:00:00Z',
-          group_memberships: [{ count: 15 }],
-        },
-        {
-          id: 'group-2',
-          name: 'Weekend Warriors',
-          description: null,
-          competition_type: 'weekly',
-          is_private: true,
-          created_at: '2024-01-05T00:00:00Z',
-          group_memberships: [{ count: 8 }],
-        },
-      ];
+  describe('getMyGroups', () => {
+    it('should fetch user groups with leaderboard preview', async () => {
+      const mockGroupsResponse = {
+        groups: [
+          {
+            id: 'group-1',
+            name: 'Morning Walkers',
+            description: 'Early bird group',
+            isPublic: true,
+            periodType: 'Weekly',
+            memberCount: 15,
+            joinCode: 'ABC123',
+            role: 'Owner',
+            createdAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+      };
 
-      const mockSelect = jest.fn().mockResolvedValue({
-        data: mockData,
-        error: null,
-      });
+      const mockLeaderboardResponse = {
+        groupId: 'group-1',
+        periodStart: '2024-01-15T00:00:00Z',
+        periodEnd: '2024-01-21T23:59:59Z',
+        entries: [
+          {
+            rank: 1,
+            userId: 'user-1',
+            displayName: 'John Doe',
+            avatarUrl: 'https://example.com/avatar.jpg',
+            totalSteps: 50000,
+            totalDistanceMeters: 40000,
+          },
+        ],
+      };
 
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-      });
+      mockApiClient.get
+        .mockResolvedValueOnce(mockGroupsResponse)
+        .mockResolvedValueOnce(mockLeaderboardResponse);
 
-      const result = await groupsApi.getGroups();
+      const result = await groupsApi.getMyGroups();
 
-      expect(mockSupabase.from).toHaveBeenCalledWith('groups');
-      expect(mockSelect).toHaveBeenCalledWith(expect.stringContaining('group_memberships(count)'));
-      expect(result).toHaveLength(2);
-      expect(result[0].member_count).toBe(15);
-      expect(result[1].member_count).toBe(8);
+      expect(mockApiClient.get).toHaveBeenCalledWith('/groups');
+      expect(mockApiClient.get).toHaveBeenCalledWith('/groups/group-1/leaderboard');
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('group-1');
+      expect(result[0].name).toBe('Morning Walkers');
+      expect(result[0].user_role).toBe('owner');
+      expect(result[0].is_private).toBe(false);
+      expect(result[0].leaderboard_preview).toHaveLength(1);
     });
 
     it('should handle empty groups list', async () => {
-      const mockSelect = jest.fn().mockResolvedValue({
-        data: null,
-        error: null,
-      });
+      mockApiClient.get.mockResolvedValueOnce({ groups: [] });
 
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-      });
-
-      const result = await groupsApi.getGroups();
+      const result = await groupsApi.getMyGroups();
 
       expect(result).toEqual([]);
     });
 
-    it('should handle groups with zero members', async () => {
-      const mockData = [
+    it('should handle leaderboard fetch failure gracefully', async () => {
+      const mockGroupsResponse = {
+        groups: [
+          {
+            id: 'group-1',
+            name: 'Test Group',
+            isPublic: true,
+            periodType: 'Weekly',
+            memberCount: 5,
+            role: 'Member',
+            createdAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+      };
+
+      // First call succeeds, second (leaderboard) fails
+      mockApiClient.get
+        .mockResolvedValueOnce(mockGroupsResponse)
+        .mockRejectedValueOnce(new Error('Leaderboard unavailable'));
+
+      const result = await groupsApi.getMyGroups();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].leaderboard_preview).toEqual([]);
+    });
+  });
+
+  describe('getGroups', () => {
+    it('should fetch public groups via search', async () => {
+      const mockSearchResponse = [
         {
           id: 'group-1',
-          name: 'Empty Group',
-          description: 'No members',
-          competition_type: 'daily',
-          is_private: false,
-          created_at: '2024-01-01T00:00:00Z',
-          group_memberships: [],
+          name: 'Public Group',
+          description: 'A public group',
+          memberCount: 10,
+          isPublic: true,
         },
       ];
 
-      const mockSelect = jest.fn().mockResolvedValue({
-        data: mockData,
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-      });
+      mockApiClient.get.mockResolvedValueOnce(mockSearchResponse);
 
       const result = await groupsApi.getGroups();
 
-      expect(result[0].member_count).toBe(0);
-    });
-
-    it('should throw error when fetch fails', async () => {
-      const mockError = { message: 'Fetch failed' };
-
-      const mockSelect = jest.fn().mockResolvedValue({
-        data: null,
-        error: mockError,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: mockSelect,
-      });
-
-      await expect(groupsApi.getGroups()).rejects.toEqual(mockError);
+      expect(mockApiClient.get).toHaveBeenCalledWith('/groups/search?query=');
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('Public Group');
+      expect(result[0].is_private).toBe(false);
     });
   });
 
   describe('getGroup', () => {
-    it('should fetch single group successfully', async () => {
-      const mockGroupData = {
+    it('should fetch single group with details', async () => {
+      const mockGroupResponse = {
         id: 'group-1',
-        name: 'Morning Walkers',
-        description: 'Early bird group',
-        period_type: 'daily',
-        is_public: true,
-        created_at: '2024-01-01T00:00:00Z',
-        group_memberships: [{ count: 15 }],
+        name: 'Test Group',
+        description: 'Test description',
+        isPublic: false,
+        periodType: 'Daily',
+        memberCount: 5,
+        joinCode: 'XYZ789',
+        role: 'Admin',
+        createdAt: '2024-01-01T00:00:00Z',
       };
 
-      const mockMembershipData = {
-        role: 'member',
+      const mockLeaderboardResponse = {
+        groupId: 'group-1',
+        periodStart: '2024-01-15T00:00:00Z',
+        periodEnd: '2024-01-15T23:59:59Z',
+        entries: [],
       };
 
-      let callCount = 0;
-      (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
-        callCount++;
-        if (callCount === 1) {
-          // Groups query
-          const mockSelect = jest.fn().mockReturnValue({
-            eq: jest.fn().mockReturnValue({
-              single: jest.fn().mockResolvedValue({ data: mockGroupData, error: null }),
-            }),
-          });
-          return { select: mockSelect };
-        } else {
-          // Membership query
-          const mockSelect = jest.fn().mockReturnValue({
-            eq: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
-                single: jest.fn().mockResolvedValue({ data: mockMembershipData, error: null }),
-              }),
-            }),
-          });
-          return { select: mockSelect };
-        }
-      });
+      mockApiClient.get
+        .mockResolvedValueOnce(mockGroupResponse)
+        .mockResolvedValueOnce(mockLeaderboardResponse);
 
       const result = await groupsApi.getGroup('group-1');
 
-      expect(mockSupabase.from).toHaveBeenCalledWith('groups');
+      expect(mockApiClient.get).toHaveBeenCalledWith('/groups/group-1');
       expect(result.id).toBe('group-1');
-      expect(result.member_count).toBe(15);
-      expect(result.user_role).toBe('member');
+      expect(result.user_role).toBe('admin');
+      expect(result.is_private).toBe(true);
+      expect(result.competition_type).toBe('daily');
     });
 
-    it('should throw error when group not found', async () => {
-      const mockError = { message: 'Group not found' };
+    it('should calculate period dates locally if leaderboard fails', async () => {
+      const mockGroupResponse = {
+        id: 'group-1',
+        name: 'Test Group',
+        isPublic: true,
+        periodType: 'Weekly',
+        memberCount: 5,
+        role: 'Member',
+        createdAt: '2024-01-01T00:00:00Z',
+      };
 
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({ data: null, error: mockError }),
-          }),
-        }),
-      });
+      mockApiClient.get
+        .mockResolvedValueOnce(mockGroupResponse)
+        .mockRejectedValueOnce(new Error('Leaderboard unavailable'));
 
-      await expect(groupsApi.getGroup('invalid-group')).rejects.toEqual(mockError);
-    });
+      const result = await groupsApi.getGroup('group-1');
 
-    it('should throw error when not authenticated', async () => {
-      mockGetUser.mockResolvedValue({
-        data: { user: null },
-        error: null,
-      });
-
-      await expect(groupsApi.getGroup('group-1')).rejects.toThrow('User not authenticated');
+      expect(result.period_start).toBeTruthy();
+      expect(result.period_end).toBeTruthy();
     });
   });
 
   describe('getLeaderboard', () => {
-    const mockRpc = supabase.rpc as jest.Mock;
+    it('should fetch and map leaderboard entries', async () => {
+      const mockLeaderboardResponse = {
+        groupId: 'group-1',
+        periodStart: '2024-01-15T00:00:00Z',
+        periodEnd: '2024-01-21T23:59:59Z',
+        entries: [
+          {
+            rank: 1,
+            userId: 'user-1',
+            displayName: 'Top Walker',
+            avatarUrl: 'https://example.com/avatar.jpg',
+            totalSteps: 100000,
+            totalDistanceMeters: 80000,
+          },
+          {
+            rank: 2,
+            userId: 'user-2',
+            displayName: 'Second Place',
+            avatarUrl: null,
+            totalSteps: 80000,
+            totalDistanceMeters: 64000,
+          },
+        ],
+      };
 
-    it('should fetch and sort leaderboard successfully', async () => {
-      // Mock RPC response with leaderboard data already ranked
-      const mockLeaderboardData = [
-        {
-          user_id: 'user-1',
-          display_name: 'John Doe',
-          avatar_url: 'https://example.com/john.jpg',
-          total_steps: 12000,
-          rank: 1,
-        },
-        {
-          user_id: 'user-2',
-          display_name: 'Jane Smith',
-          avatar_url: null,
-          total_steps: 10500,
-          rank: 2,
-        },
-      ];
-
-      // Mock group period_type query
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({ data: { period_type: 'weekly' }, error: null }),
-          }),
-        }),
-      });
-
-      // Mock RPC calls - first for current leaderboard, second for previous (rank changes)
-      mockRpc
-        .mockResolvedValueOnce({ data: mockLeaderboardData, error: null })
-        .mockResolvedValueOnce({ data: mockLeaderboardData, error: null });
+      mockApiClient.get.mockResolvedValueOnce(mockLeaderboardResponse);
 
       const result = await groupsApi.getLeaderboard('group-1');
 
+      expect(mockApiClient.get).toHaveBeenCalledWith('/groups/group-1/leaderboard');
       expect(result).toHaveLength(2);
-      expect(result[0].steps).toBe(12000);
+      expect(result[0].steps).toBe(100000);
       expect(result[0].rank).toBe(1);
-      expect(result[1].steps).toBe(10500);
+      expect(result[1].steps).toBe(80000);
       expect(result[1].rank).toBe(2);
     });
 
-    it('should handle members with no steps', async () => {
-      // Mock RPC response with zero steps
-      const mockLeaderboardData = [
-        {
-          user_id: 'user-1',
-          display_name: 'John Doe',
-          avatar_url: null,
-          total_steps: 0,
-          rank: 1,
-        },
-      ];
-
-      // Mock group period_type query
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({ data: { period_type: 'weekly' }, error: null }),
-          }),
-        }),
+    it('should handle empty leaderboard', async () => {
+      mockApiClient.get.mockResolvedValueOnce({
+        groupId: 'group-1',
+        periodStart: '2024-01-15T00:00:00Z',
+        periodEnd: '2024-01-21T23:59:59Z',
+        entries: [],
       });
-
-      mockRpc
-        .mockResolvedValueOnce({ data: mockLeaderboardData, error: null })
-        .mockResolvedValueOnce({ data: [], error: null });
 
       const result = await groupsApi.getLeaderboard('group-1');
 
-      expect(result[0].steps).toBe(0);
+      expect(result).toEqual([]);
     });
+  });
 
-    it('should throw error when fetch fails', async () => {
-      const mockError = { message: 'Leaderboard unavailable' };
+  describe('getMembers', () => {
+    it('should fetch and map group members', async () => {
+      const mockMembersResponse = [
+        {
+          userId: 'user-1',
+          displayName: 'John Doe',
+          avatarUrl: 'https://example.com/avatar.jpg',
+          role: 'Owner',
+          joinedAt: '2024-01-01T00:00:00Z',
+        },
+        {
+          userId: 'user-2',
+          displayName: 'Jane Smith',
+          avatarUrl: null,
+          role: 'Member',
+          joinedAt: '2024-01-05T00:00:00Z',
+        },
+      ];
 
-      // Mock group period_type query
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({ data: { period_type: 'weekly' }, error: null }),
-          }),
-        }),
-      });
+      mockApiClient.get.mockResolvedValueOnce(mockMembersResponse);
 
-      mockRpc.mockResolvedValue({ data: null, error: mockError });
+      const result = await groupsApi.getMembers('group-1');
 
-      await expect(groupsApi.getLeaderboard('group-1')).rejects.toEqual(mockError);
-    });
-
-    it('should throw error when not authenticated', async () => {
-      mockGetUser.mockResolvedValue({
-        data: { user: null },
-        error: null,
-      });
-
-      await expect(groupsApi.getLeaderboard('group-1')).rejects.toThrow('User not authenticated');
+      expect(mockApiClient.get).toHaveBeenCalledWith('/groups/group-1/members');
+      expect(result).toHaveLength(2);
+      expect(result[0].user_id).toBe('user-1');
+      expect(result[0].role).toBe('owner');
+      expect(result[1].role).toBe('member');
     });
   });
 
   describe('createGroup', () => {
-    const newGroupData: CreateGroupData = {
-      name: 'New Group',
-      description: 'Test group',
-      competition_type: 'weekly',
-      is_private: false,
-    };
-
-    it('should create group and add creator as member', async () => {
-      const createdGroup = {
-        id: 'group-3',
-        ...newGroupData,
-        created_at: '2024-01-15T00:00:00Z',
+    it('should create group with correct request format', async () => {
+      const createData: CreateGroupData = {
+        name: 'New Group',
+        description: 'Test description',
+        competition_type: 'weekly',
+        is_private: true,
       };
 
-      const mockInsert = jest.fn().mockReturnThis();
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockSingle = jest.fn().mockResolvedValue({
-        data: createdGroup,
-        error: null,
+      const mockResponse = {
+        id: 'new-group-id',
+        name: 'New Group',
+        description: 'Test description',
+        isPublic: false,
+        periodType: 'Weekly',
+        memberCount: 1,
+        joinCode: 'ABC123',
+        role: 'Owner',
+        createdAt: '2024-01-15T00:00:00Z',
+      };
+
+      mockApiClient.post.mockResolvedValueOnce(mockResponse);
+
+      const result = await groupsApi.createGroup(createData);
+
+      expect(mockApiClient.post).toHaveBeenCalledWith('/groups', {
+        name: 'New Group',
+        description: 'Test description',
+        isPublic: false,
+        periodType: 'Weekly',
       });
-
-      let callCount = 0;
-      (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
-        callCount++;
-        if (callCount === 1) {
-          // Creating group
-          return {
-            insert: mockInsert,
-            select: mockSelect,
-            single: mockSingle,
-          };
-        } else {
-          // Adding membership
-          return {
-            insert: jest.fn().mockResolvedValue({ error: null }),
-          };
-        }
-      });
-
-      mockInsert.mockReturnValue({
-        select: mockSelect,
-      });
-
-      mockSelect.mockReturnValue({
-        single: mockSingle,
-      });
-
-      const result = await groupsApi.createGroup(newGroupData);
-
-      expect(result.id).toBe('group-3');
-      expect(result.member_count).toBe(1);
-      expect(mockSupabase.from).toHaveBeenCalledWith('groups');
-      expect(mockSupabase.from).toHaveBeenCalledWith('group_memberships');
+      expect(result.id).toBe('new-group-id');
+      expect(result.is_private).toBe(true);
     });
 
-    it('should throw error when create fails', async () => {
-      const mockError = { message: 'Group name already exists' };
+    it('should handle public group creation', async () => {
+      const createData: CreateGroupData = {
+        name: 'Public Group',
+        competition_type: 'daily',
+        is_private: false,
+      };
 
-      const mockInsert = jest.fn().mockReturnThis();
-      const mockSelect = jest.fn().mockReturnThis();
-      const mockSingle = jest.fn().mockResolvedValue({
-        data: null,
-        error: mockError,
+      const mockResponse = {
+        id: 'new-group-id',
+        name: 'Public Group',
+        isPublic: true,
+        periodType: 'Daily',
+        memberCount: 1,
+        role: 'Owner',
+        createdAt: '2024-01-15T00:00:00Z',
+      };
+
+      mockApiClient.post.mockResolvedValueOnce(mockResponse);
+
+      await groupsApi.createGroup(createData);
+
+      expect(mockApiClient.post).toHaveBeenCalledWith('/groups', {
+        name: 'Public Group',
+        description: undefined,
+        isPublic: true,
+        periodType: 'Daily',
       });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        insert: mockInsert,
-        select: mockSelect,
-        single: mockSingle,
-      });
-
-      mockInsert.mockReturnValue({
-        select: mockSelect,
-      });
-
-      mockSelect.mockReturnValue({
-        single: mockSingle,
-      });
-
-      await expect(groupsApi.createGroup(newGroupData)).rejects.toEqual(mockError);
-    });
-
-    it('should throw error when not authenticated', async () => {
-      mockGetUser.mockResolvedValue({
-        data: { user: null },
-        error: null,
-      });
-
-      await expect(groupsApi.createGroup(newGroupData)).rejects.toThrow('User not authenticated');
     });
   });
 
   describe('joinGroup', () => {
     it('should join group successfully', async () => {
-      const mockInsert = jest.fn().mockResolvedValue({
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        insert: mockInsert,
-      });
+      mockApiClient.post.mockResolvedValueOnce({});
 
       await groupsApi.joinGroup('group-1');
 
-      expect(mockSupabase.from).toHaveBeenCalledWith('group_memberships');
-      expect(mockInsert).toHaveBeenCalledWith({
-        group_id: 'group-1',
-        role: 'member',
-      });
+      expect(mockApiClient.post).toHaveBeenCalledWith('/groups/group-1/join', { joinCode: undefined });
     });
 
-    it('should throw error when join fails', async () => {
-      const mockError = { message: 'Already a member' };
+    it('should join group with join code', async () => {
+      mockApiClient.post.mockResolvedValueOnce({});
 
-      const mockInsert = jest.fn().mockResolvedValue({
-        error: mockError,
+      await groupsApi.joinGroup('group-1', 'SECRET');
+
+      expect(mockApiClient.post).toHaveBeenCalledWith('/groups/group-1/join', { joinCode: 'SECRET' });
+    });
+  });
+
+  describe('joinGroupByCode', () => {
+    it('should join group by code and return group ID', async () => {
+      mockApiClient.post.mockResolvedValueOnce({
+        id: 'joined-group-id',
+        name: 'Joined Group',
+        isPublic: false,
+        periodType: 'Weekly',
+        memberCount: 10,
+        role: 'Member',
+        createdAt: '2024-01-01T00:00:00Z',
       });
 
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        insert: mockInsert,
-      });
+      const result = await groupsApi.joinGroupByCode('abc123');
 
-      await expect(groupsApi.joinGroup('group-1')).rejects.toEqual(mockError);
+      expect(mockApiClient.post).toHaveBeenCalledWith('/groups/join-by-code', {
+        code: 'ABC123', // Should be uppercased
+      });
+      expect(result).toBe('joined-group-id');
     });
   });
 
   describe('leaveGroup', () => {
     it('should leave group successfully', async () => {
-      const mockDelete = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        error: null,
-      });
-
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        delete: mockDelete,
-        eq: mockEq,
-      });
-
-      mockDelete.mockReturnValue({
-        eq: mockEq,
-      });
+      mockApiClient.post.mockResolvedValueOnce({});
 
       await groupsApi.leaveGroup('group-1');
 
-      expect(mockSupabase.from).toHaveBeenCalledWith('group_memberships');
-      expect(mockDelete).toHaveBeenCalled();
-      expect(mockEq).toHaveBeenCalledWith('group_id', 'group-1');
+      expect(mockApiClient.post).toHaveBeenCalledWith('/groups/group-1/leave');
+    });
+  });
+
+  describe('searchPublicGroups', () => {
+    it('should search public groups', async () => {
+      const mockSearchResponse = [
+        {
+          id: 'group-1',
+          name: 'Walking Club',
+          description: 'A walking group',
+          memberCount: 25,
+          isPublic: true,
+        },
+      ];
+
+      mockApiClient.get.mockResolvedValueOnce(mockSearchResponse);
+
+      const result = await groupsApi.searchPublicGroups('walking');
+
+      expect(mockApiClient.get).toHaveBeenCalledWith('/groups/search?query=walking&limit=20');
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('Walking Club');
     });
 
-    it('should throw error when leave fails', async () => {
-      const mockError = { message: 'Not a member' };
+    it('should return empty array for empty query', async () => {
+      const result = await groupsApi.searchPublicGroups('');
 
-      const mockDelete = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({
-        error: mockError,
+      expect(mockApiClient.get).not.toHaveBeenCalled();
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array for whitespace query', async () => {
+      const result = await groupsApi.searchPublicGroups('   ');
+
+      expect(mockApiClient.get).not.toHaveBeenCalled();
+      expect(result).toEqual([]);
+    });
+
+    it('should encode query parameters', async () => {
+      mockApiClient.get.mockResolvedValueOnce([]);
+
+      await groupsApi.searchPublicGroups('test group');
+
+      expect(mockApiClient.get).toHaveBeenCalledWith('/groups/search?query=test%20group&limit=20');
+    });
+  });
+
+  describe('updateGroup', () => {
+    it('should update group with partial data', async () => {
+      const currentGroup = {
+        id: 'group-1',
+        name: 'Original Name',
+        description: 'Original description',
+        isPublic: true,
+        periodType: 'Weekly',
+        memberCount: 5,
+        role: 'Owner',
+        createdAt: '2024-01-01T00:00:00Z',
+      };
+
+      mockApiClient.get.mockResolvedValueOnce(currentGroup);
+      mockApiClient.put.mockResolvedValueOnce({});
+
+      await groupsApi.updateGroup('group-1', { name: 'New Name' });
+
+      expect(mockApiClient.get).toHaveBeenCalledWith('/groups/group-1');
+      expect(mockApiClient.put).toHaveBeenCalledWith('/groups/group-1', {
+        name: 'New Name',
+        description: 'Original description',
+        isPublic: true,
+      });
+    });
+
+    it('should toggle privacy setting', async () => {
+      const currentGroup = {
+        id: 'group-1',
+        name: 'Test Group',
+        description: 'Test',
+        isPublic: true,
+        periodType: 'Weekly',
+        memberCount: 5,
+        role: 'Owner',
+        createdAt: '2024-01-01T00:00:00Z',
+      };
+
+      mockApiClient.get.mockResolvedValueOnce(currentGroup);
+      mockApiClient.put.mockResolvedValueOnce({});
+
+      await groupsApi.updateGroup('group-1', { is_private: true });
+
+      expect(mockApiClient.put).toHaveBeenCalledWith('/groups/group-1', {
+        name: 'Test Group',
+        description: 'Test',
+        isPublic: false,
+      });
+    });
+  });
+
+  describe('deleteGroup', () => {
+    it('should delete group successfully', async () => {
+      mockApiClient.delete.mockResolvedValueOnce({});
+
+      await groupsApi.deleteGroup('group-1');
+
+      expect(mockApiClient.delete).toHaveBeenCalledWith('/groups/group-1');
+    });
+  });
+
+  describe('promoteMember', () => {
+    it('should promote member to admin', async () => {
+      mockApiClient.put.mockResolvedValueOnce({});
+
+      await groupsApi.promoteMember('group-1', 'user-1');
+
+      expect(mockApiClient.put).toHaveBeenCalledWith('/groups/group-1/members/user-1', {
+        role: 'Admin',
+      });
+    });
+  });
+
+  describe('demoteMember', () => {
+    it('should demote admin to member', async () => {
+      mockApiClient.put.mockResolvedValueOnce({});
+
+      await groupsApi.demoteMember('group-1', 'user-1');
+
+      expect(mockApiClient.put).toHaveBeenCalledWith('/groups/group-1/members/user-1', {
+        role: 'Member',
+      });
+    });
+  });
+
+  describe('removeMember', () => {
+    it('should remove member from group', async () => {
+      mockApiClient.delete.mockResolvedValueOnce({});
+
+      await groupsApi.removeMember('group-1', 'user-1');
+
+      expect(mockApiClient.delete).toHaveBeenCalledWith('/groups/group-1/members/user-1');
+    });
+  });
+
+  describe('getPendingMembers', () => {
+    it('should fetch pending members', async () => {
+      const mockPendingResponse = [
+        {
+          userId: 'user-1',
+          displayName: 'Pending User',
+          avatarUrl: null,
+          role: 'Member',
+          joinedAt: '2024-01-15T00:00:00Z',
+        },
+      ];
+
+      mockApiClient.get.mockResolvedValueOnce(mockPendingResponse);
+
+      const result = await groupsApi.getPendingMembers('group-1');
+
+      expect(mockApiClient.get).toHaveBeenCalledWith('/groups/group-1/members?status=pending');
+      expect(result).toHaveLength(1);
+      expect(result[0].display_name).toBe('Pending User');
+    });
+  });
+
+  describe('approveMember', () => {
+    it('should approve pending member', async () => {
+      mockApiClient.post.mockResolvedValueOnce({});
+
+      await groupsApi.approveMember('group-1', 'user-1');
+
+      expect(mockApiClient.post).toHaveBeenCalledWith('/groups/group-1/members/user-1/approve');
+    });
+  });
+
+  describe('denyMember', () => {
+    it('should deny pending member', async () => {
+      mockApiClient.delete.mockResolvedValueOnce({});
+
+      await groupsApi.denyMember('group-1', 'user-1');
+
+      expect(mockApiClient.delete).toHaveBeenCalledWith('/groups/group-1/members/user-1');
+    });
+  });
+
+  describe('getInviteCode', () => {
+    it('should fetch invite code from group details', async () => {
+      mockApiClient.get.mockResolvedValueOnce({
+        id: 'group-1',
+        name: 'Test Group',
+        isPublic: false,
+        periodType: 'Weekly',
+        memberCount: 5,
+        joinCode: 'SECRET123',
+        role: 'Owner',
+        createdAt: '2024-01-01T00:00:00Z',
       });
 
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        delete: mockDelete,
-        eq: mockEq,
+      const result = await groupsApi.getInviteCode('group-1');
+
+      expect(mockApiClient.get).toHaveBeenCalledWith('/groups/group-1');
+      expect(result).toBe('SECRET123');
+    });
+
+    it('should return null if no invite code', async () => {
+      mockApiClient.get.mockResolvedValueOnce({
+        id: 'group-1',
+        name: 'Public Group',
+        isPublic: true,
+        periodType: 'Weekly',
+        memberCount: 5,
+        role: 'Owner',
+        createdAt: '2024-01-01T00:00:00Z',
       });
 
-      mockDelete.mockReturnValue({
-        eq: mockEq,
+      const result = await groupsApi.getInviteCode('group-1');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('generateInviteCode', () => {
+    it('should generate new invite code', async () => {
+      mockApiClient.post.mockResolvedValueOnce({
+        id: 'group-1',
+        name: 'Test Group',
+        isPublic: false,
+        periodType: 'Weekly',
+        memberCount: 5,
+        joinCode: 'NEWCODE',
+        role: 'Owner',
+        createdAt: '2024-01-01T00:00:00Z',
       });
 
-      await expect(groupsApi.leaveGroup('group-1')).rejects.toEqual(mockError);
+      const result = await groupsApi.generateInviteCode('group-1');
+
+      expect(mockApiClient.post).toHaveBeenCalledWith('/groups/group-1/regenerate-code');
+      expect(result).toBe('NEWCODE');
+    });
+  });
+
+  describe('inviteFriends', () => {
+    it('should invite multiple friends', async () => {
+      mockApiClient.post
+        .mockResolvedValueOnce({})
+        .mockResolvedValueOnce({})
+        .mockResolvedValueOnce({});
+
+      await groupsApi.inviteFriends('group-1', ['friend-1', 'friend-2', 'friend-3']);
+
+      expect(mockApiClient.post).toHaveBeenCalledTimes(3);
+      expect(mockApiClient.post).toHaveBeenCalledWith('/groups/group-1/members', { userId: 'friend-1' });
+      expect(mockApiClient.post).toHaveBeenCalledWith('/groups/group-1/members', { userId: 'friend-2' });
+      expect(mockApiClient.post).toHaveBeenCalledWith('/groups/group-1/members', { userId: 'friend-3' });
+    });
+
+    it('should handle empty friends list', async () => {
+      await groupsApi.inviteFriends('group-1', []);
+
+      expect(mockApiClient.post).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getGroupDetails', () => {
+    it('should fetch group management details', async () => {
+      mockApiClient.get.mockResolvedValueOnce({
+        id: 'group-1',
+        name: 'Test Group',
+        description: 'Test description',
+        isPublic: false,
+        periodType: 'Monthly',
+        memberCount: 10,
+        joinCode: 'ABC123',
+        role: 'Owner',
+        createdAt: '2024-01-01T00:00:00Z',
+      });
+
+      const result = await groupsApi.getGroupDetails('group-1');
+
+      expect(mockApiClient.get).toHaveBeenCalledWith('/groups/group-1');
+      expect(result.id).toBe('group-1');
+      expect(result.competition_type).toBe('monthly');
+      expect(result.is_private).toBe(true);
+      expect(result.join_code).toBe('ABC123');
+      expect(result.user_role).toBe('owner');
+    });
+  });
+
+  describe('updateMemberRole', () => {
+    it('should update member role to admin', async () => {
+      mockApiClient.put.mockResolvedValueOnce({});
+
+      await groupsApi.updateMemberRole('group-1', 'user-1', 'admin');
+
+      expect(mockApiClient.put).toHaveBeenCalledWith('/groups/group-1/members/user-1', {
+        role: 'Admin',
+      });
+    });
+
+    it('should update member role to member', async () => {
+      mockApiClient.put.mockResolvedValueOnce({});
+
+      await groupsApi.updateMemberRole('group-1', 'user-1', 'member');
+
+      expect(mockApiClient.put).toHaveBeenCalledWith('/groups/group-1/members/user-1', {
+        role: 'Member',
+      });
+    });
+  });
+
+  describe('subscribeToLeaderboard', () => {
+    it('should subscribe to leaderboard changes using Supabase', () => {
+      const callback = jest.fn();
+      const mockChannel = supabase.channel as jest.Mock;
+      const mockRemoveChannel = supabase.removeChannel as jest.Mock;
+
+      const unsubscribe = groupsApi.subscribeToLeaderboard('group-1', callback);
+
+      expect(mockChannel).toHaveBeenCalledWith('group-group-1-leaderboard');
+
+      // Test unsubscribe function
+      unsubscribe();
+      expect(mockRemoveChannel).toHaveBeenCalled();
     });
   });
 });
