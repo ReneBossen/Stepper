@@ -503,6 +503,138 @@ public class FriendsControllerTests
 
     #endregion
 
+    #region CancelRequest Tests
+
+    [Fact]
+    public async Task CancelRequest_WithValidRequest_ReturnsNoContent()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        SetupAuthenticatedUser(userId);
+
+        _mockFriendService.Setup(x => x.CancelRequestAsync(userId, requestId))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _sut.CancelRequest(requestId);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Result.Should().BeOfType<NoContentResult>();
+        _mockFriendService.Verify(x => x.CancelRequestAsync(userId, requestId), Times.Once);
+    }
+
+    [Fact]
+    public async Task CancelRequest_WithUnauthenticatedUser_ReturnsUnauthorized()
+    {
+        // Arrange
+        var requestId = Guid.NewGuid();
+        SetupUnauthenticatedUser();
+
+        // Act
+        var result = await _sut.CancelRequest(requestId);
+
+        // Assert
+        result.Should().NotBeNull();
+        var unauthorizedResult = result.Result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
+        var apiResponse = unauthorizedResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
+        apiResponse.Success.Should().BeFalse();
+        apiResponse.Errors.Should().Contain("User is not authenticated.");
+        _mockFriendService.Verify(x => x.CancelRequestAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CancelRequest_WithNonExistentRequest_ReturnsNotFound()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        SetupAuthenticatedUser(userId);
+
+        _mockFriendService.Setup(x => x.CancelRequestAsync(userId, requestId))
+            .ThrowsAsync(new KeyNotFoundException($"Friend request not found: {requestId}"));
+
+        // Act
+        var result = await _sut.CancelRequest(requestId);
+
+        // Assert
+        result.Should().NotBeNull();
+        var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
+        var apiResponse = notFoundResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
+        apiResponse.Success.Should().BeFalse();
+        apiResponse.Errors.Should().Contain($"Friend request not found: {requestId}");
+    }
+
+    [Fact]
+    public async Task CancelRequest_WhenNotRequester_ReturnsUnauthorized()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        SetupAuthenticatedUser(userId);
+
+        _mockFriendService.Setup(x => x.CancelRequestAsync(userId, requestId))
+            .ThrowsAsync(new UnauthorizedAccessException("Only the requester can cancel this request."));
+
+        // Act
+        var result = await _sut.CancelRequest(requestId);
+
+        // Assert
+        result.Should().NotBeNull();
+        var unauthorizedResult = result.Result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
+        var apiResponse = unauthorizedResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
+        apiResponse.Success.Should().BeFalse();
+        apiResponse.Errors.Should().Contain("Only the requester can cancel this request.");
+    }
+
+    [Fact]
+    public async Task CancelRequest_WhenRequestNotPending_ReturnsBadRequest()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        SetupAuthenticatedUser(userId);
+
+        _mockFriendService.Setup(x => x.CancelRequestAsync(userId, requestId))
+            .ThrowsAsync(new InvalidOperationException("Cannot cancel request with status: accepted"));
+
+        // Act
+        var result = await _sut.CancelRequest(requestId);
+
+        // Assert
+        result.Should().NotBeNull();
+        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
+        var apiResponse = badRequestResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
+        apiResponse.Success.Should().BeFalse();
+        apiResponse.Errors.Should().Contain("Cannot cancel request with status: accepted");
+    }
+
+    [Fact]
+    public async Task CancelRequest_WhenServiceThrowsException_ReturnsInternalServerError()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        SetupAuthenticatedUser(userId);
+
+        _mockFriendService.Setup(x => x.CancelRequestAsync(userId, requestId))
+            .ThrowsAsync(new Exception("Database connection failed"));
+
+        // Act
+        var result = await _sut.CancelRequest(requestId);
+
+        // Assert
+        result.Should().NotBeNull();
+        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
+        statusCodeResult.StatusCode.Should().Be(500);
+        var apiResponse = statusCodeResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
+        apiResponse.Success.Should().BeFalse();
+        apiResponse.Errors.Should().Contain("An error occurred: Database connection failed");
+    }
+
+    #endregion
+
     #region GetFriends Tests
 
     [Fact]
