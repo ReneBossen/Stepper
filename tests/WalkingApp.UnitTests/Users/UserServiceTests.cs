@@ -1,5 +1,7 @@
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Moq;
+using WalkingApp.Api.Common.Database;
 using WalkingApp.Api.Users;
 using WalkingApp.Api.Users.DTOs;
 
@@ -8,12 +10,19 @@ namespace WalkingApp.UnitTests.Users;
 public class UserServiceTests
 {
     private readonly Mock<IUserRepository> _mockRepository;
+    private readonly Mock<ISupabaseClientFactory> _mockClientFactory;
+    private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
     private readonly UserService _sut;
 
     public UserServiceTests()
     {
         _mockRepository = new Mock<IUserRepository>();
-        _sut = new UserService(_mockRepository.Object);
+        _mockClientFactory = new Mock<ISupabaseClientFactory>();
+        _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
+        _sut = new UserService(
+            _mockRepository.Object,
+            _mockClientFactory.Object,
+            _mockHttpContextAccessor.Object);
     }
 
     #region Constructor Tests
@@ -22,7 +31,36 @@ public class UserServiceTests
     public void Constructor_WithNullRepository_ThrowsArgumentNullException()
     {
         // Arrange & Act
-        var act = () => new UserService(null!);
+        var act = () => new UserService(
+            null!,
+            _mockClientFactory.Object,
+            _mockHttpContextAccessor.Object);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Constructor_WithNullClientFactory_ThrowsArgumentNullException()
+    {
+        // Arrange & Act
+        var act = () => new UserService(
+            _mockRepository.Object,
+            null!,
+            _mockHttpContextAccessor.Object);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Constructor_WithNullHttpContextAccessor_ThrowsArgumentNullException()
+    {
+        // Arrange & Act
+        var act = () => new UserService(
+            _mockRepository.Object,
+            _mockClientFactory.Object,
+            null!);
 
         // Assert
         act.Should().Throw<ArgumentNullException>();
