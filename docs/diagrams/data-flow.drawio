@@ -1,0 +1,158 @@
+<mxfile host="app.diagrams.net" modified="2026-01-25T00:00:00.000Z" agent="Architecture Engineer Agent" version="21.0.0" type="device">
+  <diagram name="Data Flow" id="data-flow-diagram">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="Stepper - Data Flow Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="350" y="20" width="400" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Mobile App Container -->
+        <mxCell id="mobile-container" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="200" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="mobile-label" value="Mobile App&#xa;(React Native + Expo)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="180" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Mobile Components -->
+        <mxCell id="mobile-ui" value="User Interface" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="70" y="160" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="mobile-state" value="Zustand Store" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="70" y="210" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="mobile-api" value="API Service Layer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="70" y="260" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="mobile-realtime" value="Supabase Client&#xa;(Real-time only)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="70" y="320" width="140" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- .NET API Container -->
+        <mxCell id="api-container" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="400" y="100" width="200" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="api-label" value=".NET Backend API&#xa;(/api/v1/*)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="410" y="110" width="180" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- API Components -->
+        <mxCell id="api-auth" value="Auth Middleware" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="430" y="160" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="api-controllers" value="Controllers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="430" y="210" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="api-services" value="Services&#xa;(Business Logic)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="430" y="260" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="api-repos" value="Repositories" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="430" y="320" width="140" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Supabase Container -->
+        <mxCell id="supabase-container" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="760" y="100" width="200" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="supabase-label" value="Supabase" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=14" vertex="1" parent="1">
+          <mxGeometry x="770" y="110" width="180" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Supabase Components -->
+        <mxCell id="supabase-auth" value="Supabase Auth" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="790" y="150" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="supabase-realtime" value="Realtime Engine&#xa;(WebSocket)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="790" y="200" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="supabase-rls" value="Row-Level Security" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="790" y="260" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="supabase-db" value="PostgreSQL&#xa;Database" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="810" y="310" width="100" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Main Data Flow Arrow -->
+        <mxCell id="arrow-mobile-api" value="REST API&#xa;(All data operations)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#82b366;fontStyle=1" edge="1" parent="1" source="mobile-api" target="api-auth">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="300" y="280" />
+              <mxPoint x="300" y="180" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- API to Database Arrow -->
+        <mxCell id="arrow-api-db" value="Supabase Client" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#82b366;fontStyle=1" edge="1" parent="1" source="api-repos" target="supabase-rls">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="680" y="340" />
+              <mxPoint x="680" y="280" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Real-time Arrow -->
+        <mxCell id="arrow-realtime" value="WebSocket&#xa;(Real-time only)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#d79b00;dashed=1;fontStyle=1" edge="1" parent="1" source="mobile-realtime" target="supabase-realtime">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="140" y="450" />
+              <mxPoint x="860" y="450" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#333333;strokeWidth=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="500" width="320" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-title" value="Legend" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="50" y="505" width="60" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-line1" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#82b366;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="60" y="545" as="sourcePoint" />
+            <mxPoint x="120" y="545" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-text1" value="Data operations (via .NET API)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="130" y="535" width="200" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-line2" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#d79b00;dashed=1;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="60" y="575" as="sourcePoint" />
+            <mxPoint x="120" y="575" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-text2" value="Real-time subscriptions (direct)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="130" y="565" width="200" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-box2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="60" y="595" width="50" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-text3" value="Security/Auth components" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="130" y="590" width="200" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Notes -->
+        <mxCell id="note-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="500" width="360" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="note-title" value="API Gateway Pattern Notes" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="410" y="505" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="note-text" value="- All data operations go through /api/v1/*&#xa;- Mobile app does NOT query database directly&#xa;- Real-time subscriptions are the only exception&#xa;- RLS provides additional security layer&#xa;- JWT tokens validated at API layer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="410" y="525" width="340" height="90" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
