@@ -4,6 +4,7 @@ export { ApiError } from './types';
 export type { ApiResponse, ApiErrorResponse } from './types';
 
 // Re-export all API services for convenience
+export { authApi } from './authApi';
 export { usersApi } from './usersApi';
 export { userPreferencesApi } from './userPreferencesApi';
 export { stepsApi } from './stepsApi';
