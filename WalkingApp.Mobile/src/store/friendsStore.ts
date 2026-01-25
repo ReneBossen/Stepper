@@ -28,6 +28,37 @@ interface FriendsState {
   removeFriend: (userId: string) => Promise<void>;
 }
 
+/**
+ * Helper to find request ID from user ID.
+ * The backend API expects request IDs, but the UI passes user IDs.
+ * This function looks up the request in the store state or fetches requests if needed.
+ */
+async function findRequestIdByUserId(
+  userId: string,
+  requests: Friend[],
+  fetchRequests: () => Promise<void>,
+  getState: () => FriendsState
+): Promise<string> {
+  // First, try to find the request in local state
+  let request = requests.find(r => r.user_id === userId);
+
+  if (request) {
+    return request.id;
+  }
+
+  // If not found, fetch requests and try again
+  await fetchRequests();
+  request = getState().requests.find(r => r.user_id === userId);
+
+  if (request) {
+    return request.id;
+  }
+
+  // If still not found, the userId might be the request ID itself (backward compatibility)
+  // This handles cases where the caller already has the request ID
+  return userId;
+}
+
 export const useFriendsStore = create<FriendsState>((set, get) => ({
   friends: [],
   requests: [],
@@ -78,8 +109,16 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
   acceptRequest: async (userId) => {
     set({ isLoading: true, error: null });
     try {
-      await friendsApi.acceptRequest(userId);
-      const requests = get().requests.filter(r => r.user_id !== userId);
+      // Find the request ID from the user ID
+      const requestId = await findRequestIdByUserId(
+        userId,
+        get().requests,
+        get().fetchRequests,
+        get
+      );
+
+      await friendsApi.acceptRequest(requestId);
+      const requests = get().requests.filter(r => r.user_id !== userId && r.id !== requestId);
       set({ requests, isLoading: false });
       await get().fetchFriends();
     } catch (error: unknown) {
@@ -91,8 +130,16 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
   declineRequest: async (userId) => {
     set({ isLoading: true, error: null });
     try {
-      await friendsApi.declineRequest(userId);
-      const requests = get().requests.filter(r => r.user_id !== userId);
+      // Find the request ID from the user ID
+      const requestId = await findRequestIdByUserId(
+        userId,
+        get().requests,
+        get().fetchRequests,
+        get
+      );
+
+      await friendsApi.declineRequest(requestId);
+      const requests = get().requests.filter(r => r.user_id !== userId && r.id !== requestId);
       set({ requests, isLoading: false });
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
