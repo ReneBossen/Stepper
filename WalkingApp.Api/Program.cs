@@ -28,6 +28,9 @@ builder.Services.AddFriendServices();
 // Add group services
 builder.Services.AddGroupServices();
 
+// Add auth services
+builder.Services.AddAuthServices();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
