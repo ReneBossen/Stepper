@@ -1,102 +1,47 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@env';
-import { ExpoSecureStoreAdapter } from './secureStore';
 
 /**
- * Supabase client configured for Expo with secure token storage
+ * Supabase Client - For Real-time Subscriptions and Direct Database Access ONLY
+ *
+ * IMPORTANT: This client is configured for minimal auth handling because:
+ * - All authentication (login, register, logout, token refresh) goes through authApi.ts
+ * - Token storage is handled by tokenStorage.ts (not Supabase's built-in storage)
+ * - This client is primarily used for:
+ *   1. Real-time subscriptions (channel listeners)
+ *   2. Direct database queries (until APIs migrate to .NET backend)
+ *   3. Google OAuth flow (signInWithOAuth, setSession)
+ *   4. Legacy operations that still require Supabase auth (getUser for user ID)
+ *
+ * For authentication operations, use:
+ * - authApi.login() / authApi.register() / authApi.logout()
+ * - tokenStorage.getAccessToken() / tokenStorage.setTokens()
+ * - useAuthStore for auth state management
+ *
+ * TODO: As APIs migrate to .NET backend, reduce usage of supabase.auth.getUser()
+ * TODO: Eventually this client will only be used for real-time subscriptions
  */
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    storage: ExpoSecureStoreAdapter,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false, // Not needed for React Native - we manually extract tokens
+    autoRefreshToken: false, // We handle token refresh via authApi.refreshToken()
+    persistSession: false, // We handle session persistence via tokenStorage
+    detectSessionInUrl: false, // Not needed for React Native
   },
 });
 
 /**
- * Get the current session
- */
-export const getSession = async () => {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    console.error('Error getting session:', error);
-    return null;
-  }
-  return data.session;
-};
-
-/**
- * Get the current user
- */
-export const getCurrentUser = async () => {
-  const { data, error } = await supabase.auth.getUser();
-  if (error) {
-    console.error('Error getting user:', error);
-    return null;
-  }
-  return data.user;
-};
-
-/**
- * Sign in with email and password
- */
-export const signInWithEmail = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) throw error;
-  return data;
-};
-
-/**
- * Sign up with email and password
- */
-export const signUpWithEmail = async (
-  email: string,
-  password: string,
-  displayName: string
-) => {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        display_name: displayName,
-      },
-    },
-  });
-
-  if (error) throw error;
-  return data;
-};
-
-/**
- * Sign out
- */
-export const signOut = async () => {
-  // Use scope: 'global' to sign out from all devices and clear all refresh tokens
-  const { error } = await supabase.auth.signOut({ scope: 'global' });
-  if (error) throw error;
-};
-
-/**
- * Reset password
- */
-export const resetPassword = async (email: string) => {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: 'walkingapp://reset-password',
-  });
-
-  if (error) throw error;
-};
-
-/**
  * Sign in with Google OAuth (browser-based)
+ *
+ * This is the ONLY auth flow that should use Supabase directly because:
+ * - Google OAuth requires browser-based authentication
+ * - Supabase handles the OAuth flow and returns tokens in the redirect URL
+ * - After successful OAuth, caller extracts tokens and calls setSession()
+ *
  * Opens browser for authentication, returns URL with tokens in fragment.
- * Caller must extract tokens from redirect URL and call setSession().
+ * Caller must extract tokens from redirect URL and call supabase.auth.setSession().
+ *
+ * NOTE: After Google OAuth, the app should ideally exchange the Supabase session
+ * for backend-issued tokens. This is a TODO for full backend auth integration.
  */
 export const signInWithGoogleOAuth = async () => {
   const { data, error } = await supabase.auth.signInWithOAuth({
