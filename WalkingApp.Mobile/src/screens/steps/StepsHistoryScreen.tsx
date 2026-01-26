@@ -18,9 +18,9 @@ type ViewMode = 'daily' | 'weekly' | 'monthly' | 'custom';
 
 /**
  * Calculates the date range based on the selected view mode.
- * - Daily: Last 7 days
- * - Weekly: Last 4 weeks
- * - Monthly: Last 30 days
+ * - Daily: Today only
+ * - Weekly: Current week (Monday to Sunday)
+ * - Monthly: Current month (1st to last day)
  */
 function getDateRange(viewMode: ViewMode): { start: Date; end: Date } {
   const end = new Date();
@@ -31,13 +31,19 @@ function getDateRange(viewMode: ViewMode): { start: Date; end: Date } {
 
   switch (viewMode) {
     case 'daily':
-      start.setDate(start.getDate() - 6); // Last 7 days including today
+      // Today only - no change to start date
       break;
     case 'weekly':
-      start.setDate(start.getDate() - 27); // Last 4 weeks
+      // Current week (Monday as start of week)
+      const dayOfWeek = start.getDay();
+      // getDay() returns 0 for Sunday, 1 for Monday, etc.
+      // We want Monday = 0, so adjust: (dayOfWeek + 6) % 7
+      const daysFromMonday = (dayOfWeek + 6) % 7;
+      start.setDate(start.getDate() - daysFromMonday);
       break;
     case 'monthly':
-      start.setDate(start.getDate() - 29); // Last 30 days
+      // Current month (1st of the month)
+      start.setDate(1);
       break;
   }
 
