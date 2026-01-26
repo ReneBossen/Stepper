@@ -3,6 +3,7 @@ using Supabase;
 using WalkingApp.Api.Common.Database;
 using WalkingApp.Api.Common.Models;
 using WalkingApp.Api.Steps.DTOs;
+using WalkingApp.Api.Users;
 
 namespace WalkingApp.Api.Steps;
 

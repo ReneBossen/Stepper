@@ -140,4 +140,35 @@ export const authApi = {
       throw ApiError.fromResponse(json as ApiErrorResponse, response.status);
     }
   },
+
+  /**
+   * Change password for the currently authenticated user.
+   *
+   * @param currentPassword - The user's current password for verification
+   * @param newPassword - The new password (minimum 8 characters)
+   * @throws ApiError on failure
+   */
+  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    const { tokenStorage } = await import('../tokenStorage');
+    const accessToken = await tokenStorage.getAccessToken();
+
+    if (!accessToken) {
+      throw new ApiError('Not authenticated', 401);
+    }
+
+    const response = await fetch(`${API_CONFIG.API_URL}/auth/change-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+
+    const json = await response.json() as ApiResponse<null> | ApiErrorResponse;
+
+    if (!response.ok || !json.success) {
+      throw ApiError.fromResponse(json as ApiErrorResponse, response.status);
+    }
+  },
 };

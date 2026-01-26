@@ -2,6 +2,22 @@ import { apiClient } from './client';
 import { supabase } from '../supabase';
 
 /**
+ * Backend API response shape for a single activity item.
+ */
+interface BackendActivityItemByIdResponse {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatarUrl?: string;
+  type: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  relatedUserId?: string;
+  relatedGroupId?: string;
+}
+
+/**
  * Activity item as returned to the mobile app.
  */
 export interface ActivityItem {
@@ -109,8 +125,21 @@ export const activityApi = {
   },
 
   /**
+   * Fetches a single activity item by ID from the backend API.
+   * Used internally by real-time subscription to get full item details.
+   *
+   * @param id - Activity item ID
+   * @returns The activity item
+   */
+  getActivityItem: async (id: string): Promise<ActivityItem> => {
+    const response = await apiClient.get<BackendActivityItemByIdResponse>(`/activity/${id}`);
+    return mapActivityItem(response);
+  },
+
+  /**
    * Subscribes to real-time activity feed updates using Supabase.
    * This uses Supabase real-time subscriptions to listen for new activity items.
+   * When a new item is detected, the full item details are fetched from the backend API.
    *
    * @param callback - Called when a new activity item is received
    * @param onError - Optional callback for error handling (errors are also logged to console)
@@ -128,51 +157,9 @@ export const activityApi = {
         },
         async (payload) => {
           try {
-            // Fetch the full item with user details from the database
-            // Note: We query the activity_feed table and join with users for user details
-            const { data, error } = await supabase
-              .from('activity_feed')
-              .select(`
-                id,
-                type,
-                user_id,
-                message,
-                metadata,
-                created_at,
-                related_user_id,
-                related_group_id,
-                users:user_id (
-                  display_name,
-                  avatar_url
-                )
-              `)
-              .eq('id', payload.new.id)
-              .single();
-
-            if (error) {
-              const fetchError = new Error(`Failed to fetch activity item: ${error.message}`);
-              console.error('[activityApi] Real-time subscription error:', fetchError.message);
-              onError?.(fetchError);
-              return;
-            }
-
-            if (data) {
-              // Handle the users join result - it could be null or an object
-              const userData = data.users as { display_name?: string; avatar_url?: string } | null;
-
-              callback({
-                id: data.id,
-                type: data.type,
-                userId: data.user_id,
-                userName: userData?.display_name ?? 'Unknown User',
-                avatarUrl: userData?.avatar_url,
-                message: data.message,
-                timestamp: data.created_at,
-                metadata: data.metadata as Record<string, unknown> | undefined,
-                relatedUserId: data.related_user_id,
-                relatedGroupId: data.related_group_id,
-              });
-            }
+            // Fetch the full item with user details from the backend API
+            const item = await activityApi.getActivityItem(payload.new.id as string);
+            callback(item);
           } catch (error) {
             const wrappedError = error instanceof Error
               ? error

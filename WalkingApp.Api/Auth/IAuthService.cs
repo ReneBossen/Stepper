@@ -45,4 +45,11 @@ public interface IAuthService
     /// </summary>
     /// <param name="request">The reset password request containing the token and new password.</param>
     Task ResetPasswordAsync(ResetPasswordRequest request);
+
+    /// <summary>
+    /// Changes the authenticated user's password after verifying the current password.
+    /// </summary>
+    /// <param name="accessToken">The current access token for authentication.</param>
+    /// <param name="request">The change password request containing current and new passwords.</param>
+    Task ChangePasswordAsync(string accessToken, ChangePasswordRequest request);
 }

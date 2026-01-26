@@ -445,4 +445,76 @@ describe('authApi', () => {
       await expect(authApi.resetPassword('expired-token', newPassword)).rejects.toThrow(ApiError);
     });
   });
+
+  describe('changePassword', () => {
+    const currentPassword = 'currentPassword123';
+    const newPassword = 'newPassword456';
+    const accessToken = 'valid-access-token';
+
+    beforeEach(() => {
+      // Mock tokenStorage
+      jest.mock('../../tokenStorage', () => ({
+        tokenStorage: {
+          getAccessToken: jest.fn().mockResolvedValue(accessToken),
+        },
+      }));
+    });
+
+    it('should change password successfully', async () => {
+      // Need to dynamically mock tokenStorage for this test
+      const mockGetAccessToken = jest.fn().mockResolvedValue(accessToken);
+      jest.doMock('../../tokenStorage', () => ({
+        tokenStorage: {
+          getAccessToken: mockGetAccessToken,
+        },
+      }));
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          success: true,
+          data: null,
+          errors: [],
+        }),
+      });
+
+      // Re-import to get the mocked version
+      const { authApi: freshAuthApi } = await import('../authApi');
+
+      await freshAuthApi.changePassword(currentPassword, newPassword);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v1/auth/change-password',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ currentPassword, newPassword }),
+        })
+      );
+    });
+
+    it('should throw ApiError when current password is wrong', async () => {
+      const errorMessage = 'Current password is incorrect';
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: jest.fn().mockResolvedValue({
+          success: false,
+          data: null,
+          errors: [errorMessage],
+        }),
+      });
+
+      const { authApi: freshAuthApi } = await import('../authApi');
+
+      try {
+        await freshAuthApi.changePassword('wrongPassword', newPassword);
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError);
+        expect((error as ApiError).message).toBe(errorMessage);
+      }
+    });
+  });
 });

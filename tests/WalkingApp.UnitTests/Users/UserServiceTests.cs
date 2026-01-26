@@ -10,6 +10,7 @@ namespace WalkingApp.UnitTests.Users;
 public class UserServiceTests
 {
     private readonly Mock<IUserRepository> _mockRepository;
+    private readonly Mock<IUserPreferencesRepository> _mockPreferencesRepository;
     private readonly Mock<ISupabaseClientFactory> _mockClientFactory;
     private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
     private readonly UserService _sut;
@@ -17,10 +18,12 @@ public class UserServiceTests
     public UserServiceTests()
     {
         _mockRepository = new Mock<IUserRepository>();
+        _mockPreferencesRepository = new Mock<IUserPreferencesRepository>();
         _mockClientFactory = new Mock<ISupabaseClientFactory>();
         _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
         _sut = new UserService(
             _mockRepository.Object,
+            _mockPreferencesRepository.Object,
             _mockClientFactory.Object,
             _mockHttpContextAccessor.Object);
     }
@@ -32,6 +35,21 @@ public class UserServiceTests
     {
         // Arrange & Act
         var act = () => new UserService(
+            null!,
+            _mockPreferencesRepository.Object,
+            _mockClientFactory.Object,
+            _mockHttpContextAccessor.Object);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Constructor_WithNullPreferencesRepository_ThrowsArgumentNullException()
+    {
+        // Arrange & Act
+        var act = () => new UserService(
+            _mockRepository.Object,
             null!,
             _mockClientFactory.Object,
             _mockHttpContextAccessor.Object);
@@ -46,6 +64,7 @@ public class UserServiceTests
         // Arrange & Act
         var act = () => new UserService(
             _mockRepository.Object,
+            _mockPreferencesRepository.Object,
             null!,
             _mockHttpContextAccessor.Object);
 
@@ -59,6 +78,7 @@ public class UserServiceTests
         // Arrange & Act
         var act = () => new UserService(
             _mockRepository.Object,
+            _mockPreferencesRepository.Object,
             _mockClientFactory.Object,
             null!);
 
@@ -87,8 +107,6 @@ public class UserServiceTests
         result.Id.Should().Be(userId);
         result.DisplayName.Should().Be(user.DisplayName);
         result.AvatarUrl.Should().Be(user.AvatarUrl);
-        result.Preferences.Should().NotBeNull();
-        result.Preferences.Units.Should().Be(user.Preferences.Units);
         result.CreatedAt.Should().Be(user.CreatedAt);
         _mockRepository.Verify(x => x.GetByIdAsync(userId), Times.Once);
     }
@@ -135,11 +153,7 @@ public class UserServiceTests
         var request = new UpdateProfileRequest
         {
             DisplayName = "New Display Name",
-            AvatarUrl = "https://example.com/new-avatar.jpg",
-            Preferences = new UserPreferences
-            {
-                Units = "imperial"
-            }
+            AvatarUrl = "https://example.com/new-avatar.jpg"
         };
 
         _mockRepository.Setup(x => x.GetByIdAsync(userId))
@@ -154,12 +168,10 @@ public class UserServiceTests
         result.Should().NotBeNull();
         result.DisplayName.Should().Be(request.DisplayName);
         result.AvatarUrl.Should().Be(request.AvatarUrl);
-        result.Preferences.Units.Should().Be("imperial");
         _mockRepository.Verify(x => x.GetByIdAsync(userId), Times.Once);
         _mockRepository.Verify(x => x.UpdateAsync(It.Is<User>(u =>
             u.DisplayName == request.DisplayName &&
-            u.AvatarUrl == request.AvatarUrl &&
-            u.Preferences.Units == "imperial"
+            u.AvatarUrl == request.AvatarUrl
         )), Times.Once);
     }
 
@@ -319,87 +331,6 @@ public class UserServiceTests
         _mockRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Once);
     }
 
-    [Theory]
-    [InlineData("invalid")]
-    [InlineData("METRIC")]
-    [InlineData("IMPERIAL")]
-    [InlineData("kilometers")]
-    public async Task UpdateProfileAsync_WithInvalidUnits_ThrowsArgumentException(string units)
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var request = new UpdateProfileRequest
-        {
-            DisplayName = "Valid Name",
-            Preferences = new UserPreferences { Units = units }
-        };
-
-        // Act
-        var act = async () => await _sut.UpdateProfileAsync(userId, request);
-
-        // Assert
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("Units must be either 'metric' or 'imperial'.");
-        _mockRepository.Verify(x => x.GetByIdAsync(It.IsAny<Guid>()), Times.Never);
-    }
-
-    [Theory]
-    [InlineData("metric")]
-    [InlineData("imperial")]
-    public async Task UpdateProfileAsync_WithValidUnits_UpdatesProfile(string units)
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var existingUser = CreateTestUser(userId);
-        var request = new UpdateProfileRequest
-        {
-            DisplayName = "Valid Name",
-            Preferences = new UserPreferences { Units = units }
-        };
-
-        _mockRepository.Setup(x => x.GetByIdAsync(userId))
-            .ReturnsAsync(existingUser);
-        _mockRepository.Setup(x => x.UpdateAsync(It.IsAny<User>()))
-            .ReturnsAsync((User u) => u);
-
-        // Act
-        var result = await _sut.UpdateProfileAsync(userId, request);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Preferences.Units.Should().Be(units);
-        _mockRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task UpdateProfileAsync_WithNullPreferences_DoesNotUpdatePreferences()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var existingUser = CreateTestUser(userId);
-        var originalPreferences = existingUser.Preferences;
-        var request = new UpdateProfileRequest
-        {
-            DisplayName = "New Name",
-            Preferences = null
-        };
-
-        _mockRepository.Setup(x => x.GetByIdAsync(userId))
-            .ReturnsAsync(existingUser);
-        _mockRepository.Setup(x => x.UpdateAsync(It.IsAny<User>()))
-            .ReturnsAsync((User u) => u);
-
-        // Act
-        var result = await _sut.UpdateProfileAsync(userId, request);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Preferences.Should().Be(originalPreferences);
-        _mockRepository.Verify(x => x.UpdateAsync(It.Is<User>(u =>
-            u.Preferences == originalPreferences
-        )), Times.Once);
-    }
-
     [Fact]
     public async Task UpdateProfileAsync_DoesNotSetUpdatedAtTimestamp()
     {
@@ -434,8 +365,12 @@ public class UserServiceTests
         // Arrange
         var userId = Guid.NewGuid();
         var existingUser = CreateTestUser(userId);
+        var existingPreferences = CreateTestPreferences(userId);
+
         _mockRepository.Setup(x => x.GetByIdAsync(userId))
             .ReturnsAsync(existingUser);
+        _mockPreferencesRepository.Setup(x => x.GetByUserIdAsync(userId))
+            .ReturnsAsync(existingPreferences);
 
         // Act
         var result = await _sut.EnsureProfileExistsAsync(userId);
@@ -457,6 +392,8 @@ public class UserServiceTests
             .ReturnsAsync((User?)null);
         _mockRepository.Setup(x => x.CreateAsync(It.IsAny<User>()))
             .ReturnsAsync((User u) => u);
+        _mockPreferencesRepository.Setup(x => x.CreateAsync(userId))
+            .ReturnsAsync(CreateTestPreferences(userId));
 
         // Act
         var result = await _sut.EnsureProfileExistsAsync(userId);
@@ -465,14 +402,12 @@ public class UserServiceTests
         result.Should().NotBeNull();
         result.Id.Should().Be(userId);
         result.DisplayName.Should().StartWith("User_");
-        result.Preferences.Should().NotBeNull();
-        result.Preferences.Units.Should().Be("metric");
         _mockRepository.Verify(x => x.GetByIdAsync(userId), Times.Once);
         _mockRepository.Verify(x => x.CreateAsync(It.Is<User>(u =>
             u.Id == userId &&
-            u.DisplayName.StartsWith("User_") &&
-            u.Preferences != null
+            u.DisplayName.StartsWith("User_")
         )), Times.Once);
+        _mockPreferencesRepository.Verify(x => x.CreateAsync(userId), Times.Once);
     }
 
     [Fact]
@@ -498,6 +433,8 @@ public class UserServiceTests
             .ReturnsAsync((User?)null);
         _mockRepository.Setup(x => x.CreateAsync(It.IsAny<User>()))
             .ReturnsAsync((User u) => u);
+        _mockPreferencesRepository.Setup(x => x.CreateAsync(userId))
+            .ReturnsAsync(CreateTestPreferences(userId));
 
         // Act
         await _sut.EnsureProfileExistsAsync(userId);
@@ -510,30 +447,24 @@ public class UserServiceTests
     }
 
     [Fact]
-    public async Task EnsureProfileExistsAsync_CreatesProfileWithDefaultPreferences()
+    public async Task EnsureProfileExistsAsync_ExistingUserWithoutPreferences_CreatesPreferences()
     {
         // Arrange
         var userId = Guid.NewGuid();
+        var existingUser = CreateTestUser(userId);
+
         _mockRepository.Setup(x => x.GetByIdAsync(userId))
-            .ReturnsAsync((User?)null);
-        _mockRepository.Setup(x => x.CreateAsync(It.IsAny<User>()))
-            .ReturnsAsync((User u) => u);
+            .ReturnsAsync(existingUser);
+        _mockPreferencesRepository.Setup(x => x.GetByUserIdAsync(userId))
+            .ReturnsAsync((UserPreferencesEntity?)null);
+        _mockPreferencesRepository.Setup(x => x.CreateAsync(userId))
+            .ReturnsAsync(CreateTestPreferences(userId));
 
         // Act
-        var result = await _sut.EnsureProfileExistsAsync(userId);
+        await _sut.EnsureProfileExistsAsync(userId);
 
         // Assert
-        result.Preferences.Should().NotBeNull();
-        result.Preferences.Units.Should().Be("metric");
-        result.Preferences.Notifications.Should().NotBeNull();
-        result.Preferences.Notifications.DailyReminder.Should().BeTrue();
-        result.Preferences.Notifications.FriendRequests.Should().BeTrue();
-        result.Preferences.Notifications.GroupInvites.Should().BeTrue();
-        result.Preferences.Notifications.Achievements.Should().BeTrue();
-        result.Preferences.Privacy.Should().NotBeNull();
-        result.Preferences.Privacy.ShowStepsToFriends.Should().BeTrue();
-        result.Preferences.Privacy.ShowGroupActivity.Should().BeTrue();
-        result.Preferences.Privacy.AllowFriendRequests.Should().BeTrue();
+        _mockPreferencesRepository.Verify(x => x.CreateAsync(userId), Times.Once);
     }
 
     #endregion
@@ -548,24 +479,26 @@ public class UserServiceTests
             DisplayName = "Test User",
             AvatarUrl = "https://example.com/avatar.jpg",
             CreatedAt = DateTime.UtcNow.AddDays(-30),
-            UpdatedAt = DateTime.UtcNow.AddDays(-1),
-            Preferences = new UserPreferences
-            {
-                Units = "metric",
-                Notifications = new NotificationSettings
-                {
-                    DailyReminder = true,
-                    FriendRequests = true,
-                    GroupInvites = true,
-                    Achievements = true
-                },
-                Privacy = new PrivacySettings
-                {
-                    ShowStepsToFriends = true,
-                    ShowGroupActivity = true,
-                    AllowFriendRequests = true
-                }
-            }
+            UpdatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+    }
+
+    private static UserPreferencesEntity CreateTestPreferences(Guid userId)
+    {
+        return new UserPreferencesEntity
+        {
+            Id = userId,
+            DailyStepGoal = 10000,
+            Units = "metric",
+            NotificationsEnabled = true,
+            NotifyDailyReminder = true,
+            NotifyFriendRequests = true,
+            NotifyFriendAccepted = true,
+            NotifyGroupInvites = true,
+            NotifyAchievements = true,
+            PrivacyProfileVisibility = "public",
+            PrivacyFindMe = "public",
+            PrivacyShowSteps = "partial"
         };
     }
 

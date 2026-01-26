@@ -413,23 +413,6 @@ public class UsersControllerTests
             Id = userId,
             DisplayName = displayName ?? "Test User",
             AvatarUrl = "https://example.com/avatar.jpg",
-            Preferences = new UserPreferences
-            {
-                Units = "metric",
-                Notifications = new NotificationSettings
-                {
-                    DailyReminder = true,
-                    FriendRequests = true,
-                    GroupInvites = true,
-                    Achievements = true
-                },
-                Privacy = new PrivacySettings
-                {
-                    ShowStepsToFriends = true,
-                    ShowGroupActivity = true,
-                    AllowFriendRequests = true
-                }
-            },
             CreatedAt = DateTime.UtcNow.AddDays(-30)
         };
     }

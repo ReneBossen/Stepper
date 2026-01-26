@@ -41,6 +41,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddUserServices(this IServiceCollection services)
     {
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserPreferencesRepository, UserPreferencesRepository>();
         services.AddScoped<IUserService, UserService>();
 
         return services;

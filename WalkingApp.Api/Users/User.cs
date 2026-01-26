@@ -1,7 +1,8 @@
-using WalkingApp.Api.Users.DTOs;
-
 namespace WalkingApp.Api.Users;
 
+/// <summary>
+/// Domain model representing a user profile.
+/// </summary>
 public class User
 {
     public Guid Id { get; set; }
@@ -15,6 +16,5 @@ public class User
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public UserPreferences Preferences { get; set; } = new();
     public bool OnboardingCompleted { get; set; }
 }

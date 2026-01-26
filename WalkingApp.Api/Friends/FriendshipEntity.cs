@@ -1,5 +1,6 @@
 using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
+using WalkingApp.Api.Common.Constants;
 
 namespace WalkingApp.Api.Friends;
 
@@ -63,10 +64,10 @@ public class FriendshipEntity : BaseModel
     {
         return status.ToLowerInvariant() switch
         {
-            "pending" => FriendshipStatus.Pending,
-            "accepted" => FriendshipStatus.Accepted,
-            "rejected" => FriendshipStatus.Rejected,
-            "blocked" => FriendshipStatus.Blocked,
+            FriendshipStatusStrings.Pending => FriendshipStatus.Pending,
+            FriendshipStatusStrings.Accepted => FriendshipStatus.Accepted,
+            FriendshipStatusStrings.Rejected => FriendshipStatus.Rejected,
+            FriendshipStatusStrings.Blocked => FriendshipStatus.Blocked,
             _ => throw new ArgumentException($"Unknown friendship status: {status}")
         };
     }

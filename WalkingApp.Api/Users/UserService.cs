@@ -12,7 +12,6 @@ public class UserService : IUserService
     private const int DefaultDisplayNameMaxLength = 20;
     private const int MinDailyStepGoal = 100;
     private const int MaxDailyStepGoal = 100000;
-    private const int DefaultDailyStepGoal = 10000;
     private const long MaxAvatarFileSizeBytes = 5 * 1024 * 1024; // 5MB
     private const string AvatarsBucketName = "avatars";
 
@@ -41,19 +40,23 @@ public class UserService : IUserService
     };
 
     private readonly IUserRepository _userRepository;
+    private readonly IUserPreferencesRepository _preferencesRepository;
     private readonly ISupabaseClientFactory _clientFactory;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public UserService(
         IUserRepository userRepository,
+        IUserPreferencesRepository preferencesRepository,
         ISupabaseClientFactory clientFactory,
         IHttpContextAccessor httpContextAccessor)
     {
         ArgumentNullException.ThrowIfNull(userRepository);
+        ArgumentNullException.ThrowIfNull(preferencesRepository);
         ArgumentNullException.ThrowIfNull(clientFactory);
         ArgumentNullException.ThrowIfNull(httpContextAccessor);
 
         _userRepository = userRepository;
+        _preferencesRepository = preferencesRepository;
         _clientFactory = clientFactory;
         _httpContextAccessor = httpContextAccessor;
     }
@@ -61,10 +64,7 @@ public class UserService : IUserService
     /// <inheritdoc />
     public async Task<GetProfileResponse> GetProfileAsync(Guid userId)
     {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        }
+        ValidateUserId(userId);
 
         var user = await _userRepository.GetByIdAsync(userId);
 
@@ -79,13 +79,8 @@ public class UserService : IUserService
     /// <inheritdoc />
     public async Task<GetProfileResponse> UpdateProfileAsync(Guid userId, UpdateProfileRequest request)
     {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        }
-
+        ValidateUserId(userId);
         ArgumentNullException.ThrowIfNull(request);
-
         ValidateUpdateProfileRequest(request);
 
         var existingUser = await _userRepository.GetByIdAsync(userId);
@@ -98,19 +93,12 @@ public class UserService : IUserService
         existingUser.DisplayName = request.DisplayName;
         existingUser.AvatarUrl = request.AvatarUrl;
 
-        if (request.Preferences != null)
-        {
-            existingUser.Preferences = request.Preferences;
-        }
-
         if (request.OnboardingCompleted.HasValue)
         {
             existingUser.OnboardingCompleted = request.OnboardingCompleted.Value;
         }
 
         // Note: UpdatedAt is automatically set by the database trigger (update_users_updated_at)
-        // No need to set it manually here
-
         var updatedUser = await _userRepository.UpdateAsync(existingUser);
 
         return MapToGetProfileResponse(updatedUser);
@@ -119,77 +107,24 @@ public class UserService : IUserService
     /// <inheritdoc />
     public async Task<GetProfileResponse> EnsureProfileExistsAsync(Guid userId)
     {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        }
+        ValidateUserId(userId);
 
         var existingUser = await _userRepository.GetByIdAsync(userId);
 
         if (existingUser != null)
         {
+            // Ensure user_preferences row exists
+            await EnsureUserPreferencesExistAsync(userId);
             return MapToGetProfileResponse(existingUser);
         }
 
-        var defaultName = $"{DefaultDisplayNamePrefix}{userId:N}";
-        var newUser = new User
-        {
-            Id = userId,
-            DisplayName = defaultName.Length > DefaultDisplayNameMaxLength
-                ? defaultName.Substring(0, DefaultDisplayNameMaxLength)
-                : defaultName,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow,
-            Preferences = new UserPreferences()
-        };
-
+        var newUser = CreateDefaultUser(userId);
         var createdUser = await _userRepository.CreateAsync(newUser);
 
+        // Create user_preferences row for new user
+        await _preferencesRepository.CreateAsync(userId);
+
         return MapToGetProfileResponse(createdUser);
-    }
-
-    /// <summary>
-    /// Validates the update profile request.
-    /// </summary>
-    /// <remarks>
-    /// Future considerations:
-    /// - Add rate limiting to prevent abuse of profile updates (e.g., max 10 updates per hour)
-    /// - Add profanity filter for display name validation to prevent inappropriate content
-    /// </remarks>
-    private static void ValidateUpdateProfileRequest(UpdateProfileRequest request)
-    {
-        if (string.IsNullOrWhiteSpace(request.DisplayName))
-        {
-            throw new ArgumentException("Display name cannot be empty.");
-        }
-
-        if (request.DisplayName.Length < 2)
-        {
-            throw new ArgumentException("Display name must be at least 2 characters long.");
-        }
-
-        if (request.DisplayName.Length > 50)
-        {
-            throw new ArgumentException("Display name must not exceed 50 characters.");
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.AvatarUrl))
-        {
-            if (!Uri.TryCreate(request.AvatarUrl, UriKind.Absolute, out var uri) ||
-                (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-            {
-                throw new ArgumentException("Avatar URL must be a valid HTTP or HTTPS URL.");
-            }
-        }
-
-        if (request.Preferences != null)
-        {
-            if (!string.IsNullOrEmpty(request.Preferences.Units) &&
-                request.Preferences.Units != "metric" && request.Preferences.Units != "imperial")
-            {
-                throw new ArgumentException("Units must be either 'metric' or 'imperial'.");
-            }
-        }
     }
 
     /// <inheritdoc />
@@ -197,9 +132,18 @@ public class UserService : IUserService
     {
         ValidateUserId(userId);
 
-        var user = await GetUserOrThrowAsync(userId);
+        // Verify user exists
+        await GetUserOrThrowAsync(userId);
 
-        return MapToPreferencesResponse(user.Preferences);
+        var preferences = await _preferencesRepository.GetByUserIdAsync(userId);
+
+        if (preferences == null)
+        {
+            // Create default preferences if not found
+            preferences = await _preferencesRepository.CreateAsync(userId);
+        }
+
+        return MapToPreferencesResponse(preferences);
     }
 
     /// <inheritdoc />
@@ -209,12 +153,21 @@ public class UserService : IUserService
         ArgumentNullException.ThrowIfNull(request);
         ValidateUpdatePreferencesRequest(request);
 
-        var user = await GetUserOrThrowAsync(userId);
-        ApplyPreferencesUpdate(user.Preferences, request);
+        // Verify user exists
+        await GetUserOrThrowAsync(userId);
 
-        await _userRepository.UpdateAsync(user);
+        var preferences = await _preferencesRepository.GetByUserIdAsync(userId);
 
-        return MapToPreferencesResponse(user.Preferences);
+        if (preferences == null)
+        {
+            // Create default preferences if not found
+            preferences = await _preferencesRepository.CreateAsync(userId);
+        }
+
+        ApplyPreferencesUpdate(preferences, request);
+        var updated = await _preferencesRepository.UpdateAsync(preferences);
+
+        return MapToPreferencesResponse(updated);
     }
 
     /// <inheritdoc />
@@ -232,11 +185,86 @@ public class UserService : IUserService
         return new AvatarUploadResponse(avatarUrl);
     }
 
+    /// <inheritdoc />
+    public async Task<UserStatsResponse> GetUserStatsAsync(Guid userId)
+    {
+        ValidateUserId(userId);
+
+        var friendsCount = await _userRepository.GetFriendsCountAsync(userId);
+        var groupsCount = await _userRepository.GetGroupsCountAsync(userId);
+
+        return new UserStatsResponse
+        {
+            FriendsCount = friendsCount,
+            GroupsCount = groupsCount,
+            BadgesCount = 0 // Badges not implemented yet
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<UserActivityResponse> GetUserActivityAsync(Guid userId)
+    {
+        ValidateUserId(userId);
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var weekAgo = today.AddDays(-6); // Last 7 days including today
+
+        var stepEntries = await _userRepository.GetStepEntriesForRangeAsync(userId, weekAgo, today);
+
+        var totalSteps = CalculateTotalSteps(stepEntries);
+        var totalDistance = CalculateTotalDistance(stepEntries);
+        var averageSteps = CalculateAverageSteps(totalSteps);
+        var currentStreak = await CalculateCurrentStreakAsync(userId);
+
+        return new UserActivityResponse
+        {
+            TotalSteps = totalSteps,
+            TotalDistanceMeters = totalDistance,
+            AverageStepsPerDay = averageSteps,
+            CurrentStreak = currentStreak
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<List<MutualGroupResponse>> GetMutualGroupsAsync(Guid currentUserId, Guid otherUserId)
+    {
+        ValidateUserId(currentUserId);
+        ValidateOtherUserId(otherUserId);
+
+        var currentUserGroups = await _userRepository.GetUserGroupIdsAsync(currentUserId);
+        var otherUserGroups = await _userRepository.GetUserGroupIdsAsync(otherUserId);
+
+        var mutualGroupIds = currentUserGroups.Intersect(otherUserGroups).ToList();
+
+        if (mutualGroupIds.Count == 0)
+        {
+            return new List<MutualGroupResponse>();
+        }
+
+        var groups = await _userRepository.GetGroupsByIdsAsync(mutualGroupIds);
+
+        return groups.Select(g => new MutualGroupResponse
+        {
+            Id = g.Id,
+            Name = g.Name
+        }).ToList();
+    }
+
+    #region Private Helper Methods
+
     private static void ValidateUserId(Guid userId)
     {
         if (userId == Guid.Empty)
         {
             throw new ArgumentException("User ID cannot be empty.", nameof(userId));
+        }
+    }
+
+    private static void ValidateOtherUserId(Guid userId)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("Other user ID cannot be empty.", nameof(userId));
         }
     }
 
@@ -250,6 +278,75 @@ public class UserService : IUserService
         }
 
         return user;
+    }
+
+    private async Task EnsureUserPreferencesExistAsync(Guid userId)
+    {
+        var preferences = await _preferencesRepository.GetByUserIdAsync(userId);
+
+        if (preferences == null)
+        {
+            await _preferencesRepository.CreateAsync(userId);
+        }
+    }
+
+    private static User CreateDefaultUser(Guid userId)
+    {
+        var defaultName = $"{DefaultDisplayNamePrefix}{userId:N}";
+
+        return new User
+        {
+            Id = userId,
+            DisplayName = defaultName.Length > DefaultDisplayNameMaxLength
+                ? defaultName.Substring(0, DefaultDisplayNameMaxLength)
+                : defaultName,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+    }
+
+    /// <summary>
+    /// Validates the update profile request.
+    /// </summary>
+    /// <remarks>
+    /// Future considerations:
+    /// - Add rate limiting to prevent abuse of profile updates (e.g., max 10 updates per hour)
+    /// - Add profanity filter for display name validation to prevent inappropriate content
+    /// </remarks>
+    private static void ValidateUpdateProfileRequest(UpdateProfileRequest request)
+    {
+        ValidateDisplayName(request.DisplayName);
+        ValidateAvatarUrl(request.AvatarUrl);
+    }
+
+    private static void ValidateDisplayName(string displayName)
+    {
+        if (string.IsNullOrWhiteSpace(displayName))
+        {
+            throw new ArgumentException("Display name cannot be empty.");
+        }
+
+        if (displayName.Length < 2)
+        {
+            throw new ArgumentException("Display name must be at least 2 characters long.");
+        }
+
+        if (displayName.Length > 50)
+        {
+            throw new ArgumentException("Display name must not exceed 50 characters.");
+        }
+    }
+
+    private static void ValidateAvatarUrl(string? avatarUrl)
+    {
+        if (!string.IsNullOrWhiteSpace(avatarUrl))
+        {
+            if (!Uri.TryCreate(avatarUrl, UriKind.Absolute, out var uri) ||
+                (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            {
+                throw new ArgumentException("Avatar URL must be a valid HTTP or HTTPS URL.");
+            }
+        }
     }
 
     private static void ValidateUpdatePreferencesRequest(UpdateUserPreferencesRequest request)
@@ -282,11 +379,11 @@ public class UserService : IUserService
         }
     }
 
-    private static void ApplyPreferencesUpdate(UserPreferences preferences, UpdateUserPreferencesRequest request)
+    private static void ApplyPreferencesUpdate(UserPreferencesEntity preferences, UpdateUserPreferencesRequest request)
     {
         if (request.NotificationsEnabled.HasValue)
         {
-            preferences.Notifications.DailyReminder = request.NotificationsEnabled.Value;
+            preferences.NotifyDailyReminder = request.NotificationsEnabled.Value;
         }
 
         if (request.DailyStepGoal.HasValue)
@@ -301,7 +398,7 @@ public class UserService : IUserService
 
         if (request.PrivateProfile.HasValue)
         {
-            preferences.Privacy.PrivateProfile = request.PrivateProfile.Value;
+            preferences.PrivacyProfileVisibility = request.PrivateProfile.Value ? "private" : "public";
         }
     }
 
@@ -399,13 +496,13 @@ public class UserService : IUserService
         return await _clientFactory.CreateClientAsync(token);
     }
 
-    private static UserPreferencesResponse MapToPreferencesResponse(UserPreferences preferences)
+    private static UserPreferencesResponse MapToPreferencesResponse(UserPreferencesEntity preferences)
     {
         return new UserPreferencesResponse(
-            NotificationsEnabled: preferences.Notifications.DailyReminder,
+            NotificationsEnabled: preferences.NotifyDailyReminder,
             DailyStepGoal: preferences.DailyStepGoal,
             DistanceUnit: preferences.Units,
-            PrivateProfile: preferences.Privacy.PrivateProfile
+            PrivateProfile: preferences.PrivacyProfileVisibility == "private"
         );
     }
 
@@ -416,83 +513,9 @@ public class UserService : IUserService
             Id = user.Id,
             DisplayName = user.DisplayName,
             AvatarUrl = user.AvatarUrl,
-            Preferences = user.Preferences,
             CreatedAt = user.CreatedAt,
             OnboardingCompleted = user.OnboardingCompleted
         };
-    }
-
-    /// <inheritdoc />
-    public async Task<UserStatsResponse> GetUserStatsAsync(Guid userId)
-    {
-        ValidateUserId(userId);
-
-        var friendsCount = await _userRepository.GetFriendsCountAsync(userId);
-        var groupsCount = await _userRepository.GetGroupsCountAsync(userId);
-
-        return new UserStatsResponse
-        {
-            FriendsCount = friendsCount,
-            GroupsCount = groupsCount,
-            BadgesCount = 0 // Badges not implemented yet
-        };
-    }
-
-    /// <inheritdoc />
-    public async Task<UserActivityResponse> GetUserActivityAsync(Guid userId)
-    {
-        ValidateUserId(userId);
-
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var weekAgo = today.AddDays(-6); // Last 7 days including today
-
-        var stepEntries = await _userRepository.GetStepEntriesForRangeAsync(userId, weekAgo, today);
-
-        var totalSteps = CalculateTotalSteps(stepEntries);
-        var totalDistance = CalculateTotalDistance(stepEntries);
-        var averageSteps = CalculateAverageSteps(totalSteps);
-        var currentStreak = await CalculateCurrentStreakAsync(userId);
-
-        return new UserActivityResponse
-        {
-            TotalSteps = totalSteps,
-            TotalDistanceMeters = totalDistance,
-            AverageStepsPerDay = averageSteps,
-            CurrentStreak = currentStreak
-        };
-    }
-
-    /// <inheritdoc />
-    public async Task<List<MutualGroupResponse>> GetMutualGroupsAsync(Guid currentUserId, Guid otherUserId)
-    {
-        ValidateUserId(currentUserId);
-        ValidateOtherUserId(otherUserId);
-
-        var currentUserGroups = await _userRepository.GetUserGroupIdsAsync(currentUserId);
-        var otherUserGroups = await _userRepository.GetUserGroupIdsAsync(otherUserId);
-
-        var mutualGroupIds = currentUserGroups.Intersect(otherUserGroups).ToList();
-
-        if (mutualGroupIds.Count == 0)
-        {
-            return new List<MutualGroupResponse>();
-        }
-
-        var groups = await _userRepository.GetGroupsByIdsAsync(mutualGroupIds);
-
-        return groups.Select(g => new MutualGroupResponse
-        {
-            Id = g.Id,
-            Name = g.Name
-        }).ToList();
-    }
-
-    private static void ValidateOtherUserId(Guid userId)
-    {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("Other user ID cannot be empty.", nameof(userId));
-        }
     }
 
     private static int CalculateTotalSteps(List<(int StepCount, double? DistanceMeters, DateOnly Date)> entries)
@@ -550,4 +573,6 @@ public class UserService : IUserService
 
         return streak;
     }
+
+    #endregion
 }

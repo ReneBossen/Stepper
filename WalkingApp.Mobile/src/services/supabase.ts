@@ -2,24 +2,23 @@ import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@env';
 
 /**
- * Supabase Client - For Real-time Subscriptions and Direct Database Access ONLY
+ * Supabase Client - For Real-time Subscriptions and Google OAuth ONLY
  *
- * IMPORTANT: This client is configured for minimal auth handling because:
+ * IMPORTANT: This client is configured for minimal functionality:
+ * - All data operations go through WalkingApp.Api (backend)
  * - All authentication (login, register, logout, token refresh) goes through authApi.ts
  * - Token storage is handled by tokenStorage.ts (not Supabase's built-in storage)
- * - This client is primarily used for:
- *   1. Real-time subscriptions (channel listeners)
- *   2. Direct database queries (until APIs migrate to .NET backend)
- *   3. Google OAuth flow (signInWithOAuth, setSession)
- *   4. Legacy operations that still require Supabase auth (getUser for user ID)
+ *
+ * This client is ONLY used for:
+ * 1. Real-time subscriptions (channel listeners for live updates)
+ * 2. Google OAuth flow (signInWithOAuth, setSession)
  *
  * For authentication operations, use:
- * - authApi.login() / authApi.register() / authApi.logout()
+ * - authApi.login() / authApi.register() / authApi.logout() / authApi.changePassword()
  * - tokenStorage.getAccessToken() / tokenStorage.setTokens()
  * - useAuthStore for auth state management
  *
- * TODO: As APIs migrate to .NET backend, reduce usage of supabase.auth.getUser()
- * TODO: Eventually this client will only be used for real-time subscriptions
+ * For data operations, use services in services/api/ which call the backend API.
  */
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {

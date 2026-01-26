@@ -22,15 +22,11 @@ import { useAuthStore } from '@store/authStore';
 jest.mock('@store/userStore');
 jest.mock('@store/authStore');
 
-// Mock supabase
-const mockUpdateUser = jest.fn();
-const mockGetUser = jest.fn();
-jest.mock('@services/supabase', () => ({
-  supabase: {
-    auth: {
-      getUser: () => mockGetUser(),
-      updateUser: (data: any) => mockUpdateUser(data),
-    },
+// Mock authApi for change password
+const mockChangePassword = jest.fn();
+jest.mock('@services/api/authApi', () => ({
+  authApi: {
+    changePassword: (currentPassword: string, newPassword: string) => mockChangePassword(currentPassword, newPassword),
   },
 }));
 
@@ -140,7 +136,7 @@ jest.mock('../components', () => ({
     const RN = require('react-native');
     return visible ? (
       <RN.View testID="change-password-modal">
-        <RN.TouchableOpacity testID="change-password-save" onPress={() => onSave('newPassword123')}>
+        <RN.TouchableOpacity testID="change-password-save" onPress={() => onSave('currentPassword123', 'newPassword123')}>
           <RN.Text>Save Password</RN.Text>
         </RN.TouchableOpacity>
         <RN.TouchableOpacity testID="change-password-cancel" onPress={onDismiss}>
@@ -269,6 +265,11 @@ describe('SettingsScreen', () => {
 
   const defaultAuthState = {
     signOut: mockSignOut,
+    user: {
+      id: 'user-123',
+      email: 'john@example.com',
+      displayName: 'John Doe',
+    },
   };
 
   beforeEach(() => {
@@ -276,8 +277,7 @@ describe('SettingsScreen', () => {
 
     mockUpdatePreferences.mockResolvedValue(undefined);
     mockSignOut.mockResolvedValue(undefined);
-    mockGetUser.mockResolvedValue({ data: { user: { email: 'john@example.com' } } });
-    mockUpdateUser.mockResolvedValue({ data: {}, error: null });
+    mockChangePassword.mockResolvedValue(undefined);
 
     mockUseUserStore.mockImplementation((selector?: any) => {
       if (selector) {
@@ -767,16 +767,16 @@ describe('SettingsScreen', () => {
       expect(getByTestId('settings-email')).toBeTruthy();
     });
 
-    it('should display user email when loaded', async () => {
+    it('should display user email from auth store', () => {
       const { getByTestId } = render(<SettingsScreen />);
-
-      await waitFor(() => {
-        expect(getByTestId('settings-email-description')).toHaveTextContent('john@example.com');
-      });
+      expect(getByTestId('settings-email-description')).toHaveTextContent('john@example.com');
     });
 
-    it('should display Loading when email not yet loaded', () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+    it('should display Loading when user not available', () => {
+      mockUseAuthStore.mockImplementation((selector?: any) => {
+        const state = { signOut: mockSignOut, user: null };
+        return selector ? selector(state) : state;
+      });
       const { getByTestId } = render(<SettingsScreen />);
       expect(getByTestId('settings-email-description')).toHaveTextContent('Loading...');
     });
@@ -801,7 +801,7 @@ describe('SettingsScreen', () => {
       fireEvent.press(getByTestId('change-password-save'));
 
       await waitFor(() => {
-        expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'newPassword123' });
+        expect(mockChangePassword).toHaveBeenCalledWith('currentPassword123', 'newPassword123');
       });
 
       await waitFor(() => {
@@ -810,14 +810,14 @@ describe('SettingsScreen', () => {
     });
 
     it('should show error alert when password change fails', async () => {
-      mockUpdateUser.mockResolvedValue({ data: null, error: { message: 'Password change failed' } });
+      mockChangePassword.mockRejectedValue(new Error('Password change failed'));
 
       const { getByTestId } = render(<SettingsScreen />);
       fireEvent.press(getByTestId('settings-change-password'));
       fireEvent.press(getByTestId('change-password-save'));
 
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith('Error', expect.any(String));
+        expect(Alert.alert).toHaveBeenCalledWith('Error', 'Password change failed');
       });
     });
 

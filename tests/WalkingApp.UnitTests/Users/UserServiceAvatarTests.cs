@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Http;
 using Moq;
 using WalkingApp.Api.Common.Database;
 using WalkingApp.Api.Users;
-using WalkingApp.Api.Users.DTOs;
 
 namespace WalkingApp.UnitTests.Users;
 
@@ -13,6 +12,7 @@ namespace WalkingApp.UnitTests.Users;
 public class UserServiceAvatarTests
 {
     private readonly Mock<IUserRepository> _mockRepository;
+    private readonly Mock<IUserPreferencesRepository> _mockPreferencesRepository;
     private readonly Mock<ISupabaseClientFactory> _mockClientFactory;
     private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
     private readonly UserService _sut;
@@ -20,10 +20,12 @@ public class UserServiceAvatarTests
     public UserServiceAvatarTests()
     {
         _mockRepository = new Mock<IUserRepository>();
+        _mockPreferencesRepository = new Mock<IUserPreferencesRepository>();
         _mockClientFactory = new Mock<ISupabaseClientFactory>();
         _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
         _sut = new UserService(
             _mockRepository.Object,
+            _mockPreferencesRepository.Object,
             _mockClientFactory.Object,
             _mockHttpContextAccessor.Object);
     }
@@ -346,26 +348,7 @@ public class UserServiceAvatarTests
             DisplayName = "Test User",
             AvatarUrl = "https://example.com/avatar.jpg",
             CreatedAt = DateTime.UtcNow.AddDays(-30),
-            UpdatedAt = DateTime.UtcNow.AddDays(-1),
-            Preferences = new UserPreferences
-            {
-                Units = "metric",
-                DailyStepGoal = 10000,
-                Notifications = new NotificationSettings
-                {
-                    DailyReminder = true,
-                    FriendRequests = true,
-                    GroupInvites = true,
-                    Achievements = true
-                },
-                Privacy = new PrivacySettings
-                {
-                    ShowStepsToFriends = true,
-                    ShowGroupActivity = true,
-                    AllowFriendRequests = true,
-                    PrivateProfile = false
-                }
-            }
+            UpdatedAt = DateTime.UtcNow.AddDays(-1)
         };
     }
 

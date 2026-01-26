@@ -58,4 +58,37 @@ public class ActivityController : ControllerBase
             return StatusCode(500, ApiResponse<ActivityFeedResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
         }
     }
+
+    /// <summary>
+    /// Gets a single activity item by ID.
+    /// </summary>
+    /// <param name="id">The unique identifier of the activity.</param>
+    /// <returns>The activity item.</returns>
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<ApiResponse<ActivityItemResponse>>> GetActivityItem(Guid id)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+        {
+            return Unauthorized(ApiResponse<ActivityItemResponse>.ErrorResponse("User is not authenticated."));
+        }
+
+        try
+        {
+            var result = await _activityService.GetByIdAsync(userId.Value, id);
+            return Ok(ApiResponse<ActivityItemResponse>.SuccessResponse(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<ActivityItemResponse>.ErrorResponse(ex.Message));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<ActivityItemResponse>.ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<ActivityItemResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
+        }
+    }
 }

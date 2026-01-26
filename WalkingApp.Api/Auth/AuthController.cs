@@ -191,6 +191,45 @@ public class AuthController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Changes the authenticated user's password.
+    /// </summary>
+    /// <param name="request">The change password request.</param>
+    /// <returns>A success response if the password was changed successfully.</returns>
+    [HttpPost("change-password")]
+    public async Task<ActionResult<ApiResponse<object>>> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        if (request == null)
+        {
+            return BadRequest(ApiResponse<object>.ErrorResponse("Request body cannot be null."));
+        }
+
+        var accessToken = ExtractAccessToken();
+
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return Unauthorized(ApiResponse<object>.ErrorResponse("No valid access token provided."));
+        }
+
+        try
+        {
+            await _authService.ChangePasswordAsync(accessToken, request);
+            return Ok(ApiResponse<object>.SuccessResponse(new { message = "Password has been changed successfully." }));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ApiResponse<object>.ErrorResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
+        }
+    }
+
     private string? ExtractAccessToken()
     {
         var authHeader = Request.Headers.Authorization.FirstOrDefault();

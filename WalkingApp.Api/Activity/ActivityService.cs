@@ -53,6 +53,63 @@ public class ActivityService : IActivityService
         return new ActivityFeedResponse(items, totalCount, hasMore);
     }
 
+    /// <inheritdoc />
+    public async Task<ActivityItemResponse> GetByIdAsync(Guid userId, Guid activityId)
+    {
+        ValidateGetByIdParameters(userId, activityId);
+
+        var activity = await _activityRepository.GetByIdAsync(activityId);
+
+        EnsureActivityExists(activity, activityId);
+
+        var userProfile = await GetUserProfileAsync(activity!.UserId);
+
+        return MapToActivityItemResponse(activity, userProfile);
+    }
+
+    private static void ValidateGetByIdParameters(Guid userId, Guid activityId)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
+        }
+
+        if (activityId == Guid.Empty)
+        {
+            throw new ArgumentException("Activity ID cannot be empty.", nameof(activityId));
+        }
+    }
+
+    private static void EnsureActivityExists(ActivityItem? activity, Guid activityId)
+    {
+        if (activity == null)
+        {
+            throw new KeyNotFoundException($"Activity not found: {activityId}");
+        }
+    }
+
+    private async Task<User?> GetUserProfileAsync(Guid userId)
+    {
+        var users = await _userRepository.GetByIdsAsync(new List<Guid> { userId });
+        return users.FirstOrDefault();
+    }
+
+    private static ActivityItemResponse MapToActivityItemResponse(ActivityItem activity, User? userProfile)
+    {
+        return new ActivityItemResponse(
+            Id: activity.Id,
+            UserId: activity.UserId,
+            UserName: userProfile?.DisplayName ?? "Unknown User",
+            UserAvatarUrl: userProfile?.AvatarUrl,
+            Type: activity.Type,
+            Message: activity.Message,
+            Metadata: ParseMetadata(activity.Metadata),
+            CreatedAt: activity.CreatedAt,
+            RelatedUserId: activity.RelatedUserId,
+            RelatedGroupId: activity.RelatedGroupId
+        );
+    }
+
     private static void ValidateParameters(Guid userId, ref int limit, ref int offset)
     {
         if (userId == Guid.Empty)
@@ -104,19 +161,7 @@ public class ActivityService : IActivityService
         Dictionary<Guid, User> userProfiles)
     {
         var userProfile = userProfiles.GetValueOrDefault(activity.UserId);
-
-        return new ActivityItemResponse(
-            Id: activity.Id,
-            UserId: activity.UserId,
-            UserName: userProfile?.DisplayName ?? "Unknown User",
-            UserAvatarUrl: userProfile?.AvatarUrl,
-            Type: activity.Type,
-            Message: activity.Message,
-            Metadata: ParseMetadata(activity.Metadata),
-            CreatedAt: activity.CreatedAt,
-            RelatedUserId: activity.RelatedUserId,
-            RelatedGroupId: activity.RelatedGroupId
-        );
+        return MapToActivityItemResponse(activity, userProfile);
     }
 
     private static object? ParseMetadata(string? metadataJson)

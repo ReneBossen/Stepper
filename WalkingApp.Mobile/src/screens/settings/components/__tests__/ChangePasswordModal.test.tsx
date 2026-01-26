@@ -195,6 +195,18 @@ describe('ChangePasswordModal', () => {
       expect(getAllByText('Change Password').length).toBeGreaterThanOrEqual(1);
     });
 
+    it('should display current password input', () => {
+      const { getByTestId } = render(
+        <ChangePasswordModal
+          visible={true}
+          onDismiss={mockOnDismiss}
+          onSave={mockOnSave}
+        />
+      );
+
+      expect(getByTestId('change-password-current-input')).toBeTruthy();
+    });
+
     it('should display new password input', () => {
       const { getByTestId } = render(
         <ChangePasswordModal
@@ -341,7 +353,7 @@ describe('ChangePasswordModal', () => {
       expect(getByTestId('change-password-save-button-disabled')).toBeTruthy();
     });
 
-    it('should be disabled when password is invalid', () => {
+    it('should be disabled when current password is empty', () => {
       const { getByTestId } = render(
         <ChangePasswordModal
           visible={true}
@@ -353,6 +365,26 @@ describe('ChangePasswordModal', () => {
       const newPasswordInput = getByTestId('change-password-new-input');
       const confirmPasswordInput = getByTestId('change-password-confirm-input');
 
+      fireEvent.changeText(newPasswordInput, 'password123');
+      fireEvent.changeText(confirmPasswordInput, 'password123');
+
+      expect(getByTestId('change-password-save-button-disabled')).toBeTruthy();
+    });
+
+    it('should be disabled when password is invalid', () => {
+      const { getByTestId } = render(
+        <ChangePasswordModal
+          visible={true}
+          onDismiss={mockOnDismiss}
+          onSave={mockOnSave}
+        />
+      );
+
+      const currentPasswordInput = getByTestId('change-password-current-input');
+      const newPasswordInput = getByTestId('change-password-new-input');
+      const confirmPasswordInput = getByTestId('change-password-confirm-input');
+
+      fireEvent.changeText(currentPasswordInput, 'currentpass');
       fireEvent.changeText(newPasswordInput, 'short');
       fireEvent.changeText(confirmPasswordInput, 'short');
 
@@ -368,16 +400,18 @@ describe('ChangePasswordModal', () => {
         />
       );
 
+      const currentPasswordInput = getByTestId('change-password-current-input');
       const newPasswordInput = getByTestId('change-password-new-input');
       const confirmPasswordInput = getByTestId('change-password-confirm-input');
 
+      fireEvent.changeText(currentPasswordInput, 'currentpass');
       fireEvent.changeText(newPasswordInput, 'password123');
       fireEvent.changeText(confirmPasswordInput, 'password456');
 
       expect(getByTestId('change-password-save-button-disabled')).toBeTruthy();
     });
 
-    it('should be enabled when password is valid and matches', () => {
+    it('should be enabled when all fields are valid', () => {
       const { getByTestId, queryByTestId } = render(
         <ChangePasswordModal
           visible={true}
@@ -386,9 +420,11 @@ describe('ChangePasswordModal', () => {
         />
       );
 
+      const currentPasswordInput = getByTestId('change-password-current-input');
       const newPasswordInput = getByTestId('change-password-new-input');
       const confirmPasswordInput = getByTestId('change-password-confirm-input');
 
+      fireEvent.changeText(currentPasswordInput, 'currentpass');
       fireEvent.changeText(newPasswordInput, 'password123');
       fireEvent.changeText(confirmPasswordInput, 'password123');
 
@@ -397,7 +433,7 @@ describe('ChangePasswordModal', () => {
   });
 
   describe('save action', () => {
-    it('should call onSave with new password when save is pressed', async () => {
+    it('should call onSave with current and new password when save is pressed', async () => {
       const { getByTestId } = render(
         <ChangePasswordModal
           visible={true}
@@ -406,16 +442,18 @@ describe('ChangePasswordModal', () => {
         />
       );
 
+      const currentPasswordInput = getByTestId('change-password-current-input');
       const newPasswordInput = getByTestId('change-password-new-input');
       const confirmPasswordInput = getByTestId('change-password-confirm-input');
       const saveButton = getByTestId('change-password-save-button');
 
+      fireEvent.changeText(currentPasswordInput, 'currentpass');
       fireEvent.changeText(newPasswordInput, 'password123');
       fireEvent.changeText(confirmPasswordInput, 'password123');
       fireEvent.press(saveButton);
 
       await waitFor(() => {
-        expect(mockOnSave).toHaveBeenCalledWith('password123');
+        expect(mockOnSave).toHaveBeenCalledWith('currentpass', 'password123');
       });
     });
   });

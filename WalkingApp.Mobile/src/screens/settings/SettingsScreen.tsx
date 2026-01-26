@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Linking, Platform } from 'react-native';
 import {
   Text,
@@ -25,7 +25,7 @@ import {
 } from './components';
 import type { PrivacySettingType } from './components';
 import type { PrivacyLevel } from '@services/api/userPreferencesApi';
-import { supabase } from '@services/supabase';
+import { authApi } from '@services/api/authApi';
 
 // App version from app.json (would use expo-application in production)
 const APP_VERSION = '1.0.0';
@@ -39,7 +39,7 @@ type NavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'Setting
 export default function SettingsScreen() {
   const theme = useTheme();
   const navigation = useNavigation<NavigationProp>();
-  const signOut = useAuthStore((state) => state.signOut);
+  const { signOut, user: authUser } = useAuthStore();
   const {
     currentUser,
     themePreference,
@@ -67,23 +67,12 @@ export default function SettingsScreen() {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  // User email state
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-
   // Snackbar state
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
-  // Fetch user email on mount
-  useEffect(() => {
-    const fetchEmail = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email) {
-        setUserEmail(user.email);
-      }
-    };
-    fetchEmail();
-  }, []);
+  // Get user email from auth store
+  const userEmail = authUser?.email ?? null;
 
   // Get user preferences with defaults
   const preferences = currentUser?.preferences;
@@ -212,11 +201,10 @@ export default function SettingsScreen() {
     setShowChangePasswordModal(true);
   }, []);
 
-  const handleChangePasswordSave = useCallback(async (newPassword: string) => {
+  const handleChangePasswordSave = useCallback(async (currentPassword: string, newPassword: string) => {
     setIsChangingPassword(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
+      await authApi.changePassword(currentPassword, newPassword);
       setShowChangePasswordModal(false);
       showSnackbar('Password changed successfully');
     } catch (error) {

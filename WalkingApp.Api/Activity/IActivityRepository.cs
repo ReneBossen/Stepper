@@ -22,4 +22,11 @@ public interface IActivityRepository
     /// <param name="friendIds">The list of friend IDs to include in the count.</param>
     /// <returns>The total count of activities.</returns>
     Task<int> GetFeedCountAsync(Guid userId, List<Guid> friendIds);
+
+    /// <summary>
+    /// Gets a single activity item by its unique identifier.
+    /// </summary>
+    /// <param name="id">The unique identifier of the activity.</param>
+    /// <returns>The activity item, or null if not found.</returns>
+    Task<ActivityItem?> GetByIdAsync(Guid id);
 }

@@ -180,6 +180,88 @@ public class AuthService : IAuthService
         }
     }
 
+    /// <inheritdoc />
+    public async Task ChangePasswordAsync(string accessToken, ChangePasswordRequest request)
+    {
+        ValidateChangePasswordRequest(accessToken, request);
+
+        var client = await CreateAuthenticatedClientAsync(accessToken);
+        var currentUser = client.Auth.CurrentUser;
+
+        EnsureUserIsAuthenticated(currentUser);
+
+        await VerifyCurrentPassword(currentUser!.Email!, request.CurrentPassword);
+        await UpdatePassword(client, request.NewPassword);
+    }
+
+    private async Task VerifyCurrentPassword(string email, string currentPassword)
+    {
+        var client = await CreateSupabaseClientAsync();
+
+        try
+        {
+            await client.Auth.SignIn(email, currentPassword);
+        }
+        catch (GotrueException ex)
+        {
+            _logger.LogWarning(ex, "Password verification failed during change password for email: {Email}", email);
+            throw new UnauthorizedAccessException("Current password is incorrect.", ex);
+        }
+    }
+
+    private static async Task UpdatePassword(SupabaseClient client, string newPassword)
+    {
+        try
+        {
+            await client.Auth.Update(new UserAttributes
+            {
+                Password = newPassword
+            });
+        }
+        catch (GotrueException ex)
+        {
+            throw new InvalidOperationException("Failed to update password. Please try again.", ex);
+        }
+    }
+
+    private static void EnsureUserIsAuthenticated(Supabase.Gotrue.User? user)
+    {
+        if (user?.Email == null)
+        {
+            throw new UnauthorizedAccessException("User is not authenticated.");
+        }
+    }
+
+    private static void ValidateChangePasswordRequest(string accessToken, ChangePasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            throw new ArgumentException("Access token cannot be empty.", nameof(accessToken));
+        }
+
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (string.IsNullOrWhiteSpace(request.CurrentPassword))
+        {
+            throw new ArgumentException("Current password cannot be empty.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            throw new ArgumentException("New password cannot be empty.");
+        }
+
+        if (request.NewPassword.Length < MinPasswordLength)
+        {
+            throw new ArgumentException($"New password must be at least {MinPasswordLength} characters long.");
+        }
+
+        if (request.CurrentPassword == request.NewPassword)
+        {
+            throw new ArgumentException("New password must be different from current password.");
+        }
+    }
+
     private async Task<SupabaseClient> CreateSupabaseClientAsync()
     {
         var options = new Supabase.SupabaseOptions

@@ -14,7 +14,7 @@ import {
 interface ChangePasswordModalProps {
   visible: boolean;
   onDismiss: () => void;
-  onSave: (newPassword: string) => Promise<void>;
+  onSave: (currentPassword: string, newPassword: string) => Promise<void>;
   isSaving?: boolean;
 }
 
@@ -45,23 +45,30 @@ export function ChangePasswordModal({
   isSaving = false,
 }: ChangePasswordModalProps) {
   const theme = useTheme();
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [touched, setTouched] = useState({ newPassword: false, confirmPassword: false });
+  const [touched, setTouched] = useState({ currentPassword: false, newPassword: false, confirmPassword: false });
 
   // Reset state when modal opens/closes
   useEffect(() => {
     if (visible) {
+      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      setShowCurrentPassword(false);
       setShowNewPassword(false);
       setShowConfirmPassword(false);
-      setTouched({ newPassword: false, confirmPassword: false });
+      setTouched({ currentPassword: false, newPassword: false, confirmPassword: false });
     }
   }, [visible]);
 
+  const currentPasswordError = touched.currentPassword && currentPassword.length === 0
+    ? 'Current password is required'
+    : null;
   const passwordError = touched.newPassword ? validatePassword(newPassword) : null;
   const confirmError =
     touched.confirmPassword && newPassword !== confirmPassword
@@ -69,6 +76,7 @@ export function ChangePasswordModal({
       : null;
 
   const isValid =
+    currentPassword.length > 0 &&
     newPassword.length > 0 &&
     confirmPassword.length > 0 &&
     validatePassword(newPassword) === null &&
@@ -76,8 +84,12 @@ export function ChangePasswordModal({
 
   const handleSave = useCallback(async () => {
     if (!isValid) return;
-    await onSave(newPassword);
-  }, [isValid, newPassword, onSave]);
+    await onSave(currentPassword, newPassword);
+  }, [isValid, currentPassword, newPassword, onSave]);
+
+  const handleCurrentPasswordBlur = useCallback(() => {
+    setTouched((prev) => ({ ...prev, currentPassword: true }));
+  }, []);
 
   const handleNewPasswordBlur = useCallback(() => {
     setTouched((prev) => ({ ...prev, newPassword: true }));
@@ -114,8 +126,33 @@ export function ChangePasswordModal({
           variant="bodyMedium"
           style={[styles.description, { color: theme.colors.onSurfaceVariant }]}
         >
-          Enter your new password. It must be at least 8 characters and contain at least one letter and one number.
+          Enter your current password and new password. New password must be at least 8 characters and contain at least one letter and one number.
         </Text>
+
+        <TextInput
+          label="Current Password"
+          value={currentPassword}
+          onChangeText={setCurrentPassword}
+          onBlur={handleCurrentPasswordBlur}
+          secureTextEntry={!showCurrentPassword}
+          mode="outlined"
+          style={styles.input}
+          testID="change-password-current-input"
+          accessibilityLabel="Current password"
+          error={!!currentPasswordError}
+          right={
+            <TextInput.Icon
+              icon={showCurrentPassword ? 'eye-off' : 'eye'}
+              onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+              accessibilityLabel={showCurrentPassword ? 'Hide password' : 'Show password'}
+            />
+          }
+        />
+        {currentPasswordError && (
+          <HelperText type="error" visible testID="change-password-current-error">
+            {currentPasswordError}
+          </HelperText>
+        )}
 
         <TextInput
           label="New Password"

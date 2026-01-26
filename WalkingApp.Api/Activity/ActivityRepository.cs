@@ -90,6 +90,25 @@ public class ActivityRepository : IActivityRepository
         return response.Models.Count;
     }
 
+    /// <inheritdoc />
+    public async Task<ActivityItem?> GetByIdAsync(Guid id)
+    {
+        var client = await GetAuthenticatedClientAsync();
+        var activity = await FetchActivityByIdAsync(client, id);
+
+        return activity;
+    }
+
+    private static async Task<ActivityItem?> FetchActivityByIdAsync(Client client, Guid id)
+    {
+        var response = await client
+            .From<ActivityItemEntity>()
+            .Filter("id", Supabase.Postgrest.Constants.Operator.Equals, id.ToString())
+            .Single();
+
+        return response?.ToActivityItem();
+    }
+
     private async Task<Client> GetAuthenticatedClientAsync()
     {
         if (_httpContextAccessor.HttpContext?.Items.TryGetValue("SupabaseToken", out var tokenObj) != true)

@@ -13,7 +13,6 @@ jest.mock('../client', () => ({
 jest.mock('../../supabase', () => ({
   supabase: {
     channel: jest.fn(),
-    from: jest.fn(),
   },
 }));
 
@@ -230,35 +229,21 @@ describe('activityApi', () => {
         on: mockOn,
       });
 
-      const mockFromSingle = jest.fn().mockResolvedValue({
-        data: {
-          id: 'activity-new',
-          type: 'milestone',
-          user_id: 'user-123',
-          message: 'Reached 10,000 steps!',
-          metadata: { milestone: 10000 },
-          created_at: '2024-01-15T12:00:00Z',
-          related_user_id: null,
-          related_group_id: null,
-          users: {
-            display_name: 'Test User',
-            avatar_url: 'https://example.com/test.jpg',
-          },
-        },
-        error: null,
-      });
-      const mockFromEq = jest.fn().mockReturnValue({
-        single: mockFromSingle,
-      });
-      const mockFromSelect = jest.fn().mockReturnValue({
-        eq: mockFromEq,
-      });
-      const mockFrom = jest.fn().mockReturnValue({
-        select: mockFromSelect,
-      });
-
       mockSupabase.channel = mockChannel;
-      mockSupabase.from = mockFrom;
+
+      // Mock the backend API response for getActivityItem
+      mockApiClient.get.mockResolvedValue({
+        id: 'activity-new',
+        type: 'milestone',
+        userId: 'user-123',
+        userName: 'Test User',
+        userAvatarUrl: 'https://example.com/test.jpg',
+        message: 'Reached 10,000 steps!',
+        metadata: { milestone: 10000 },
+        createdAt: '2024-01-15T12:00:00Z',
+        relatedUserId: null,
+        relatedGroupId: null,
+      });
 
       const callback = jest.fn();
       activityApi.subscribeToFeed(callback);
@@ -267,7 +252,7 @@ describe('activityApi', () => {
       expect(capturedHandler).not.toBeNull();
       await capturedHandler!({ new: { id: 'activity-new' } });
 
-      expect(mockFrom).toHaveBeenCalledWith('activity_feed');
+      expect(mockApiClient.get).toHaveBeenCalledWith('/activity/activity-new');
       expect(callback).toHaveBeenCalledWith({
         id: 'activity-new',
         type: 'milestone',
@@ -280,60 +265,6 @@ describe('activityApi', () => {
         relatedUserId: null,
         relatedGroupId: null,
       });
-    });
-
-    it('should use default userName when users join returns null', async () => {
-      let capturedHandler: ((payload: { new: { id: string } }) => Promise<void>) | null = null;
-
-      const mockSubscribe = jest.fn().mockReturnValue({
-        unsubscribe: jest.fn(),
-      });
-      const mockOn = jest.fn().mockImplementation((_event, _options, handler) => {
-        capturedHandler = handler;
-        return { subscribe: mockSubscribe };
-      });
-      const mockChannel = jest.fn().mockReturnValue({
-        on: mockOn,
-      });
-
-      const mockFromSingle = jest.fn().mockResolvedValue({
-        data: {
-          id: 'activity-new',
-          type: 'milestone',
-          user_id: 'user-unknown',
-          message: 'Activity happened',
-          metadata: null,
-          created_at: '2024-01-15T12:00:00Z',
-          related_user_id: null,
-          related_group_id: null,
-          users: null,
-        },
-        error: null,
-      });
-      const mockFromEq = jest.fn().mockReturnValue({
-        single: mockFromSingle,
-      });
-      const mockFromSelect = jest.fn().mockReturnValue({
-        eq: mockFromEq,
-      });
-      const mockFrom = jest.fn().mockReturnValue({
-        select: mockFromSelect,
-      });
-
-      mockSupabase.channel = mockChannel;
-      mockSupabase.from = mockFrom;
-
-      const callback = jest.fn();
-      activityApi.subscribeToFeed(callback);
-
-      await capturedHandler!({ new: { id: 'activity-new' } });
-
-      expect(callback).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userName: 'Unknown User',
-          avatarUrl: undefined,
-        })
-      );
     });
 
     it('should call onError callback when fetch fails', async () => {
@@ -350,22 +281,10 @@ describe('activityApi', () => {
         on: mockOn,
       });
 
-      const mockFromSingle = jest.fn().mockResolvedValue({
-        data: null,
-        error: { message: 'Database error' },
-      });
-      const mockFromEq = jest.fn().mockReturnValue({
-        single: mockFromSingle,
-      });
-      const mockFromSelect = jest.fn().mockReturnValue({
-        eq: mockFromEq,
-      });
-      const mockFrom = jest.fn().mockReturnValue({
-        select: mockFromSelect,
-      });
-
       mockSupabase.channel = mockChannel;
-      mockSupabase.from = mockFrom;
+
+      // Mock the backend API to fail
+      mockApiClient.get.mockRejectedValue(new Error('Failed to fetch activity item'));
 
       const callback = jest.fn();
       const onError = jest.fn();
@@ -378,49 +297,10 @@ describe('activityApi', () => {
       expect(callback).not.toHaveBeenCalled();
       expect(onError).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: 'Failed to fetch activity item: Database error',
+          message: 'Failed to fetch activity item',
         })
       );
       expect(consoleSpy).toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should handle unexpected errors in subscription handler', async () => {
-      let capturedHandler: ((payload: { new: { id: string } }) => Promise<void>) | null = null;
-
-      const mockSubscribe = jest.fn().mockReturnValue({
-        unsubscribe: jest.fn(),
-      });
-      const mockOn = jest.fn().mockImplementation((_event, _options, handler) => {
-        capturedHandler = handler;
-        return { subscribe: mockSubscribe };
-      });
-      const mockChannel = jest.fn().mockReturnValue({
-        on: mockOn,
-      });
-
-      const mockFrom = jest.fn().mockImplementation(() => {
-        throw new Error('Unexpected error');
-      });
-
-      mockSupabase.channel = mockChannel;
-      mockSupabase.from = mockFrom;
-
-      const callback = jest.fn();
-      const onError = jest.fn();
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
-      activityApi.subscribeToFeed(callback, onError);
-
-      await capturedHandler!({ new: { id: 'activity-crash' } });
-
-      expect(callback).not.toHaveBeenCalled();
-      expect(onError).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'Unexpected error',
-        })
-      );
 
       consoleSpy.mockRestore();
     });
