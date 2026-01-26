@@ -6,6 +6,7 @@ import { LoadingSpinner } from '@components/common/LoadingSpinner';
 import { ErrorMessage } from '@components/common/ErrorMessage';
 import { NotificationItem } from './components/NotificationItem';
 import { useNotificationsStore, Notification } from '@store/notificationsStore';
+import { useAuthStore } from '@store/authStore';
 
 /**
  * Notifications screen - displays all user notifications.
@@ -16,6 +17,8 @@ export default function NotificationsScreen() {
   const navigation = useNavigation();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const { user } = useAuthStore();
+
   const {
     notifications,
     unreadCount,
@@ -25,12 +28,24 @@ export default function NotificationsScreen() {
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    subscribeToNotifications,
+    unsubscribeFromNotifications,
   } = useNotificationsStore();
 
-  // Fetch notifications on mount
+  // Fetch notifications on mount and subscribe to realtime updates
   useEffect(() => {
     fetchNotifications();
-  }, [fetchNotifications]);
+
+    // Subscribe to realtime notifications if user is authenticated
+    if (user?.id) {
+      subscribeToNotifications(user.id);
+    }
+
+    // Cleanup subscription on unmount
+    return () => {
+      unsubscribeFromNotifications();
+    };
+  }, [fetchNotifications, subscribeToNotifications, unsubscribeFromNotifications, user?.id]);
 
   const handleGoBack = useCallback(() => {
     navigation.goBack();

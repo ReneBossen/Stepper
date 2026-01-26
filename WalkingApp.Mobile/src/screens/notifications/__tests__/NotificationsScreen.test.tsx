@@ -3,9 +3,11 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import NotificationsScreen from '../NotificationsScreen';
 import { useNotificationsStore, Notification } from '@store/notificationsStore';
+import { useAuthStore } from '@store/authStore';
 
 // Mock dependencies
 jest.mock('@store/notificationsStore');
+jest.mock('@store/authStore');
 
 // Mock navigation
 const mockGoBack = jest.fn();
@@ -108,12 +110,15 @@ jest.mock('react-native-paper', () => {
 });
 
 const mockUseNotificationsStore = useNotificationsStore as jest.MockedFunction<typeof useNotificationsStore>;
+const mockUseAuthStore = useAuthStore as jest.MockedFunction<typeof useAuthStore>;
 
 describe('NotificationsScreen', () => {
   const mockFetchNotifications = jest.fn();
   const mockMarkAsRead = jest.fn();
   const mockMarkAllAsRead = jest.fn();
   const mockDeleteNotification = jest.fn();
+  const mockSubscribeToNotifications = jest.fn();
+  const mockUnsubscribeFromNotifications = jest.fn();
 
   const createMockNotification = (overrides: Partial<Notification> = {}): Notification => ({
     id: 'notif-1',
@@ -145,11 +150,28 @@ describe('NotificationsScreen', () => {
     unreadCount: 2,
     isLoading: false,
     error: null,
+    _channel: null,
     fetchNotifications: mockFetchNotifications,
     fetchUnreadCount: jest.fn(),
     markAsRead: mockMarkAsRead,
     markAllAsRead: mockMarkAllAsRead,
     deleteNotification: mockDeleteNotification,
+    subscribeToNotifications: mockSubscribeToNotifications,
+    unsubscribeFromNotifications: mockUnsubscribeFromNotifications,
+  };
+
+  const defaultAuthState = {
+    user: { id: 'user-123', email: 'test@example.com', displayName: 'Test User' },
+    isAuthenticated: true,
+    isLoading: false,
+    error: null,
+    signIn: jest.fn(),
+    signUp: jest.fn(),
+    signOut: jest.fn(),
+    resetPassword: jest.fn(),
+    restoreSession: jest.fn(),
+    setUser: jest.fn(),
+    clearError: jest.fn(),
   };
 
   beforeEach(() => {
@@ -160,6 +182,13 @@ describe('NotificationsScreen', () => {
         return selector(defaultNotificationsState);
       }
       return defaultNotificationsState;
+    });
+
+    mockUseAuthStore.mockImplementation((selector?: any) => {
+      if (selector) {
+        return selector(defaultAuthState);
+      }
+      return defaultAuthState;
     });
   });
 
@@ -499,6 +528,37 @@ describe('NotificationsScreen', () => {
       await waitFor(() => {
         expect(mockMarkAsRead).toHaveBeenCalledWith('notif-1');
       });
+    });
+  });
+
+  describe('realtime subscription', () => {
+    it('should subscribe to notifications on mount when user is authenticated', () => {
+      render(<NotificationsScreen />);
+
+      expect(mockSubscribeToNotifications).toHaveBeenCalledWith('user-123');
+    });
+
+    it('should unsubscribe from notifications on unmount', () => {
+      const { unmount } = render(<NotificationsScreen />);
+
+      unmount();
+
+      expect(mockUnsubscribeFromNotifications).toHaveBeenCalled();
+    });
+
+    it('should not subscribe when user is not authenticated', () => {
+      mockUseAuthStore.mockImplementation((selector?: any) => {
+        const state = {
+          ...defaultAuthState,
+          user: null,
+          isAuthenticated: false,
+        };
+        return selector ? selector(state) : state;
+      });
+
+      render(<NotificationsScreen />);
+
+      expect(mockSubscribeToNotifications).not.toHaveBeenCalled();
     });
   });
 });
