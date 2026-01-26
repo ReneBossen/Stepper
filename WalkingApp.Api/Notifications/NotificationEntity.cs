@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
 
@@ -28,7 +29,7 @@ internal class NotificationEntity : BaseModel
     public bool IsRead { get; set; }
 
     [Column("data")]
-    public string? Data { get; set; }
+    public object? Data { get; set; }
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; }
@@ -50,7 +51,7 @@ internal class NotificationEntity : BaseModel
             Title = Title,
             Message = Message,
             IsRead = IsRead,
-            Data = Data,
+            Data = SerializeData(Data),
             CreatedAt = CreatedAt,
             UpdatedAt = UpdatedAt
         };
@@ -73,7 +74,7 @@ internal class NotificationEntity : BaseModel
             Title = notification.Title,
             Message = notification.Message,
             IsRead = notification.IsRead,
-            Data = notification.Data,
+            Data = DeserializeData(notification.Data),
             CreatedAt = notification.CreatedAt,
             UpdatedAt = notification.UpdatedAt
         };
@@ -101,5 +102,51 @@ internal class NotificationEntity : BaseModel
             NotificationType.GoalAchieved => "goal_achieved",
             _ => "general"
         };
+    }
+
+    /// <summary>
+    /// Serializes the JSONB data object to a JSON string.
+    /// </summary>
+    /// <param name="data">The data object from Supabase JSONB column.</param>
+    /// <returns>A JSON string representation, or null if data is null.</returns>
+    private static string? SerializeData(object? data)
+    {
+        if (data is null)
+        {
+            return null;
+        }
+
+        // If it's already a string, return it directly
+        if (data is string stringData)
+        {
+            return string.IsNullOrEmpty(stringData) ? null : stringData;
+        }
+
+        // Serialize the object to a JSON string
+        return JsonSerializer.Serialize(data);
+    }
+
+    /// <summary>
+    /// Deserializes a JSON string to an object for Supabase JSONB column.
+    /// </summary>
+    /// <param name="jsonString">The JSON string from the domain model.</param>
+    /// <returns>A deserialized object, or null if the string is null or empty.</returns>
+    private static object? DeserializeData(string? jsonString)
+    {
+        if (string.IsNullOrEmpty(jsonString))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<JsonElement>(jsonString);
+        }
+        catch (JsonException)
+        {
+            // If deserialization fails, return the string as-is
+            // This handles cases where the data might not be valid JSON
+            return jsonString;
+        }
     }
 }

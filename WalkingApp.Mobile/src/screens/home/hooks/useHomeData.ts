@@ -134,6 +134,29 @@ export const useHomeData = (): UseHomeDataReturn => {
     };
   }, [addActivityItem]);
 
+  // Subscribe to real-time notification updates for unread count
+  useEffect(() => {
+    const channel = supabase
+      .channel('notifications_unread_count')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+        },
+        () => {
+          // Refetch unread count when new notification arrives
+          fetchUnreadCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [fetchUnreadCount]);
+
   // Derived values
   // Only steps loading is critical for the main dashboard display
   const isLoading = stepsLoading;
