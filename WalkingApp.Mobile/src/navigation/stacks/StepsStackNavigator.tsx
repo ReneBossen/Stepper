@@ -12,7 +12,7 @@ export default function StepsStackNavigator() {
       <Stack.Screen
         name="StepsHistory"
         component={StepsHistoryScreen}
-        options={{ title: 'Steps History' }}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
