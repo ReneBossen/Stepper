@@ -292,6 +292,7 @@ export default function GroupManagementScreen({ route }: Props) {
             icon="content-save"
             onPress={handleSave}
             disabled={isSaving}
+            color="#4CAF50"
             accessibilityLabel="Save changes"
           />
         )}
