@@ -23,6 +23,36 @@ public class GroupsController : ControllerBase
     }
 
     /// <summary>
+    /// Gets a list of public groups.
+    /// </summary>
+    /// <param name="limit">Maximum number of results to return (default 10, max 100).</param>
+    /// <returns>List of public groups.</returns>
+    [HttpGet("public")]
+    public async Task<ActionResult<ApiResponse<List<GroupSearchResponse>>>> GetPublicGroups(
+        [FromQuery] int limit = 10)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+        {
+            return Unauthorized(ApiResponse<List<GroupSearchResponse>>.ErrorResponse("User is not authenticated."));
+        }
+
+        try
+        {
+            var result = await _groupService.GetPublicGroupsAsync(limit);
+            return Ok(ApiResponse<List<GroupSearchResponse>>.SuccessResponse(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<List<GroupSearchResponse>>.ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<List<GroupSearchResponse>>.ErrorResponse($"An error occurred: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
     /// Searches for public groups by name.
     /// </summary>
     /// <param name="query">The search query (partial match on name).</param>

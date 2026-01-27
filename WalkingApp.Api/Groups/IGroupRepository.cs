@@ -115,4 +115,11 @@ public interface IGroupRepository
     /// <param name="limit">Maximum number of results to return.</param>
     /// <returns>List of matching public groups.</returns>
     Task<List<Group>> SearchPublicGroupsAsync(string query, int limit);
+
+    /// <summary>
+    /// Gets public groups ordered by most recently created.
+    /// </summary>
+    /// <param name="limit">Maximum number of results to return.</param>
+    /// <returns>List of public groups.</returns>
+    Task<List<Group>> GetPublicGroupsAsync(int limit);
 }

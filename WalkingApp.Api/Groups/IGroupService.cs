@@ -112,6 +112,13 @@ public interface IGroupService
     Task<List<GroupSearchResponse>> SearchPublicGroupsAsync(string query, int limit);
 
     /// <summary>
+    /// Gets a list of public groups.
+    /// </summary>
+    /// <param name="limit">Maximum number of results to return.</param>
+    /// <returns>List of public groups.</returns>
+    Task<List<GroupSearchResponse>> GetPublicGroupsAsync(int limit);
+
+    /// <summary>
     /// Joins a group using an invite code.
     /// </summary>
     /// <param name="userId">The ID of the user joining.</param>

@@ -662,6 +662,16 @@ public class GroupService : IGroupService
     }
 
     /// <inheritdoc />
+    public async Task<List<GroupSearchResponse>> GetPublicGroupsAsync(int limit)
+    {
+        ValidateSearchLimit(limit);
+
+        var groups = await _groupRepository.GetPublicGroupsAsync(limit);
+
+        return groups.Select(MapToGroupSearchResponse).ToList();
+    }
+
+    /// <inheritdoc />
     public async Task<GroupResponse> JoinByCodeAsync(Guid userId, string code)
     {
         ValidateUserId(userId);

@@ -355,6 +355,17 @@ export const groupsApi = {
   },
 
   /**
+   * Get public groups (featured/popular).
+   * Uses backend API: GET /api/v1/groups/public?limit=...
+   */
+  getPublicGroups: async (limit: number = 10): Promise<Group[]> => {
+    const response = await apiClient.get<GroupSearchResponse[]>(
+      `/groups/public?limit=${limit}`
+    );
+    return response.map(mapSearchResponseToGroup);
+  },
+
+  /**
    * Update group details.
    * Uses backend API: PUT /api/v1/groups/{id}
    */

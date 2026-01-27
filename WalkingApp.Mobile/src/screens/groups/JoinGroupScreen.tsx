@@ -12,10 +12,11 @@ import {
   TextInput,
   Text,
   Button,
-  Divider,
   Card,
   Chip,
   ActivityIndicator,
+  Portal,
+  Dialog,
   useTheme,
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -95,8 +96,8 @@ function PublicGroupCard({ group, onJoin, isJoining, testID }: PublicGroupCardPr
 }
 
 /**
- * Screen for joining existing groups.
- * Supports search for public groups and joining via invite code.
+ * Screen for finding and joining groups.
+ * Shows a searchable list of public groups with an invite code dialog.
  */
 export default function JoinGroupScreen({ route }: Props) {
   const theme = useTheme();
@@ -107,8 +108,10 @@ export default function JoinGroupScreen({ route }: Props) {
     publicGroups,
     isSearching,
     searchError,
-    isLoading,
+    featuredGroups,
+    isLoadingFeatured,
     searchPublicGroups,
+    fetchFeaturedGroups,
     joinGroup,
     joinGroupByCode,
     clearSearch,
@@ -121,7 +124,20 @@ export default function JoinGroupScreen({ route }: Props) {
   const [isJoiningGroup, setIsJoiningGroup] = useState<string | null>(null);
   const [isJoiningByCode, setIsJoiningByCode] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load featured groups on mount
+  useEffect(() => {
+    fetchFeaturedGroups();
+  }, [fetchFeaturedGroups]);
+
+  // Open invite dialog if initial invite code is provided
+  useEffect(() => {
+    if (initialInviteCode) {
+      setShowInviteDialog(true);
+    }
+  }, [initialInviteCode]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -216,6 +232,7 @@ export default function JoinGroupScreen({ route }: Props) {
 
     try {
       const groupId = await joinGroupByCode(trimmedCode);
+      setShowInviteDialog(false);
       navigation.replace('GroupDetail', { groupId });
     } catch (error) {
       setInviteCodeError(getErrorMessage(error));
@@ -224,13 +241,24 @@ export default function JoinGroupScreen({ route }: Props) {
     }
   }, [inviteCode, joinGroupByCode, navigation]);
 
+  const handleDismissDialog = useCallback(() => {
+    setShowInviteDialog(false);
+    setInviteCodeError(null);
+  }, []);
+
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     if (searchQuery.trim()) {
       await performSearch(searchQuery);
+    } else {
+      await fetchFeaturedGroups();
     }
     setIsRefreshing(false);
-  }, [searchQuery, performSearch]);
+  }, [searchQuery, performSearch, fetchFeaturedGroups]);
+
+  const displayGroups = searchQuery.trim() ? publicGroups : featuredGroups;
+  const isLoadingList = searchQuery.trim() ? isSearching : isLoadingFeatured;
+  const sectionTitle = searchQuery.trim() ? 'Search Results' : 'Popular Groups';
 
   const renderGroupItem = useCallback(
     ({ item }: { item: Group }) => (
@@ -246,133 +274,81 @@ export default function JoinGroupScreen({ route }: Props) {
 
   const keyExtractor = useCallback((item: Group) => item.id, []);
 
-  const ListHeaderComponent = useCallback(() => {
-    const hasSearchQuery = searchQuery.trim().length > 0;
+  const ListHeaderComponent = useCallback(() => (
+    <>
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Searchbar
+          placeholder="Search public groups..."
+          onChangeText={handleSearchChange}
+          value={searchQuery}
+          style={[styles.searchBar, { backgroundColor: theme.colors.surfaceVariant }]}
+          testID="group-search-bar"
+          accessibilityLabel="Search public groups"
+        />
+      </View>
 
-    return (
-      <>
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <Searchbar
-            placeholder="Search public groups..."
-            onChangeText={handleSearchChange}
-            value={searchQuery}
-            style={[styles.searchBar, { backgroundColor: theme.colors.surfaceVariant }]}
-            testID="group-search-bar"
-            accessibilityLabel="Search public groups"
-          />
-        </View>
+      {/* Section Title */}
+      <View style={styles.section}>
+        <Text
+          variant="titleSmall"
+          style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}
+        >
+          {sectionTitle}
+        </Text>
 
-        {/* OR Divider */}
-        <View style={styles.orDivider}>
-          <Divider style={styles.dividerLine} />
-          <Text
-            variant="bodySmall"
-            style={[styles.orText, { color: theme.colors.onSurfaceVariant }]}
-          >
-            OR
-          </Text>
-          <Divider style={styles.dividerLine} />
-        </View>
-
-        {/* Invite Code Section */}
-        <View style={styles.inviteCodeSection}>
-          <Text
-            variant="titleSmall"
-            style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}
-          >
-            Join with Invite Code
-          </Text>
-          <TextInput
-            label="Enter Invite Code"
-            value={inviteCode}
-            onChangeText={handleInviteCodeChange}
-            mode="outlined"
-            style={styles.inviteCodeInput}
-            error={!!inviteCodeError}
-            autoCapitalize="characters"
-            maxLength={INVITE_CODE.MAX_LENGTH}
-            testID="invite-code-input"
-            accessibilityLabel="Invite code input"
-          />
-          {inviteCodeError && (
-            <Text
-              variant="bodySmall"
-              style={[styles.errorText, { color: theme.colors.error }]}
-            >
-              {inviteCodeError}
-            </Text>
-          )}
-          <Button
-            mode="contained"
-            onPress={handleJoinWithCode}
-            loading={isJoiningByCode}
-            disabled={isJoiningByCode || !inviteCode.trim()}
-            style={styles.joinCodeButton}
-            testID="join-with-code-button"
-            accessibilityLabel="Join group with invite code"
-          >
-            Join with Code
-          </Button>
-        </View>
-
-        {/* Public Groups Section */}
-        {hasSearchQuery && (
-          <View style={styles.section}>
-            <Text
-              variant="titleSmall"
-              style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}
-            >
-              Search Results
-            </Text>
-            {isSearching && (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" />
-              </View>
-            )}
-            {searchError && !isSearching && (
-              <Text
-                variant="bodyMedium"
-                style={[styles.emptyText, { color: theme.colors.error }]}
-              >
-                {searchError}
-              </Text>
-            )}
-            {!isSearching && !searchError && publicGroups.length === 0 && (
-              <Text
-                variant="bodyMedium"
-                style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}
-              >
-                No public groups found
-              </Text>
-            )}
+        {/* Loading State */}
+        {isLoadingList && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" />
           </View>
         )}
-      </>
-    );
-  }, [
+
+        {/* Error State */}
+        {searchError && !isLoadingList && searchQuery.trim() && (
+          <Text
+            variant="bodyMedium"
+            style={[styles.emptyText, { color: theme.colors.error }]}
+          >
+            {searchError}
+          </Text>
+        )}
+
+        {/* Empty State */}
+        {!isLoadingList && !searchError && displayGroups.length === 0 && (
+          <Text
+            variant="bodyMedium"
+            style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}
+          >
+            No groups found
+          </Text>
+        )}
+      </View>
+    </>
+  ), [
     searchQuery,
-    inviteCode,
-    inviteCodeError,
-    isSearching,
+    sectionTitle,
+    isLoadingList,
     searchError,
-    publicGroups.length,
-    isJoiningByCode,
+    displayGroups.length,
     theme.colors,
     handleSearchChange,
-    handleInviteCodeChange,
-    handleJoinWithCode,
   ]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Appbar.Header elevated>
         <Appbar.BackAction onPress={handleBack} accessibilityLabel="Go back" />
-        <Appbar.Content title="Join Group" />
+        <Appbar.Content title="Find Groups" />
+        <Appbar.Action
+          icon="ticket-outline"
+          onPress={() => setShowInviteDialog(true)}
+          accessibilityLabel="Join with invite code"
+        />
       </Appbar.Header>
 
       <FlatList
-        data={searchQuery.trim() ? publicGroups : []}
+        data={displayGroups}
         renderItem={renderGroupItem}
         keyExtractor={keyExtractor}
         ListHeaderComponent={ListHeaderComponent}
@@ -388,6 +364,44 @@ export default function JoinGroupScreen({ route }: Props) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       />
+
+      <Portal>
+        <Dialog visible={showInviteDialog} onDismiss={handleDismissDialog}>
+          <Dialog.Title>Join with Invite Code</Dialog.Title>
+          <Dialog.Content>
+            <TextInput
+              label="Enter Invite Code"
+              value={inviteCode}
+              onChangeText={handleInviteCodeChange}
+              mode="outlined"
+              error={!!inviteCodeError}
+              autoCapitalize="characters"
+              maxLength={INVITE_CODE.MAX_LENGTH}
+              testID="invite-code-input"
+              accessibilityLabel="Invite code input"
+            />
+            {inviteCodeError && (
+              <Text
+                variant="bodySmall"
+                style={[styles.dialogErrorText, { color: theme.colors.error }]}
+              >
+                {inviteCodeError}
+              </Text>
+            )}
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={handleDismissDialog}>Cancel</Button>
+            <Button
+              onPress={handleJoinWithCode}
+              loading={isJoiningByCode}
+              disabled={isJoiningByCode || !inviteCode.trim()}
+              testID="join-with-code-button"
+            >
+              Join
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </View>
   );
 }
@@ -407,39 +421,12 @@ const styles = StyleSheet.create({
   searchBar: {
     elevation: 0,
   },
-  orDivider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  dividerLine: {
-    flex: 1,
-  },
-  orText: {
-    paddingHorizontal: 16,
-    fontWeight: '600',
-  },
-  inviteCodeSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
   sectionTitle: {
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     fontSize: 12,
     marginBottom: 12,
-  },
-  inviteCodeInput: {
-    marginBottom: 8,
-  },
-  errorText: {
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  joinCodeButton: {
-    marginTop: 8,
   },
   section: {
     paddingHorizontal: 16,
@@ -452,6 +439,14 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     paddingVertical: 8,
+  },
+  errorText: {
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  dialogErrorText: {
+    marginTop: 4,
+    marginLeft: 4,
   },
   groupCard: {
     marginHorizontal: 16,

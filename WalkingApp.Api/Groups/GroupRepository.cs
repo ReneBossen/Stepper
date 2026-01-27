@@ -346,6 +346,27 @@ public class GroupRepository : IGroupRepository
         return groups;
     }
 
+    /// <inheritdoc />
+    public async Task<List<Group>> GetPublicGroupsAsync(int limit)
+    {
+        var client = await GetAuthenticatedClientAsync();
+
+        var response = await client
+            .From<GroupEntity>()
+            .Where(x => x.IsPublic == true)
+            .Limit(limit)
+            .Get();
+
+        var groups = new List<Group>();
+        foreach (var entity in response.Models)
+        {
+            var memberCount = await GetMemberCountAsync(entity.Id);
+            groups.Add(entity.ToGroup(memberCount));
+        }
+
+        return groups;
+    }
+
     private async Task<Supabase.Client> GetAuthenticatedClientAsync()
     {
         if (_httpContextAccessor.HttpContext?.Items.TryGetValue("SupabaseToken", out var tokenObj) != true)
