@@ -28,21 +28,11 @@ public class SupabaseClientFactory : ISupabaseClientFactory
 
         var options = new SupabaseOptions
         {
-            // Disable auto-connect to Realtime websockets - causes 403 errors when using
-            // per-request JWT tokens since Realtime requires a persistent connection
-            AutoConnectRealtime = false,
-            Headers = new Dictionary<string, string>
-            {
-                { "Authorization", $"Bearer {jwtToken}" }
-            }
+            AutoConnectRealtime = false
         };
 
-        var client = new Client(_settings.Url, _settings.AnonKey, options);
+        var client = new Client(_settings.Url, _settings.ServiceRoleKey, options);
         await client.InitializeAsync();
-
-        // Set auth headers directly on the Postgrest client so auth.uid() resolves in RLS policies
-        client.Postgrest.Options.Headers["Authorization"] = $"Bearer {jwtToken}";
-        client.Postgrest.Options.Headers["apikey"] = _settings.AnonKey;
 
         return client;
     }

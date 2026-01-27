@@ -16,6 +16,11 @@ public class SupabaseSettings
     public required string AnonKey { get; init; }
 
     /// <summary>
+    /// The Supabase service role key for server-side operations that bypass RLS.
+    /// </summary>
+    public required string ServiceRoleKey { get; init; }
+
+    /// <summary>
     /// The JWT secret used to validate Supabase authentication tokens.
     /// </summary>
     public required string JwtSecret { get; init; }
