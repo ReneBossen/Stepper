@@ -9,6 +9,7 @@ import {
 } from 'react-native-paper';
 import { LoadingSpinner } from '@components/common/LoadingSpinner';
 import { ErrorMessage } from '@components/common/ErrorMessage';
+import { ManualStepEntryModal } from '@components/steps';
 import { DateRangePicker, StepHistoryItem, StatsSummary, StepsChart } from './components';
 import { useStepsStore } from '@store/stepsStore';
 import { useUserStore } from '@store/userStore';
@@ -67,6 +68,7 @@ export default function StepsHistoryScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
   const [customDateRange, setCustomDateRange] = useState<{ start: Date; end: Date } | null>(null);
+  const [showManualEntry, setShowManualEntry] = useState(false);
 
   const {
     dailyHistory,
@@ -124,6 +126,19 @@ export default function StepsHistoryScreen() {
     setViewMode('custom');
     setIsDatePickerVisible(false);
   }, []);
+
+  const handleAddStepsPress = useCallback(() => {
+    setShowManualEntry(true);
+  }, []);
+
+  const handleManualEntryDismiss = useCallback(() => {
+    setShowManualEntry(false);
+  }, []);
+
+  const handleManualEntrySuccess = useCallback(() => {
+    // Refresh the history data after successful entry
+    handleRefresh();
+  }, [handleRefresh]);
 
   const renderHistoryItem = useCallback(
     ({ item }: { item: DailyStepEntry }) => (
@@ -202,6 +217,11 @@ export default function StepsHistoryScreen() {
         <Appbar.Header elevated>
           <Appbar.Content title="Steps History" />
           <Appbar.Action
+            icon="plus"
+            onPress={handleAddStepsPress}
+            accessibilityLabel="Add steps manually"
+          />
+          <Appbar.Action
             icon="calendar"
             onPress={handleOpenDatePicker}
             accessibilityLabel="Select custom date range"
@@ -216,6 +236,11 @@ export default function StepsHistoryScreen() {
           onConfirm={handleDateRangeConfirm}
           testID="date-range-picker"
         />
+        <ManualStepEntryModal
+          visible={showManualEntry}
+          onDismiss={handleManualEntryDismiss}
+          onSuccess={handleManualEntrySuccess}
+        />
       </View>
     );
   }
@@ -226,6 +251,11 @@ export default function StepsHistoryScreen() {
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <Appbar.Header elevated>
           <Appbar.Content title="Steps History" />
+          <Appbar.Action
+            icon="plus"
+            onPress={handleAddStepsPress}
+            accessibilityLabel="Add steps manually"
+          />
           <Appbar.Action
             icon="calendar"
             onPress={handleOpenDatePicker}
@@ -241,6 +271,11 @@ export default function StepsHistoryScreen() {
           onConfirm={handleDateRangeConfirm}
           testID="date-range-picker"
         />
+        <ManualStepEntryModal
+          visible={showManualEntry}
+          onDismiss={handleManualEntryDismiss}
+          onSuccess={handleManualEntrySuccess}
+        />
       </View>
     );
   }
@@ -249,6 +284,11 @@ export default function StepsHistoryScreen() {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Appbar.Header elevated>
         <Appbar.Content title="Steps History" />
+        <Appbar.Action
+          icon="plus"
+          onPress={handleAddStepsPress}
+          accessibilityLabel="Add steps manually"
+        />
         <Appbar.Action
           icon="calendar"
           onPress={handleOpenDatePicker}
@@ -295,6 +335,12 @@ export default function StepsHistoryScreen() {
         onDismiss={handleCloseDatePicker}
         onConfirm={handleDateRangeConfirm}
         testID="date-range-picker"
+      />
+
+      <ManualStepEntryModal
+        visible={showManualEntry}
+        onDismiss={handleManualEntryDismiss}
+        onSuccess={handleManualEntrySuccess}
       />
     </View>
   );

@@ -23,7 +23,9 @@ import {
   PrivacyModal,
   SignOutDialog,
   ChangePasswordModal,
+  HealthDataModal,
 } from './components';
+import { useStepTracking } from '@hooks/useStepTracking';
 import type { PrivacySettingType } from './components';
 import type { PrivacyLevel } from '@services/api/userPreferencesApi';
 import { authApi } from '@services/api/authApi';
@@ -56,6 +58,10 @@ export default function SettingsScreen() {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showHealthDataModal, setShowHealthDataModal] = useState(false);
+
+  // Health tracking state
+  const { isEnabled: isHealthTrackingEnabled } = useStepTracking();
 
   // Privacy modal state
   const [activePrivacySetting, setActivePrivacySetting] = useState<PrivacySettingType>('profile_visibility');
@@ -402,6 +408,16 @@ export default function SettingsScreen() {
             accessibilityLabel={`Theme: ${getThemeLabel()}`}
             testID="settings-theme"
           />
+          <List.Item
+            title="Health Data"
+            description={isHealthTrackingEnabled ? 'Connected' : 'Not connected'}
+            left={(props) => <List.Icon {...props} icon="heart-pulse" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => setShowHealthDataModal(true)}
+            style={styles.listItem}
+            accessibilityLabel="Health data settings"
+            testID="settings-health-data"
+          />
         </View>
 
         <Divider style={styles.divider} />
@@ -584,6 +600,11 @@ export default function SettingsScreen() {
         onDismiss={() => setShowChangePasswordModal(false)}
         onSave={handleChangePasswordSave}
         isSaving={isChangingPassword}
+      />
+
+      <HealthDataModal
+        visible={showHealthDataModal}
+        onDismiss={() => setShowHealthDataModal(false)}
       />
 
       <Snackbar

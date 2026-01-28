@@ -69,4 +69,19 @@ public interface IStepRepository
     /// <param name="userId">The user ID.</param>
     /// <returns>All daily step summaries for the user.</returns>
     Task<List<DailyStepSummary>> GetAllDailySummariesAsync(Guid userId);
+
+    /// <summary>
+    /// Upserts a step entry by date and source. Creates a new entry or updates existing.
+    /// </summary>
+    /// <param name="entry">The step entry to upsert.</param>
+    /// <returns>A tuple indicating if it was a new entry and the resulting entry.</returns>
+    Task<(bool IsNew, StepEntry Entry)> UpsertByDateAndSourceAsync(StepEntry entry);
+
+    /// <summary>
+    /// Deletes all step entries for a user from a specific source.
+    /// </summary>
+    /// <param name="userId">The user ID.</param>
+    /// <param name="source">The source to delete entries from.</param>
+    /// <returns>The number of entries deleted.</returns>
+    Task<int> DeleteBySourceAsync(Guid userId, string source);
 }

@@ -123,3 +123,6 @@ appsettings.*.json
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Claude Code
+.claude/settings.local.json

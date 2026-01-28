@@ -202,6 +202,111 @@ public class StepRepository : IStepRepository
             .ToList();
     }
 
+    /// <inheritdoc />
+    public async Task<(bool IsNew, StepEntry Entry)> UpsertByDateAndSourceAsync(StepEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+
+        var client = await GetAuthenticatedClientAsync();
+
+        // Check if entry exists with same user_id, date, and source
+        var existing = await FindExistingEntryAsync(client, entry.UserId, entry.Date, entry.Source);
+
+        if (existing != null)
+        {
+            var updated = await UpdateExistingEntryAsync(client, existing, entry);
+            return (false, updated);
+        }
+
+        var created = await CreateNewEntryAsync(client, entry);
+        return (true, created);
+    }
+
+    /// <inheritdoc />
+    public async Task<int> DeleteBySourceAsync(Guid userId, string source)
+    {
+        var client = await GetAuthenticatedClientAsync();
+
+        // Get count of entries to be deleted first
+        var entriesToDelete = await client
+            .From<StepEntryEntity>()
+            .Where(x => x.UserId == userId && x.Source == source)
+            .Get();
+
+        var count = entriesToDelete.Models.Count;
+
+        if (count > 0)
+        {
+            await client
+                .From<StepEntryEntity>()
+                .Where(x => x.UserId == userId && x.Source == source)
+                .Delete();
+        }
+
+        return count;
+    }
+
+    private static async Task<StepEntryEntity?> FindExistingEntryAsync(
+        Supabase.Client client,
+        Guid userId,
+        DateOnly date,
+        string? source)
+    {
+        var query = client
+            .From<StepEntryEntity>()
+            .Filter("user_id", Supabase.Postgrest.Constants.Operator.Equals, userId.ToString())
+            .Filter("date", Supabase.Postgrest.Constants.Operator.Equals, date.ToString("yyyy-MM-dd"));
+
+        query = source != null
+            ? query.Filter("source", Supabase.Postgrest.Constants.Operator.Equals, source)
+            : query.Filter("source", Supabase.Postgrest.Constants.Operator.Is, "null");
+
+        var response = await query.Single();
+
+        return response;
+    }
+
+    private static async Task<StepEntry> UpdateExistingEntryAsync(
+        Supabase.Client client,
+        StepEntryEntity existing,
+        StepEntry entry)
+    {
+        existing.StepCount = entry.StepCount;
+        existing.DistanceMeters = entry.DistanceMeters;
+        existing.RecordedAt = entry.RecordedAt;
+
+        var updateResponse = await client
+            .From<StepEntryEntity>()
+            .Where(x => x.Id == existing.Id)
+            .Update(existing);
+
+        var updated = updateResponse.Models.FirstOrDefault();
+        if (updated == null)
+        {
+            throw new InvalidOperationException("Failed to update step entry.");
+        }
+
+        return updated.ToStepEntry();
+    }
+
+    private static async Task<StepEntry> CreateNewEntryAsync(
+        Supabase.Client client,
+        StepEntry entry)
+    {
+        var entity = StepEntryEntity.FromStepEntry(entry);
+        var insertResponse = await client
+            .From<StepEntryEntity>()
+            .Insert(entity);
+
+        var created = insertResponse.Models.FirstOrDefault();
+        if (created == null)
+        {
+            throw new InvalidOperationException("Failed to create step entry.");
+        }
+
+        return created.ToStepEntry();
+    }
+
     private async Task<Supabase.Client> GetAuthenticatedClientAsync()
     {
         if (_httpContextAccessor.HttpContext?.Items.TryGetValue("SupabaseToken", out var tokenObj) != true)

@@ -17,7 +17,20 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.walkingapp.mobile",
-      "associatedDomains": ["applinks:walkingapp.com"]
+      "associatedDomains": [
+        "applinks:walkingapp.com"
+      ],
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "Stepper needs access to your health data to automatically track your daily steps from Apple Health.",
+        "NSHealthUpdateUsageDescription": "Stepper needs permission to save step data.",
+        "UIBackgroundModes": [
+          "processing"
+        ]
+      },
+      "entitlements": {
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.healthkit.background-delivery": true
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -44,6 +57,9 @@
             "DEFAULT"
           ]
         }
+      ],
+      "permissions": [
+        "android.permission.ACTIVITY_RECOGNITION"
       ]
     },
     "web": {
@@ -51,8 +67,31 @@
     },
     "scheme": "walkingapp",
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "Stepper needs access to your health data to automatically track your daily steps from Apple Health.",
+          "healthUpdatePermission": "Stepper needs permission to save step data."
+        }
+      ],
+      [
+        "react-native-health-connect",
+        {
+          "requestPermissionsRationale": "Stepper needs access to your health data to automatically track your daily steps."
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-background-task"
     ],
     "extra": {
       "eas": {

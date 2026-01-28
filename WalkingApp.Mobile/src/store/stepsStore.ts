@@ -33,12 +33,23 @@ interface StepsState {
   error: string | null;
   historyError: string | null;
 
+  // Sync-related state
+  isSyncing: boolean;
+  syncError: string | null;
+  lastSyncTimestamp: string | null;
+
   // Actions
   addSteps: (steps: number, distanceMeters: number, source?: string) => Promise<void>;
   fetchTodaySteps: () => Promise<void>;
   fetchStats: () => Promise<void>;
   fetchHistory: (period: 'daily' | 'weekly' | 'monthly') => Promise<void>;
   fetchDailyHistory: (startDate: string, endDate: string) => Promise<void>;
+
+  // Sync-related actions
+  setSyncing: (syncing: boolean) => void;
+  setSyncError: (error: string | null) => void;
+  setLastSyncTimestamp: (timestamp: string | null) => void;
+  refreshAfterSync: () => Promise<void>;
 }
 
 /**
@@ -61,7 +72,7 @@ function getTodayString(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-export const useStepsStore = create<StepsState>((set) => ({
+export const useStepsStore = create<StepsState>((set, get) => ({
   todaySteps: 0,
   todayDistance: 0,
   stats: null,
@@ -71,6 +82,11 @@ export const useStepsStore = create<StepsState>((set) => ({
   isHistoryLoading: false,
   error: null,
   historyError: null,
+
+  // Sync-related state
+  isSyncing: false,
+  syncError: null,
+  lastSyncTimestamp: null,
 
   addSteps: async (steps, distanceMeters, source) => {
     set({ isLoading: true, error: null });
@@ -144,5 +160,18 @@ export const useStepsStore = create<StepsState>((set) => ({
     } catch (error: unknown) {
       set({ historyError: getErrorMessage(error), isHistoryLoading: false });
     }
+  },
+
+  // Sync-related actions
+  setSyncing: (syncing) => set({ isSyncing: syncing }),
+
+  setSyncError: (error) => set({ syncError: error }),
+
+  setLastSyncTimestamp: (timestamp) => set({ lastSyncTimestamp: timestamp }),
+
+  refreshAfterSync: async () => {
+    // Refresh today's steps and stats after a sync operation
+    const { fetchTodaySteps, fetchStats } = get();
+    await Promise.all([fetchTodaySteps(), fetchStats()]);
   },
 }));

@@ -419,4 +419,121 @@ public class StepService : IStepService
             TotalDistanceMeters = summary.TotalDistanceMeters
         };
     }
+
+    /// <inheritdoc />
+    public async Task<SyncStepsResponse> SyncStepsAsync(Guid userId, SyncStepsRequest request)
+    {
+        ValidateUserId(userId);
+        ArgumentNullException.ThrowIfNull(request);
+        ValidateSyncRequest(request);
+
+        var created = 0;
+        var updated = 0;
+
+        foreach (var syncEntry in request.Entries)
+        {
+            var entry = CreateStepEntryFromSyncEntry(userId, syncEntry);
+            var (isNew, _) = await _stepRepository.UpsertByDateAndSourceAsync(entry);
+
+            if (isNew)
+            {
+                created++;
+            }
+            else
+            {
+                updated++;
+            }
+        }
+
+        return new SyncStepsResponse
+        {
+            Created = created,
+            Updated = updated,
+            Total = request.Entries.Count
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<DeleteBySourceResponse> DeleteBySourceAsync(Guid userId, string source)
+    {
+        ValidateUserId(userId);
+        ValidateSource(source);
+
+        var deletedCount = await _stepRepository.DeleteBySourceAsync(userId, source);
+
+        return new DeleteBySourceResponse
+        {
+            DeletedCount = deletedCount
+        };
+    }
+
+    private static void ValidateSyncRequest(SyncStepsRequest request)
+    {
+        if (request.Entries == null || request.Entries.Count == 0)
+        {
+            throw new ArgumentException("At least one entry is required.");
+        }
+
+        if (request.Entries.Count > 31)
+        {
+            throw new ArgumentException("Maximum 31 entries allowed per sync.");
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        foreach (var entry in request.Entries)
+        {
+            ValidateSyncEntry(entry, today);
+        }
+    }
+
+    private static void ValidateSyncEntry(SyncStepEntry entry, DateOnly today)
+    {
+        if (entry.Date > today)
+        {
+            throw new ArgumentException("Date cannot be in the future.");
+        }
+
+        if (entry.StepCount < MinStepCount || entry.StepCount > MaxStepCount)
+        {
+            throw new ArgumentException($"Step count must be between {MinStepCount} and {MaxStepCount}.");
+        }
+
+        if (entry.DistanceMeters.HasValue && entry.DistanceMeters.Value < 0)
+        {
+            throw new ArgumentException("Distance must be a positive value.");
+        }
+
+        if (string.IsNullOrWhiteSpace(entry.Source))
+        {
+            throw new ArgumentException("Source is required for each entry.");
+        }
+
+        if (entry.Source.Length > 100)
+        {
+            throw new ArgumentException("Source cannot exceed 100 characters.");
+        }
+    }
+
+    private static StepEntry CreateStepEntryFromSyncEntry(Guid userId, SyncStepEntry syncEntry)
+    {
+        return new StepEntry
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            StepCount = syncEntry.StepCount,
+            DistanceMeters = syncEntry.DistanceMeters,
+            Date = syncEntry.Date,
+            RecordedAt = DateTime.UtcNow,
+            Source = syncEntry.Source
+        };
+    }
+
+    private static void ValidateSource(string source)
+    {
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            throw new ArgumentException("Source cannot be empty.", nameof(source));
+        }
+    }
 }
