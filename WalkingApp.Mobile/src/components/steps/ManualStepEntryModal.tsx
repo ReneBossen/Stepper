@@ -10,15 +10,21 @@ import {
   HelperText,
   useTheme,
   Divider,
+  SegmentedButtons,
+  ActivityIndicator,
 } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { useManualStepEntry } from '@screens/steps/hooks/useManualStepEntry';
+import { useManualStepEntry, ManualEntryMode } from '@screens/steps/hooks/useManualStepEntry';
 import { useUserStore } from '@store/userStore';
 import {
   estimateDistanceFromSteps,
   formatDistance,
   convertToMeters,
 } from '@utils/stepEstimation';
+
+/** Storage key for persisting entry mode preference */
+const ENTRY_MODE_STORAGE_KEY = '@stepper/manual_step_entry_mode';
 
 interface ManualStepEntryModalProps {
   /** Whether the modal is visible */
@@ -44,7 +50,17 @@ export function ManualStepEntryModal({
 }: ManualStepEntryModalProps) {
   const theme = useTheme();
   const units = useUserStore((state) => state.currentUser?.preferences?.units ?? 'metric');
-  const { submitEntry, validateEntry, isSubmitting, error, clearError } = useManualStepEntry();
+  const {
+    submitEntry,
+    validateEntry,
+    checkExistingEntry,
+    clearExistingEntry,
+    existingEntry,
+    isLoadingExisting,
+    isSubmitting,
+    error,
+    clearError,
+  } = useManualStepEntry();
 
   // Form state
   const [stepCount, setStepCount] = useState('');
@@ -52,8 +68,9 @@ export function ManualStepEntryModal({
   const [selectedDate, setSelectedDate] = useState(initialDate ?? new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [errors, setErrors] = useState<{ steps?: string; distance?: string; date?: string }>({});
+  const [entryMode, setEntryMode] = useState<ManualEntryMode>('override');
 
-  // Reset form when modal opens
+  // Load saved entry mode preference and reset form when modal opens
   useEffect(() => {
     if (visible) {
       setStepCount('');
@@ -61,8 +78,33 @@ export function ManualStepEntryModal({
       setSelectedDate(initialDate ?? new Date());
       setErrors({});
       clearError();
+      clearExistingEntry();
+
+      // Load saved mode preference
+      AsyncStorage.getItem(ENTRY_MODE_STORAGE_KEY).then((savedMode) => {
+        if (savedMode === 'override' || savedMode === 'add') {
+          setEntryMode(savedMode);
+        }
+      });
+
+      // Check for existing entry for the initial date
+      checkExistingEntry(initialDate ?? new Date());
     }
-  }, [visible, initialDate, clearError]);
+  }, [visible, initialDate, clearError, clearExistingEntry, checkExistingEntry]);
+
+  // Check for existing entry when date changes
+  useEffect(() => {
+    if (visible) {
+      checkExistingEntry(selectedDate);
+    }
+  }, [selectedDate, visible, checkExistingEntry]);
+
+  // Save entry mode preference when it changes
+  const handleEntryModeChange = useCallback((value: string) => {
+    const mode = value as ManualEntryMode;
+    setEntryMode(mode);
+    AsyncStorage.setItem(ENTRY_MODE_STORAGE_KEY, mode);
+  }, []);
 
   // Calculate estimated distance for display
   const estimatedDistance = stepCount
@@ -136,14 +178,14 @@ export function ManualStepEntryModal({
       return;
     }
 
-    // Submit the entry
-    const result = await submitEntry(steps, selectedDate, distanceMeters);
+    // Submit the entry with the selected mode
+    const result = await submitEntry(steps, selectedDate, distanceMeters, entryMode);
 
     if (result.success) {
       onSuccess?.();
       onDismiss();
     }
-  }, [stepCount, distance, selectedDate, units, validateEntry, submitEntry, onSuccess, onDismiss]);
+  }, [stepCount, distance, selectedDate, units, entryMode, validateEntry, submitEntry, onSuccess, onDismiss]);
 
   /**
    * Formats the date for display in the button.
@@ -253,6 +295,59 @@ export function ManualStepEntryModal({
             )}
           </>
         )}
+
+        {/* Entry Mode Selection */}
+        <View style={styles.field}>
+          <Text
+            variant="labelLarge"
+            style={[styles.label, { color: theme.colors.onSurfaceVariant }]}
+          >
+            Entry Mode
+          </Text>
+          <SegmentedButtons
+            value={entryMode}
+            onValueChange={handleEntryModeChange}
+            buttons={[
+              { value: 'override', label: 'Replace', testID: 'manual-entry-mode-override' },
+              { value: 'add', label: 'Add to existing', testID: 'manual-entry-mode-add' },
+            ]}
+            style={styles.segmentedButtons}
+          />
+          <View style={styles.modeHelperContainer}>
+            {isLoadingExisting ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" />
+                <Text
+                  variant="bodySmall"
+                  style={[styles.modeHelperText, { color: theme.colors.onSurfaceVariant }]}
+                >
+                  Checking existing entry...
+                </Text>
+              </View>
+            ) : entryMode === 'override' ? (
+              <Text
+                variant="bodySmall"
+                style={[styles.modeHelperText, { color: theme.colors.onSurfaceVariant }]}
+              >
+                This will replace any existing steps for this date
+              </Text>
+            ) : existingEntry ? (
+              <Text
+                variant="bodySmall"
+                style={[styles.modeHelperText, { color: theme.colors.primary }]}
+              >
+                This will add to your existing {existingEntry.totalSteps.toLocaleString()} steps for this date
+              </Text>
+            ) : (
+              <Text
+                variant="bodySmall"
+                style={[styles.modeHelperText, { color: theme.colors.onSurfaceVariant }]}
+              >
+                No existing entry for this date
+              </Text>
+            )}
+          </View>
+        </View>
 
         {/* Step Count Input */}
         <View style={styles.field}>
@@ -371,6 +466,20 @@ const styles = StyleSheet.create({
   datePickerDoneButton: {
     alignSelf: 'flex-end',
     marginTop: 8,
+  },
+  segmentedButtons: {
+    marginBottom: 8,
+  },
+  modeHelperContainer: {
+    minHeight: 20,
+  },
+  modeHelperText: {
+    marginLeft: 4,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   apiError: {
     marginBottom: 8,

@@ -1,8 +1,15 @@
 import { useState, useCallback } from 'react';
-import { stepsApi, RecordStepsRequest } from '@services/api/stepsApi';
+import { stepsApi, RecordStepsRequest, DailyStepsResponse } from '@services/api/stepsApi';
 import { useStepsStore } from '@store/stepsStore';
 import { estimateDistanceFromSteps } from '@utils/stepEstimation';
 import { getErrorMessage } from '@utils/errorUtils';
+
+/**
+ * Entry mode for manual step entry.
+ * - 'override': Replace any existing entry for the date
+ * - 'add': Add to existing entry for the date
+ */
+export type ManualEntryMode = 'override' | 'add';
 
 /**
  * Result of a manual entry submission.
@@ -27,12 +34,34 @@ const MAX_DISTANCE_METERS = 500000; // ~310 miles or ~500 km
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
 /**
+ * Fetches the existing step entry for a specific date.
+ *
+ * @param date - The date to check for existing entry
+ * @returns The existing entry or null if none exists
+ */
+async function getExistingEntryForDate(date: Date): Promise<DailyStepsResponse | null> {
+  const dateString = date.toISOString().split('T')[0];
+  try {
+    const entries = await stepsApi.getDailyHistory({
+      startDate: dateString,
+      endDate: dateString,
+    });
+    return entries.length > 0 ? entries[0] : null;
+  } catch {
+    // If we can't fetch, return null and let the submission handle errors
+    return null;
+  }
+}
+
+/**
  * Hook for managing manual step entry logic.
  * Handles validation, submission, and state management for adding steps manually.
  */
 export function useManualStepEntry() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [existingEntry, setExistingEntry] = useState<DailyStepsResponse | null>(null);
+  const [isLoadingExisting, setIsLoadingExisting] = useState(false);
   const { fetchTodaySteps, fetchStats } = useStepsStore();
 
   /**
@@ -87,30 +116,69 @@ export function useManualStepEntry() {
   }, []);
 
   /**
+   * Fetches and caches the existing entry for a date.
+   * Call this when the date changes to update the helper text.
+   *
+   * @param date - The date to check for existing entry
+   */
+  const checkExistingEntry = useCallback(async (date: Date): Promise<void> => {
+    setIsLoadingExisting(true);
+    try {
+      const entry = await getExistingEntryForDate(date);
+      setExistingEntry(entry);
+    } catch {
+      setExistingEntry(null);
+    } finally {
+      setIsLoadingExisting(false);
+    }
+  }, []);
+
+  /**
+   * Clears the cached existing entry.
+   */
+  const clearExistingEntry = useCallback(() => {
+    setExistingEntry(null);
+  }, []);
+
+  /**
    * Submits a manual step entry to the API.
    *
    * @param stepCount - The number of steps to record
    * @param date - The date for the entry
    * @param distanceMeters - Optional distance in meters (will be estimated if not provided)
+   * @param mode - Entry mode: 'override' replaces existing, 'add' adds to existing
    * @returns Result indicating success or failure with error message
    */
   const submitEntry = useCallback(async (
     stepCount: number,
     date: Date,
-    distanceMeters?: number
+    distanceMeters?: number,
+    mode: ManualEntryMode = 'override'
   ): Promise<ManualEntryResult> => {
     setIsSubmitting(true);
     setError(null);
 
     try {
-      // Use provided distance or estimate from steps
-      const finalDistance = distanceMeters ?? estimateDistanceFromSteps(stepCount);
+      let finalStepCount = stepCount;
+      let finalDistance = distanceMeters ?? estimateDistanceFromSteps(stepCount);
+
+      // If mode is 'add', fetch existing entry and add to it
+      if (mode === 'add') {
+        const existing = await getExistingEntryForDate(date);
+        if (existing) {
+          finalStepCount = existing.totalSteps + stepCount;
+          // Add distances together if both exist, otherwise estimate for the added steps
+          const existingDistance = existing.totalDistanceMeters || 0;
+          const addedDistance = distanceMeters ?? estimateDistanceFromSteps(stepCount);
+          finalDistance = existingDistance + addedDistance;
+        }
+      }
 
       // Format date as YYYY-MM-DD
       const dateString = date.toISOString().split('T')[0];
 
       const request: RecordStepsRequest = {
-        stepCount,
+        stepCount: finalStepCount,
         distanceMeters: finalDistance,
         date: dateString,
         source: 'manual',
@@ -141,6 +209,10 @@ export function useManualStepEntry() {
   return {
     submitEntry,
     validateEntry,
+    checkExistingEntry,
+    clearExistingEntry,
+    existingEntry,
+    isLoadingExisting,
     isSubmitting,
     error,
     clearError,
