@@ -1,6 +1,7 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, ScrollView, StyleSheet, RefreshControl } from 'react-native';
-import { Appbar, Badge, Text, useTheme, Divider } from 'react-native-paper';
+import { Appbar, Badge, Text, useTheme, Divider, FAB } from 'react-native-paper';
+import { ManualStepEntryModal } from '@components/steps';
 import { useNavigation } from '@react-navigation/native';
 import type { HomeStackScreenProps } from '@navigation/types';
 import { LoadingSpinner } from '@components/common/LoadingSpinner';
@@ -23,6 +24,7 @@ type NavigationProp = HomeStackScreenProps<'Home'>['navigation'];
 export default function HomeScreen() {
   const theme = useTheme();
   const navigation = useNavigation<NavigationProp>();
+  const [showManualEntry, setShowManualEntry] = useState(false);
 
   const {
     todaySteps,
@@ -70,6 +72,19 @@ export default function HomeScreen() {
     }
     // For personal milestones, we could show a celebration animation
   }, [navigation]);
+
+  const handleAddStepsPress = useCallback(() => {
+    setShowManualEntry(true);
+  }, []);
+
+  const handleManualEntryDismiss = useCallback(() => {
+    setShowManualEntry(false);
+  }, []);
+
+  const handleManualEntrySuccess = useCallback(() => {
+    // Refresh the home data after successful entry
+    refresh();
+  }, [refresh]);
 
   // Show loading spinner on initial load
   if (isLoading && !isRefreshing && todaySteps === 0) {
@@ -197,6 +212,21 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
+
+      <FAB
+        icon="plus"
+        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+        color={theme.colors.onPrimary}
+        onPress={handleAddStepsPress}
+        accessibilityLabel="Add steps manually"
+        testID="add-steps-fab"
+      />
+
+      <ManualStepEntryModal
+        visible={showManualEntry}
+        onDismiss={handleManualEntryDismiss}
+        onSuccess={handleManualEntrySuccess}
+      />
     </View>
   );
 }
@@ -209,7 +239,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: 88, // Space for FAB
   },
   badge: {
     position: 'absolute',
@@ -237,5 +267,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 32,
     paddingHorizontal: 24,
+  },
+  fab: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
   },
 });

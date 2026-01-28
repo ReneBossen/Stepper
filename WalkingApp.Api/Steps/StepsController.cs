@@ -258,4 +258,75 @@ public class StepsController : ControllerBase
             return StatusCode(500, ApiResponse<object>.ErrorResponse($"An error occurred: {ex.Message}"));
         }
     }
+
+    /// <summary>
+    /// Syncs step entries from health providers using bulk upsert.
+    /// </summary>
+    /// <param name="request">The sync request containing entries to upsert.</param>
+    /// <returns>A response indicating how many entries were created and updated.</returns>
+    [HttpPut("sync")]
+    public async Task<ActionResult<ApiResponse<SyncStepsResponse>>> SyncSteps([FromBody] SyncStepsRequest request)
+    {
+        var userId = User.GetUserId();
+
+        if (userId == null)
+        {
+            return Unauthorized(ApiResponse<SyncStepsResponse>.ErrorResponse("User is not authenticated."));
+        }
+
+        if (request == null)
+        {
+            return BadRequest(ApiResponse<SyncStepsResponse>.ErrorResponse("Request body cannot be null."));
+        }
+
+        try
+        {
+            var response = await _stepService.SyncStepsAsync(userId.Value, request);
+            return Ok(ApiResponse<SyncStepsResponse>.SuccessResponse(response));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<SyncStepsResponse>.ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<SyncStepsResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
+    /// Deletes all step entries for a user from a specific source.
+    /// Used when a user revokes health data access.
+    /// </summary>
+    /// <param name="source">The source to delete entries from (e.g., "HealthKit", "Google Fit").</param>
+    /// <returns>A response indicating how many entries were deleted.</returns>
+    [HttpDelete("source/{source}")]
+    public async Task<ActionResult<ApiResponse<DeleteBySourceResponse>>> DeleteBySource(string source)
+    {
+        var userId = User.GetUserId();
+
+        if (userId == null)
+        {
+            return Unauthorized(ApiResponse<DeleteBySourceResponse>.ErrorResponse("User is not authenticated."));
+        }
+
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            return BadRequest(ApiResponse<DeleteBySourceResponse>.ErrorResponse("Source cannot be empty."));
+        }
+
+        try
+        {
+            var response = await _stepService.DeleteBySourceAsync(userId.Value, source);
+            return Ok(ApiResponse<DeleteBySourceResponse>.SuccessResponse(response));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<DeleteBySourceResponse>.ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<DeleteBySourceResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
+        }
+    }
 }

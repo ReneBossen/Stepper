@@ -78,6 +78,34 @@ export interface DailyHistoryParams {
   endDate: string;
 }
 
+/**
+ * Request for syncing multiple step entries from health providers.
+ */
+export interface SyncStepsRequest {
+  entries: Array<{
+    date: string;
+    stepCount: number;
+    distanceMeters?: number;
+    source: string;
+  }>;
+}
+
+/**
+ * Response from sync operation indicating how many entries were processed.
+ */
+export interface SyncStepsResponse {
+  created: number;
+  updated: number;
+  total: number;
+}
+
+/**
+ * Response from delete by source operation.
+ */
+export interface DeleteBySourceResponse {
+  deletedCount: number;
+}
+
 export const stepsApi = {
   /**
    * Records a step entry for the current user.
@@ -158,5 +186,27 @@ export const stepsApi = {
    */
   deleteEntry: async (id: string): Promise<void> => {
     return apiClient.delete<void>(`/steps/${id}`);
+  },
+
+  /**
+   * Syncs multiple step entries from health providers.
+   * Creates new entries or updates existing ones for the same date/source.
+   *
+   * @param request - The sync request with step entries
+   * @returns Summary of created/updated entries
+   */
+  syncSteps: async (request: SyncStepsRequest): Promise<SyncStepsResponse> => {
+    return apiClient.put<SyncStepsResponse>('/steps/sync', request);
+  },
+
+  /**
+   * Deletes all step entries from a specific source.
+   * Used when disabling health tracking to remove synced data.
+   *
+   * @param source - The source identifier (e.g., 'healthkit', 'googlefit')
+   * @returns Count of deleted entries
+   */
+  deleteBySource: async (source: string): Promise<DeleteBySourceResponse> => {
+    return apiClient.delete<DeleteBySourceResponse>(`/steps/source/${source}`);
   },
 };

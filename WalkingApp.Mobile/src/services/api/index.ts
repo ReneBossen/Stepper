@@ -33,4 +33,7 @@ export type {
   RecordStepsRequest,
   StepHistoryParams,
   DailyHistoryParams,
+  SyncStepsRequest,
+  SyncStepsResponse,
+  DeleteBySourceResponse,
 } from './stepsApi';
