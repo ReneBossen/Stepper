@@ -3,6 +3,7 @@ import { ApiResponse, ApiError, ApiErrorResponse } from './types';
 import { tokenStorage } from '../tokenStorage';
 import { authApi } from './authApi';
 import { useAuthStore } from '../../store/authStore';
+import { track } from '../analytics';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
@@ -126,7 +127,16 @@ async function request<T>(
     const json = await response.json() as ApiResponse<T> | ApiErrorResponse;
 
     if (!response.ok || !json.success) {
-      throw ApiError.fromResponse(json as ApiErrorResponse, response.status);
+      const apiError = ApiError.fromResponse(json as ApiErrorResponse, response.status);
+
+      // Track API error
+      track('api_error', {
+        endpoint,
+        status_code: response.status,
+        error_message: apiError.message,
+      });
+
+      throw apiError;
     }
 
     return json.data;
@@ -140,14 +150,27 @@ async function request<T>(
 
     // Handle abort/timeout errors
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new ApiError('Request timeout', 408);
+      const timeoutError = new ApiError('Request timeout', 408);
+
+      // Track API error for timeout
+      track('api_error', {
+        endpoint,
+        status_code: 408,
+        error_message: 'Request timeout',
+      });
+
+      throw timeoutError;
     }
 
     // Handle other errors (network errors, etc.)
-    throw new ApiError(
-      error instanceof Error ? error.message : 'Network error',
-      0
-    );
+    const errorMessage = error instanceof Error ? error.message : 'Network error';
+
+    // Track network error
+    track('network_error', {
+      error_message: errorMessage,
+    });
+
+    throw new ApiError(errorMessage, 0);
   }
 }
 

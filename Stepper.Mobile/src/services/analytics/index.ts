@@ -20,6 +20,7 @@ export {
   getAnalyticsConsentState,
   hasAnalyticsConsent,
   isReady,
+  deleteAnalyticsData,
   analyticsService,
 } from './analyticsService';
 
@@ -31,6 +32,7 @@ export {
   isConsentOutdated,
   getConsentState,
   hasConsentSync,
+  clearConsentData,
   CONSENT_VERSION,
   type ConsentState,
   type ConsentStatus,

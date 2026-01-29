@@ -30,6 +30,7 @@ import {
   grantConsent as grantConsentStorage,
   revokeConsent as revokeConsentStorage,
   getConsentState,
+  clearConsentData,
   type ConsentState,
 } from './consentManager';
 import type {
@@ -380,6 +381,32 @@ export async function hasAnalyticsConsent(): Promise<boolean> {
  */
 export function isReady(): boolean {
   return isInitialized && isPostHogInitialized();
+}
+
+/**
+ * Delete all local analytics data.
+ * This clears the PostHog distinct ID, achieved milestones, and consent state.
+ * Use this to comply with user data deletion requests.
+ */
+export async function deleteAnalyticsData(): Promise<void> {
+  try {
+    // Reset PostHog user identity (generates new anonymous ID)
+    if (isPostHogInitialized()) {
+      resetUser();
+      optOut();
+    }
+
+    // Clear consent data
+    await clearConsentData();
+
+    // Clear the event queue
+    eventQueue = [];
+
+    console.log('[Analytics] User analytics data deleted');
+  } catch (error) {
+    console.error('[Analytics] Failed to delete analytics data:', error);
+    throw error;
+  }
 }
 
 /**

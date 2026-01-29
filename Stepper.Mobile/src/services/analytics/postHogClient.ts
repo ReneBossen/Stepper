@@ -155,7 +155,19 @@ export async function initializePostHog(
 }
 
 /**
- * Convert properties to PostHog event properties format.
+ * Converts a generic properties object to PostHog event properties format.
+ *
+ * PostHog SDK requires properties to be in a specific format (PostHogEventProperties).
+ * This helper performs the type conversion from our internal Record<string, unknown>
+ * format to the SDK's expected type.
+ *
+ * @param properties - Optional object containing event property key-value pairs.
+ *                     Values should be JSON-serializable (string, number, boolean, null, array, or object).
+ * @returns The properties cast to PostHogEventProperties format, or undefined if no properties provided.
+ *
+ * @example
+ * toEventProperties({ user_id: '123', action: 'click' })
+ * // Returns: { user_id: '123', action: 'click' } as PostHogEventProperties
  */
 function toEventProperties(
   properties?: Record<string, unknown>
@@ -220,7 +232,24 @@ export function resetUser(): void {
 }
 
 /**
- * Convert properties to JsonType for $set operations.
+ * Converts a properties object to PostHog's JsonType for $set operations.
+ *
+ * PostHog's person property update operations ($set, $set_once) require
+ * properties to be in JsonType format. This helper performs the necessary
+ * type conversion from our internal format.
+ *
+ * JsonType is a recursive type that represents valid JSON values:
+ * - Primitives: string, number, boolean, null
+ * - Arrays: JsonType[]
+ * - Objects: { [key: string]: JsonType }
+ *
+ * @param properties - Object containing person property key-value pairs.
+ *                     All values must be JSON-serializable.
+ * @returns The properties cast to JsonType format for PostHog SDK.
+ *
+ * @example
+ * toJsonType({ daily_step_goal: 10000, theme: 'dark' })
+ * // Returns: { daily_step_goal: 10000, theme: 'dark' } as JsonType
  */
 function toJsonType(properties: Record<string, unknown>): JsonType {
   // Cast to JsonType - values must be JsonType compatible

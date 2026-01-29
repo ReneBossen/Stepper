@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from './types';
 
 import WelcomeCarouselScreen from '@screens/onboarding/WelcomeCarouselScreen';
+import AnalyticsConsentScreen from '@screens/onboarding/AnalyticsConsentScreen';
 import PermissionsScreen from '@screens/onboarding/PermissionsScreen';
 import ProfileSetupScreen from '@screens/onboarding/ProfileSetupScreen';
 import PreferencesSetupScreen from '@screens/onboarding/PreferencesSetupScreen';
@@ -19,6 +20,7 @@ export default function OnboardingNavigator() {
       initialRouteName="WelcomeCarousel"
     >
       <Stack.Screen name="WelcomeCarousel" component={WelcomeCarouselScreen} />
+      <Stack.Screen name="AnalyticsConsent" component={AnalyticsConsentScreen} />
       <Stack.Screen name="Permissions" component={PermissionsScreen} />
       <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
       <Stack.Screen name="PreferencesSetup" component={PreferencesSetupScreen} />

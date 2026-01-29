@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { friendsApi } from '@services/api/friendsApi';
 import { getErrorMessage } from '@utils/errorUtils';
+import { track, setUserProperties } from '@services/analytics';
+import { evaluate, MilestoneContext } from '@services/milestones';
+import { useAuthStore } from './authStore';
 
 export interface Friend {
   id: string;
@@ -99,6 +102,10 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await friendsApi.sendRequest(userId);
+
+      // Track friend request sent event
+      track('friend_request_sent', { friend_id: userId });
+
       set({ isLoading: false });
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
@@ -109,6 +116,8 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
   acceptRequest: async (userId) => {
     set({ isLoading: true, error: null });
     try {
+      const previousFriendCount = get().friends.length;
+
       // Find the request ID from the user ID
       const requestId = await findRequestIdByUserId(
         userId,
@@ -121,6 +130,26 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
       const requests = get().requests.filter(r => r.user_id !== userId && r.id !== requestId);
       set({ requests, isLoading: false });
       await get().fetchFriends();
+
+      const newFriendCount = get().friends.length;
+
+      // Track analytics events
+      track('friend_request_accepted', { friend_id: userId });
+      track('friend_added', { friend_id: userId });
+
+      // Update user properties with new friend count
+      setUserProperties({ friend_count: newFriendCount });
+
+      // Evaluate milestones for friend count changes
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        const context: MilestoneContext = {
+          currentMetrics: { friend_count: newFriendCount },
+          previousMetrics: { friend_count: previousFriendCount },
+          userId: currentUser.id,
+        };
+        await evaluate(context);
+      }
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
       throw error;
@@ -140,6 +169,10 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
       await friendsApi.declineRequest(requestId);
       const requests = get().requests.filter(r => r.user_id !== userId && r.id !== requestId);
+
+      // Track friend request declined event
+      track('friend_request_declined', { friend_id: userId });
+
       set({ requests, isLoading: false });
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
@@ -152,6 +185,13 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
     try {
       await friendsApi.removeFriend(userId);
       const friends = get().friends.filter(f => f.user_id !== userId);
+
+      // Track friend removed event
+      track('friend_removed', { friend_id: userId });
+
+      // Update user properties with new friend count
+      setUserProperties({ friend_count: friends.length });
+
       set({ friends, isLoading: false });
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });

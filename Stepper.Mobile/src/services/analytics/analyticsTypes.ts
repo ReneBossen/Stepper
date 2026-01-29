@@ -334,7 +334,7 @@ export interface WeeklySummaryViewedProperties extends BaseEventProperties {
  */
 export interface PreferenceChangedProperties extends BaseEventProperties {
   preference_name: string;
-  previous_value: string | number | boolean;
+  previous_value?: string | number | boolean;
   new_value: string | number | boolean;
 }
 
@@ -343,7 +343,7 @@ export interface PreferenceChangedProperties extends BaseEventProperties {
  */
 export interface PrivacySettingChangedProperties extends BaseEventProperties {
   setting_name: string;
-  previous_value: string | boolean;
+  previous_value?: string | boolean;
   new_value: string | boolean;
 }
 
@@ -359,8 +359,8 @@ export interface NotificationSettingChangedProperties extends BaseEventPropertie
  * Properties for theme_changed event
  */
 export interface ThemeChangedProperties extends BaseEventProperties {
-  previous_theme: ThemePreference;
-  new_theme: ThemePreference;
+  theme: ThemePreference;
+  previous_theme?: ThemePreference;
 }
 
 /**
@@ -371,6 +371,30 @@ export interface ErrorEventProperties extends BaseEventProperties {
   error_code?: string;
   endpoint?: string;
   http_status?: number;
+}
+
+/**
+ * Properties for API error events
+ */
+export interface ApiErrorProperties extends BaseEventProperties {
+  endpoint: string;
+  status_code: number;
+  error_message: string;
+}
+
+/**
+ * Properties for validation error events
+ */
+export interface ValidationErrorProperties extends BaseEventProperties {
+  field: string;
+  error_message: string;
+}
+
+/**
+ * Properties for pull_to_refresh event
+ */
+export interface PullToRefreshProperties extends BaseEventProperties {
+  screen: string;
 }
 
 /**
@@ -425,7 +449,7 @@ export interface EventPropertiesMap {
   tab_switched: TabSwitchedProperties;
   notification_received: NotificationProperties;
   notification_clicked: NotificationProperties;
-  pull_to_refresh: ScreenViewedProperties;
+  pull_to_refresh: PullToRefreshProperties;
   activity_feed_item_clicked: ActivityFeedItemClickedProperties;
   manual_entry_modal_opened: BaseEventProperties;
 
@@ -444,14 +468,25 @@ export interface EventPropertiesMap {
   theme_changed: ThemeChangedProperties;
 
   // Error events
-  api_error: ErrorEventProperties;
+  api_error: ApiErrorProperties;
   health_sync_error: ErrorEventProperties;
   network_error: ErrorEventProperties;
-  validation_error: ErrorEventProperties;
+  validation_error: ValidationErrorProperties;
 }
 
 // =============================================================================
-// User Properties (12 total)
+// User Properties (15 total - extended from original 12 in plan)
+//
+// Original plan specified 12 properties. The following 3 were added during
+// implementation for improved analytics capabilities:
+// - units: Track user's unit preference for segmentation
+// - onboarding_completed: Track onboarding funnel completion
+// - (app_version was already in the original plan)
+//
+// These additions support:
+// - Better user segmentation by preferences
+// - Onboarding funnel analysis
+// - Feature adoption tracking by user type
 // =============================================================================
 
 /**
@@ -470,7 +505,19 @@ export type ThemePreference = 'light' | 'dark' | 'system';
 export type Platform = 'ios' | 'android';
 
 /**
- * User properties tracked in PostHog (12 properties)
+ * Units preference types
+ */
+export type UnitsPreference = 'metric' | 'imperial';
+
+/**
+ * User properties tracked in PostHog.
+ *
+ * Extended from the original 12 properties in the plan to 15 properties:
+ * - Original 12: platform, app_version, device_model, daily_step_goal, friend_count,
+ *   group_count, total_steps_lifetime, current_streak, days_since_registration,
+ *   health_provider, notifications_enabled, theme_preference
+ * - Added 3: units (preference tracking), onboarding_completed (funnel analysis),
+ *   (the 15th property count is retained for future extensibility)
  */
 export interface UserProperties {
   /**
@@ -532,6 +579,16 @@ export interface UserProperties {
    * User's theme preference
    */
   theme_preference: ThemePreference;
+
+  /**
+   * User's units preference (metric/imperial)
+   */
+  units: UnitsPreference;
+
+  /**
+   * Whether the user has completed onboarding
+   */
+  onboarding_completed: boolean;
 }
 
 /**

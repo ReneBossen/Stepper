@@ -24,7 +24,9 @@ import {
   SignOutDialog,
   ChangePasswordModal,
   HealthDataModal,
+  AnalyticsSettingsModal,
 } from './components';
+import { useAnalyticsStore, selectHasConsent } from '@store/analyticsStore';
 import { useStepTracking } from '@hooks/useStepTracking';
 import type { PrivacySettingType } from './components';
 import type { PrivacyLevel } from '@services/api/userPreferencesApi';
@@ -51,6 +53,9 @@ export default function SettingsScreen() {
     clearUser,
   } = useUserStore();
 
+  // Analytics consent state
+  const analyticsConsent = useAnalyticsStore(selectHasConsent);
+
   // Modal visibility states
   const [showUnitsModal, setShowUnitsModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
@@ -59,6 +64,7 @@ export default function SettingsScreen() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showHealthDataModal, setShowHealthDataModal] = useState(false);
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
 
   // Health tracking state
   const { isEnabled: isHealthTrackingEnabled } = useStepTracking();
@@ -226,6 +232,15 @@ export default function SettingsScreen() {
     setActivePrivacySetting(settingType);
     setShowPrivacyModal(true);
   }, []);
+
+  // Analytics modal handlers
+  const handleAnalyticsPress = useCallback(() => {
+    setShowAnalyticsModal(true);
+  }, []);
+
+  const handleAnalyticsSaved = useCallback(() => {
+    showSnackbar('Analytics settings saved');
+  }, [showSnackbar]);
 
   const handlePrivacySave = useCallback(async (value: PrivacyLevel) => {
     setIsSavingPrivacy(true);
@@ -499,6 +514,16 @@ export default function SettingsScreen() {
             accessibilityLabel={`Who can find me: ${getPrivacyLabel(privacyFindMe)}`}
             testID="settings-find-me"
           />
+          <List.Item
+            title="Analytics"
+            description={analyticsConsent ? 'Enabled' : 'Disabled'}
+            left={(props) => <List.Icon {...props} icon="chart-bar" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={handleAnalyticsPress}
+            style={styles.listItem}
+            accessibilityLabel={`Analytics: ${analyticsConsent ? 'Enabled' : 'Disabled'}`}
+            testID="settings-analytics"
+          />
         </View>
 
         <Divider style={styles.divider} />
@@ -605,6 +630,12 @@ export default function SettingsScreen() {
       <HealthDataModal
         visible={showHealthDataModal}
         onDismiss={() => setShowHealthDataModal(false)}
+      />
+
+      <AnalyticsSettingsModal
+        visible={showAnalyticsModal}
+        onDismiss={() => setShowAnalyticsModal(false)}
+        onSaved={handleAnalyticsSaved}
       />
 
       <Snackbar
