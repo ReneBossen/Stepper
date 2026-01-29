@@ -61,20 +61,20 @@ Added 3 new endpoints to support full migration of usersApi.ts:
 | `GET /api/v1/users/{id}/mutual-groups` | Returns groups shared with current user |
 
 **Files Created**:
-- `WalkingApp.Api/Users/DTOs/UserStatsResponse.cs`
-- `WalkingApp.Api/Users/DTOs/UserActivityResponse.cs`
-- `WalkingApp.Api/Users/DTOs/MutualGroupResponse.cs`
-- `WalkingApp.Api/Users/FriendshipQueryEntity.cs`
-- `WalkingApp.Api/Users/GroupMembershipQueryEntity.cs`
-- `WalkingApp.Api/Users/GroupQueryEntity.cs`
-- `WalkingApp.Api/Users/StepEntryQueryEntity.cs`
+- `Stepper.Api/Users/DTOs/UserStatsResponse.cs`
+- `Stepper.Api/Users/DTOs/UserActivityResponse.cs`
+- `Stepper.Api/Users/DTOs/MutualGroupResponse.cs`
+- `Stepper.Api/Users/FriendshipQueryEntity.cs`
+- `Stepper.Api/Users/GroupMembershipQueryEntity.cs`
+- `Stepper.Api/Users/GroupQueryEntity.cs`
+- `Stepper.Api/Users/StepEntryQueryEntity.cs`
 
 **Files Modified**:
-- `WalkingApp.Api/Users/IUserRepository.cs`
-- `WalkingApp.Api/Users/UserRepository.cs`
-- `WalkingApp.Api/Users/IUserService.cs`
-- `WalkingApp.Api/Users/UserService.cs`
-- `WalkingApp.Api/Users/UsersController.cs`
+- `Stepper.Api/Users/IUserRepository.cs`
+- `Stepper.Api/Users/UserRepository.cs`
+- `Stepper.Api/Users/IUserService.cs`
+- `Stepper.Api/Users/UserService.cs`
+- `Stepper.Api/Users/UsersController.cs`
 
 ### Mobile - UsersApi Migration
 
@@ -134,7 +134,7 @@ None.
 
 #### Issue #1: Privacy Field Hardcoded
 
-**File**: `WalkingApp.Mobile/src/services/api/usersApi.ts`
+**File**: `Stepper.Mobile/src/services/api/usersApi.ts`
 **Line**: ~155
 **Description**: `getUserProfile()` returns `is_private: false` as the backend doesn't provide this field yet.
 **Suggestion**: Track as technical debt for when privacy settings need to be exposed in public profiles.

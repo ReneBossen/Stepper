@@ -18,10 +18,10 @@ This plan should be executed:
 
 ## Affected Feature Slices
 
-### Backend (WalkingApp.Api) - NEW Feature Slice
+### Backend (Stepper.Api) - NEW Feature Slice
 
 ```
-WalkingApp.Api/
+Stepper.Api/
   Auth/                           # NEW feature sliceLets 
     AuthController.cs             # HTTP endpoints
     AuthService.cs                # Business logic
@@ -35,7 +35,7 @@ WalkingApp.Api/
       ResetPasswordRequest.cs
 ```
 
-### Mobile (WalkingApp.Mobile)
+### Mobile (Stepper.Mobile)
 
 - `services/api/authApi.ts`: NEW - Auth API calls via HTTP client
 - `services/supabase.ts`: Remove auth functions, keep only client init
@@ -75,9 +75,9 @@ WalkingApp.Api/
 
 #### Step 1.1: Create Auth DTOs
 
-Create `WalkingApp.Api/Auth/DTOs/LoginRequest.cs`:
+Create `Stepper.Api/Auth/DTOs/LoginRequest.cs`:
 ```csharp
-namespace WalkingApp.Api.Auth.DTOs;
+namespace Stepper.Api.Auth.DTOs;
 
 /// <summary>
 /// Request to log in with email and password.
@@ -90,9 +90,9 @@ public record LoginRequest(
 );
 ```
 
-Create `WalkingApp.Api/Auth/DTOs/RegisterRequest.cs`:
+Create `Stepper.Api/Auth/DTOs/RegisterRequest.cs`:
 ```csharp
-namespace WalkingApp.Api.Auth.DTOs;
+namespace Stepper.Api.Auth.DTOs;
 
 /// <summary>
 /// Request to create a new account.
@@ -107,9 +107,9 @@ public record RegisterRequest(
 );
 ```
 
-Create `WalkingApp.Api/Auth/DTOs/AuthResponse.cs`:
+Create `Stepper.Api/Auth/DTOs/AuthResponse.cs`:
 ```csharp
-namespace WalkingApp.Api.Auth.DTOs;
+namespace Stepper.Api.Auth.DTOs;
 
 /// <summary>
 /// Response containing authentication tokens and user info.
@@ -138,9 +138,9 @@ public record AuthUserInfo(
 );
 ```
 
-Create `WalkingApp.Api/Auth/DTOs/RefreshTokenRequest.cs`:
+Create `Stepper.Api/Auth/DTOs/RefreshTokenRequest.cs`:
 ```csharp
-namespace WalkingApp.Api.Auth.DTOs;
+namespace Stepper.Api.Auth.DTOs;
 
 /// <summary>
 /// Request to refresh an expired access token.
@@ -151,9 +151,9 @@ public record RefreshTokenRequest(
 );
 ```
 
-Create `WalkingApp.Api/Auth/DTOs/ForgotPasswordRequest.cs`:
+Create `Stepper.Api/Auth/DTOs/ForgotPasswordRequest.cs`:
 ```csharp
-namespace WalkingApp.Api.Auth.DTOs;
+namespace Stepper.Api.Auth.DTOs;
 
 /// <summary>
 /// Request to send a password reset email.
@@ -164,9 +164,9 @@ public record ForgotPasswordRequest(
 );
 ```
 
-Create `WalkingApp.Api/Auth/DTOs/ResetPasswordRequest.cs`:
+Create `Stepper.Api/Auth/DTOs/ResetPasswordRequest.cs`:
 ```csharp
-namespace WalkingApp.Api.Auth.DTOs;
+namespace Stepper.Api.Auth.DTOs;
 
 /// <summary>
 /// Request to complete password reset with new password.
@@ -181,11 +181,11 @@ public record ResetPasswordRequest(
 
 #### Step 1.2: Create Auth Service Interface
 
-Create `WalkingApp.Api/Auth/IAuthService.cs`:
+Create `Stepper.Api/Auth/IAuthService.cs`:
 ```csharp
-using WalkingApp.Api.Auth.DTOs;
+using Stepper.Api.Auth.DTOs;
 
-namespace WalkingApp.Api.Auth;
+namespace Stepper.Api.Auth;
 
 /// <summary>
 /// Service for authentication operations.
@@ -226,14 +226,14 @@ public interface IAuthService
 
 #### Step 1.3: Implement Auth Service
 
-Create `WalkingApp.Api/Auth/AuthService.cs`:
+Create `Stepper.Api/Auth/AuthService.cs`:
 ```csharp
 using Microsoft.Extensions.Options;
 using Supabase.Gotrue;
-using WalkingApp.Api.Auth.DTOs;
-using WalkingApp.Api.Common.Configuration;
+using Stepper.Api.Auth.DTOs;
+using Stepper.Api.Common.Configuration;
 
-namespace WalkingApp.Api.Auth;
+namespace Stepper.Api.Auth;
 
 /// <summary>
 /// Authentication service that proxies to Supabase Auth.
@@ -323,7 +323,7 @@ public class AuthService : IAuthService
         var supabaseClient = await CreateSupabaseClientAsync();
         await supabaseClient.Auth.ResetPasswordForEmail(request.Email, new ResetPasswordForEmailOptions
         {
-            RedirectTo = "walkingapp://reset-password"
+            RedirectTo = "Stepper://reset-password"
         });
     }
 
@@ -381,14 +381,14 @@ public class AuthService : IAuthService
 
 #### Step 1.4: Create Auth Controller
 
-Create `WalkingApp.Api/Auth/AuthController.cs`:
+Create `Stepper.Api/Auth/AuthController.cs`:
 ```csharp
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using WalkingApp.Api.Auth.DTOs;
-using WalkingApp.Api.Common.Models;
+using Stepper.Api.Auth.DTOs;
+using Stepper.Api.Common.Models;
 
-namespace WalkingApp.Api.Auth;
+namespace Stepper.Api.Auth;
 
 /// <summary>
 /// Authentication endpoints.
@@ -556,7 +556,7 @@ public class AuthController : ControllerBase
 
 #### Step 1.5: Register Auth Services
 
-Update `WalkingApp.Api/Common/Extensions/ServiceCollectionExtensions.cs` or `Program.cs`:
+Update `Stepper.Api/Common/Extensions/ServiceCollectionExtensions.cs` or `Program.cs`:
 ```csharp
 // Add to service registration
 services.AddScoped<IAuthService, AuthService>();
@@ -567,7 +567,7 @@ services.AddHttpClient("Supabase"); // For Supabase API calls
 
 #### Step 2.1: Create Auth Types
 
-Create `WalkingApp.Mobile/src/types/auth.ts`:
+Create `Stepper.Mobile/src/types/auth.ts`:
 ```typescript
 export interface AuthTokens {
   accessToken: string;
@@ -602,7 +602,7 @@ export interface RegisterCredentials {
 
 #### Step 2.2: Create Auth API Service
 
-Create `WalkingApp.Mobile/src/services/api/authApi.ts`:
+Create `Stepper.Mobile/src/services/api/authApi.ts`:
 ```typescript
 import { API_CONFIG } from '../../config/api';
 import { ApiError, ApiResponse } from './types';
@@ -721,7 +721,7 @@ export const authApi = {
 
 #### Step 2.3: Create Token Storage Service
 
-Create `WalkingApp.Mobile/src/services/tokenStorage.ts`:
+Create `Stepper.Mobile/src/services/tokenStorage.ts`:
 ```typescript
 import * as SecureStore from 'expo-secure-store';
 
@@ -781,7 +781,7 @@ export const tokenStorage = {
 
 #### Step 2.4: Update HTTP Client to Use Token Storage
 
-Update `WalkingApp.Mobile/src/services/api/client.ts`:
+Update `Stepper.Mobile/src/services/api/client.ts`:
 ```typescript
 // Replace getAuthToken function:
 import { tokenStorage } from '../tokenStorage';
@@ -821,7 +821,7 @@ async function getAuthToken(): Promise<string | null> {
 
 #### Step 3.1: Update Auth Store
 
-Update `WalkingApp.Mobile/src/store/authStore.ts`:
+Update `Stepper.Mobile/src/store/authStore.ts`:
 ```typescript
 import { create } from 'zustand';
 import { authApi } from '@services/api/authApi';
@@ -1005,7 +1005,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
 #### Step 3.2: Update App.tsx
 
-Update `WalkingApp.Mobile/App.tsx`:
+Update `Stepper.Mobile/App.tsx`:
 ```typescript
 // Replace Supabase auth state management with:
 import { useAuthStore } from '@store/authStore';
@@ -1057,7 +1057,7 @@ Update auth hooks to use `authApi` instead of direct Supabase calls:
 
 #### Step 4.1: Remove Supabase Auth from Mobile
 
-Update `WalkingApp.Mobile/src/services/supabase.ts`:
+Update `Stepper.Mobile/src/services/supabase.ts`:
 ```typescript
 // Remove all auth-related exports
 // Keep only the Supabase client for real-time subscriptions (if still needed)
@@ -1099,13 +1099,13 @@ Delete or update:
 
 ### Backend Unit Tests
 
-Create tests in `WalkingApp.Api.Tests/Auth/`:
+Create tests in `Stepper.Api.Tests/Auth/`:
 - `AuthServiceTests.cs` - Test register, login, logout, refresh
 - Mock Supabase client for unit tests
 
 ### Backend Integration Tests
 
-Create tests in `WalkingApp.Api.Tests/Auth/`:
+Create tests in `Stepper.Api.Tests/Auth/`:
 - `AuthControllerTests.cs` - Test HTTP endpoints
 - Test error responses (400, 401)
 - Test success responses
@@ -1113,9 +1113,9 @@ Create tests in `WalkingApp.Api.Tests/Auth/`:
 ### Mobile Tests
 
 Update/create tests:
-- `WalkingApp.Mobile/src/services/api/__tests__/authApi.test.ts`
-- `WalkingApp.Mobile/src/services/__tests__/tokenStorage.test.ts`
-- `WalkingApp.Mobile/src/store/__tests__/authStore.test.ts`
+- `Stepper.Mobile/src/services/api/__tests__/authApi.test.ts`
+- `Stepper.Mobile/src/services/__tests__/tokenStorage.test.ts`
+- `Stepper.Mobile/src/store/__tests__/authStore.test.ts`
 - Update screen tests to mock `authApi` instead of Supabase
 
 ## Acceptance Criteria

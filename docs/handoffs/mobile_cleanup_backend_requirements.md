@@ -8,7 +8,7 @@
 
 ## Summary
 
-As part of the mobile cleanup effort to remove all direct Supabase database calls from WalkingApp.Mobile, the following backend API endpoints are required.
+As part of the mobile cleanup effort to remove all direct Supabase database calls from Stepper.Mobile, the following backend API endpoints are required.
 
 ---
 

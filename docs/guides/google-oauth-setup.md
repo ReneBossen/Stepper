@@ -5,7 +5,7 @@
 The "Error 400: invalid_request - Access blocked: Authorization Error" occurred because the app was using a **Web Application OAuth Client ID** for Android authentication.
 
 **Root Cause:**
-- expo-auth-session uses custom scheme redirect URIs (e.g., `walkingapp://`)
+- expo-auth-session uses custom scheme redirect URIs (e.g., `stepper://`)
 - Google Web Application OAuth clients do NOT accept custom scheme redirect URIs
 - Android apps require an **Android OAuth Client ID** in Google Cloud Console
 
@@ -20,7 +20,7 @@ The fix separates the OAuth client IDs:
 ### Prerequisites
 
 1. Access to Google Cloud Console: https://console.cloud.google.com/
-2. A Google Cloud project created for Walking App
+2. A Google Cloud project created for Stepper
 3. Android development environment set up
 
 ### Step 1: Get Your SHA-1 Certificate Fingerprint
@@ -30,7 +30,7 @@ The Android OAuth client requires your app's SHA-1 certificate fingerprint.
 #### For Debug Builds (Development):
 
 ```bash
-cd WalkingApp.Mobile/android
+cd Stepper.Mobile/android
 ./gradlew signingReport
 ```
 
@@ -55,7 +55,7 @@ You'll need the SHA-1 from your release keystore. If you haven't created one yet
 
 1. **Open Google Cloud Console**
    - Go to: https://console.cloud.google.com/
-   - Select your Walking App project
+   - Select your Stepper project
 
 2. **Navigate to Credentials**
    - Click: **APIs & Services** → **Credentials**
@@ -66,10 +66,10 @@ You'll need the SHA-1 from your release keystore. If you haven't created one yet
 
 4. **Configure Android Client**
    - **Application type**: Select **Android**
-   - **Name**: `Walking App Android` (or any descriptive name)
-   - **Package name**: `com.walkingapp.mobile`
-     - This MUST match the package name in `WalkingApp.Mobile/app.json`
-     - Current value in app.json: `"package": "com.walkingapp.mobile"`
+   - **Name**: `Stepper Android` (or any descriptive name)
+   - **Package name**: `com.Stepper.mobile`
+     - This MUST match the package name in `Stepper.Mobile/app.json`
+     - Current value in app.json: `"package": "com.Stepper.mobile"`
    - **SHA-1 certificate fingerprint**: Paste the SHA-1 from Step 1
 
 5. **Create the Client**
@@ -84,7 +84,7 @@ You'll need the SHA-1 from your release keystore. If you haven't created one yet
 
 1. **Open `.env` file** (create if it doesn't exist):
    ```bash
-   cd WalkingApp.Mobile
+   cd Stepper.Mobile
    cp .env.example .env  # If you don't have a .env file yet
    ```
 
@@ -103,7 +103,7 @@ After updating the `.env` file, you MUST rebuild the app for changes to take eff
 
 ```bash
 # Clean previous builds
-cd WalkingApp.Mobile
+cd Stepper.Mobile
 rm -rf android/app/build
 
 # Rebuild and run
@@ -153,8 +153,8 @@ npx expo run:android
 **Cause**: Package name in Google Cloud Console doesn't match app.json
 
 **Solution**:
-- Verify package name in Google Cloud Console is: `com.walkingapp.mobile`
-- Verify `app.json` has: `"android": { "package": "com.walkingapp.mobile" }`
+- Verify package name in Google Cloud Console is: `com.Stepper.mobile`
+- Verify `app.json` has: `"android": { "package": "com.Stepper.mobile" }`
 - Update Google Cloud Console if needed
 
 ## Important Notes
@@ -174,7 +174,7 @@ For iOS, you'll need to create an **iOS OAuth client** separately:
 
 1. Go to Google Cloud Console → Credentials
 2. Create OAuth client ID → iOS
-3. Add your iOS bundle identifier: `com.walkingapp.mobile`
+3. Add your iOS bundle identifier: `com.Stepper.mobile`
 4. Add the iOS client ID to `GOOGLE_IOS_CLIENT_ID` in `.env`
 5. Update `useGoogleAuth.ts` to use `iosClientId` parameter
 
@@ -193,14 +193,14 @@ For iOS, you'll need to create an **iOS OAuth client** separately:
 2. `useGoogleAuth.ts` hook initiates OAuth flow
 3. expo-auth-session opens Chrome Custom Tabs (Android) or Safari (iOS)
 4. User authenticates with Google
-5. Google redirects to `walkingapp://` with authorization code
+5. Google redirects to `stepper://` with authorization code
 6. expo-auth-session exchanges code for ID token
 7. App receives `idToken` and `accessToken`
 8. App sends `idToken` to Supabase for authentication
 
 ### Why Android Client ID is Required
 
-- **Custom Scheme Redirects**: Android apps use custom schemes (`walkingapp://`)
+- **Custom Scheme Redirects**: Android apps use custom schemes (`stepper://`)
 - **Web Client Limitation**: Web OAuth clients only accept `http://` or `https://` redirects
 - **Android Client Design**: Android OAuth clients don't require redirect URI configuration
 - **Automatic Handling**: Google automatically handles the redirect for Android apps
@@ -213,7 +213,7 @@ Google.useIdTokenAuthRequest({
   androidClientId: GOOGLE_ANDROID_CLIENT_ID, // Used for Android
   iosClientId: GOOGLE_IOS_CLIENT_ID,         // (Optional) for iOS
   redirectUri: makeRedirectUri({
-    scheme: 'walkingapp',
+    scheme: 'Stepper',
   }),
 });
 ```

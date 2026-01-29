@@ -104,7 +104,7 @@ if (hashIndex !== -1) {
 
 **Attack Vector**: An attacker could craft a malicious URL like:
 ```
-walkingapp://#access_token=fake_token&refresh_token=fake_refresh
+Stepper://#access_token=fake_token&refresh_token=fake_refresh
 ```
 
 **Impact**: While Supabase's `setSession()` does perform JWT validation, relying solely on this is risky. The application should validate token format BEFORE attempting to create a session.
@@ -115,7 +115,7 @@ walkingapp://#access_token=fake_token&refresh_token=fake_refresh
 
 **Problem**: No verification that the tokens came from a legitimate Google OAuth flow.
 
-**Attack Vector**: Deep link injection attack where a malicious app or website redirects to `walkingapp://` with stolen or forged tokens.
+**Attack Vector**: Deep link injection attack where a malicious app or website redirects to `Stepper://` with stolen or forged tokens.
 
 **Impact**: Potential account takeover if tokens are intercepted or stolen.
 
@@ -591,7 +591,7 @@ Check the render method of `MockTextInput`.
 - [x] Error handling for user cancellation
 - [x] Loading states during OAuth flow
 - [x] Error display to user
-- [x] Deep linking configured (`walkingapp://`)
+- [x] Deep linking configured (`Stepper://`)
 - [x] Environment variables documented
 - [x] iOS associated domains configured (app.json)
 - [x] Android intent filters configured
@@ -728,7 +728,7 @@ if (accessToken && refreshToken) {
 ```
 
 **Attack Scenario**:
-1. Attacker crafts malicious deep link: `walkingapp://#access_token=STOLEN_TOKEN&refresh_token=STOLEN_REFRESH`
+1. Attacker crafts malicious deep link: `Stepper://#access_token=STOLEN_TOKEN&refresh_token=STOLEN_REFRESH`
 2. Victim clicks link (phishing, malicious app, etc.)
 3. App extracts tokens without validation
 4. If tokens are valid JWTs (e.g., stolen from another user), session is created

@@ -72,7 +72,7 @@ Waiting for confirmation to continue.
 ### NEVER TOUCH BACKEND
 
 You MUST NOT modify any files in:
-- `WalkingApp.Api/`
+- `Stepper.Api/`
 - `supabase/migrations/`
 - Backend configuration files
 
@@ -102,7 +102,7 @@ Search: "react native {component} api 2026"
 ## Project Structure
 
 ```
-WalkingApp.Mobile/src/
+Stepper.Mobile/src/
 ├── components/           # Shared UI components
 │   └── common/          # Generic reusable components
 ├── screens/             # Feature screens (vertical slices)
@@ -342,7 +342,7 @@ Before marking work complete, verify:
 - Use `getErrorMessage()` utility for error handling
 
 ### You MUST NOT:
-- Modify any backend files (`WalkingApp.Api/`, `supabase/`)
+- Modify any backend files (`Stepper.Api/`, `supabase/`)
 - Skip documentation lookup for unfamiliar APIs
 - Use inline styles (use StyleSheet.create)
 - Ignore TypeScript errors

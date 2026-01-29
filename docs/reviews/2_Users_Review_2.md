@@ -15,14 +15,14 @@ The Users feature implementation has been significantly improved. All 10 issues 
 
 **Issue #0: UserEntity Class Not Following One-Class-Per-File Rule**
 - **Status**: FIXED
-- **File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Users/UserEntity.cs`
+- **File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Users/UserEntity.cs`
 - **Verification**: UserEntity has been moved to its own dedicated file (`UserEntity.cs`) separate from UserRepository.cs. This adheres to the one-class-per-file convention and improves code organization and maintainability.
 
 ### MAJOR Issues Fixed: ✓
 
 **Issue #1: Magic String in Default Display Name Generation**
 - **Status**: FIXED
-- **Files**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Users/UserService.cs`
+- **Files**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Users/UserService.cs`
 - **Lines**: 10-11, 89-95
 - **Verification**:
   ```csharp
@@ -42,7 +42,7 @@ The Users feature implementation has been significantly improved. All 10 issues 
 
 **Issue #2: Potential KeyNotFoundException Instead of UnauthorizedAccessException**
 - **Status**: FIXED
-- **File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Users/UserRepository.cs`
+- **File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Users/UserRepository.cs`
 - **Lines**: 80-94
 - **Verification**:
   ```csharp
@@ -68,7 +68,7 @@ The Users feature implementation has been significantly improved. All 10 issues 
 
 **Issue #3: UpdatedAt Timestamp Set in Service Layer Instead of Database Trigger**
 - **Status**: FIXED
-- **File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Users/UserService.cs`
+- **File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Users/UserService.cs`
 - **Lines**: 66-67
 - **Verification**:
   ```csharp
@@ -84,7 +84,7 @@ The Users feature implementation has been significantly improved. All 10 issues 
 
 **Issue #4: RLS Policy References Non-Existent Friendships Table**
 - **Status**: FIXED
-- **File**: `/mnt/c/Users/rene_/source/repos/walkingApp/docs/migrations/002_create_users_table.sql`
+- **File**: `/mnt/c/Users/rene_/source/repos/Stepper/docs/migrations/002_create_users_table.sql`
 - **Lines**: 47-58
 - **Verification**:
   ```sql
@@ -110,13 +110,13 @@ The Users feature implementation has been significantly improved. All 10 issues 
 
 **Issue #5: Inconsistent Validation Error Messages (ADDRESSED)**
 - **Status**: ADDRESSED
-- **File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Users/UserService.cs`
+- **File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Users/UserService.cs`
 - **Lines**: 118, 123, 128, 136, 145
 - **Note**: All error messages consistently include trailing periods. This was marked as minor in original review and is considered acceptable. No change needed.
 
 **Issue #6: UserEntity Class Accessibility**
 - **Status**: VERIFIED
-- **File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Users/UserEntity.cs`
+- **File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Users/UserEntity.cs`
 - **Line**: 12
 - **Verification**:
   ```csharp
@@ -128,18 +128,18 @@ The Users feature implementation has been significantly improved. All 10 issues 
 
 **Issue #7: Missing XML Documentation on UserEntity Members**
 - **Status**: VERIFIED
-- **File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Users/UserEntity.cs`
+- **File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Users/UserEntity.cs`
 - **Verification**: Class has XML doc comment; properties are auto-properties with standard attribute annotations. Documentation is appropriate for an internal entity class.
 
 **Issue #8: Test Comment Acknowledging Inconsistent Exception Type**
 - **Status**: FIXED
-- **File**: `/mnt/c/Users/rene_/source/repos/walkingApp/tests/WalkingApp.UnitTests/Users/UserRepositoryTests.cs`
+- **File**: `/mnt/c/Users/rene_/source/repos/Stepper/tests/Stepper.UnitTests/Users/UserRepositoryTests.cs`
 - **Lines**: 77-79
 - **Verification**: Test comment removed. Test now clearly verifies UnauthorizedAccessException is thrown when missing token key (line 78-79).
 
 **Issue #9: PreferencesJson Default Value Mismatch**
 - **Status**: VERIFIED
-- **File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Users/UserEntity.cs`
+- **File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Users/UserEntity.cs`
 - **Line**: 24
 - **Verification**: Both C# default (`"{}"`) and database default (in migration line 20) are consistent. This redundancy is acceptable and provides safety for in-memory object initialization.
 
@@ -167,7 +167,7 @@ The Users feature implementation has been significantly improved. All 10 issues 
 **One Class Per File Rule**: ✓ CONFIRMED
 
 ```
-WalkingApp.Api/Users/
+Stepper.Api/Users/
 ├── DTOs/
 │   ├── GetProfileResponse.cs (1 class)
 │   ├── UpdateProfileRequest.cs (1 class)

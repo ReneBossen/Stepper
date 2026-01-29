@@ -40,32 +40,32 @@ Plan 20f has been implemented successfully. A new Activity feature slice was cre
 
 | File | Lines | Assessment |
 |------|-------|------------|
-| `WalkingApp.Api/Activity/ActivityController.cs` | 61 | PASS - Thin controller, proper error handling |
-| `WalkingApp.Api/Activity/IActivityService.cs` | 18 | PASS - Clean interface with XML docs |
-| `WalkingApp.Api/Activity/ActivityService.cs` | 143 | PASS - Business logic properly encapsulated |
-| `WalkingApp.Api/Activity/IActivityRepository.cs` | 25 | PASS - Clean interface with XML docs |
-| `WalkingApp.Api/Activity/ActivityRepository.cs` | 108 | PASS - Data access only, uses Supabase client |
-| `WalkingApp.Api/Activity/ActivityItem.cs` | 47 | PASS - Domain model with XML docs |
-| `WalkingApp.Api/Activity/ActivityItemEntity.cs` | 74 | PASS - Entity with mapping methods |
-| `WalkingApp.Api/Activity/DTOs/ActivityFeedResponse.cs` | 40 | PASS - Clean record types |
-| `WalkingApp.Api/Common/Extensions/ServiceCollectionExtensions.cs` | 115 | PASS - Services registered correctly |
+| `Stepper.Api/Activity/ActivityController.cs` | 61 | PASS - Thin controller, proper error handling |
+| `Stepper.Api/Activity/IActivityService.cs` | 18 | PASS - Clean interface with XML docs |
+| `Stepper.Api/Activity/ActivityService.cs` | 143 | PASS - Business logic properly encapsulated |
+| `Stepper.Api/Activity/IActivityRepository.cs` | 25 | PASS - Clean interface with XML docs |
+| `Stepper.Api/Activity/ActivityRepository.cs` | 108 | PASS - Data access only, uses Supabase client |
+| `Stepper.Api/Activity/ActivityItem.cs` | 47 | PASS - Domain model with XML docs |
+| `Stepper.Api/Activity/ActivityItemEntity.cs` | 74 | PASS - Entity with mapping methods |
+| `Stepper.Api/Activity/DTOs/ActivityFeedResponse.cs` | 40 | PASS - Clean record types |
+| `Stepper.Api/Common/Extensions/ServiceCollectionExtensions.cs` | 115 | PASS - Services registered correctly |
 
 ### Mobile - Refactored API Layer
 
 | File | Lines | Assessment |
 |------|-------|------------|
-| `WalkingApp.Mobile/src/services/api/activityApi.ts` | 191 | PASS - Zero Supabase data calls, real-time preserved |
-| `WalkingApp.Mobile/src/store/activityStore.ts` | 73 | PASS - Uses activityApi correctly |
-| `WalkingApp.Mobile/src/screens/home/hooks/useHomeData.ts` | 178 | PASS - Real-time subscription via subscribeToFeed |
+| `Stepper.Mobile/src/services/api/activityApi.ts` | 191 | PASS - Zero Supabase data calls, real-time preserved |
+| `Stepper.Mobile/src/store/activityStore.ts` | 73 | PASS - Uses activityApi correctly |
+| `Stepper.Mobile/src/screens/home/hooks/useHomeData.ts` | 178 | PASS - Real-time subscription via subscribeToFeed |
 
 ### Tests
 
 | File | Tests | Assessment |
 |------|-------|------------|
-| `tests/WalkingApp.UnitTests/Activity/ActivityServiceTests.cs` | 22 | PASS - Comprehensive service tests |
-| `tests/WalkingApp.UnitTests/Activity/ActivityControllerTests.cs` | 19 | PASS - Controller behavior tests |
-| `WalkingApp.Mobile/src/services/api/__tests__/activityApi.test.ts` | 15 | PASS - API client tests |
-| `WalkingApp.Mobile/src/store/__tests__/activityStore.test.ts` | 24 | PASS - Store tests |
+| `tests/Stepper.UnitTests/Activity/ActivityServiceTests.cs` | 22 | PASS - Comprehensive service tests |
+| `tests/Stepper.UnitTests/Activity/ActivityControllerTests.cs` | 19 | PASS - Controller behavior tests |
+| `Stepper.Mobile/src/services/api/__tests__/activityApi.test.ts` | 15 | PASS - API client tests |
+| `Stepper.Mobile/src/store/__tests__/activityStore.test.ts` | 24 | PASS - Store tests |
 
 ## Detailed Analysis
 
@@ -176,7 +176,7 @@ None identified.
 ### MINOR
 
 #### Issue #1: Count Query Performance
-**File**: `WalkingApp.Api/Activity/ActivityRepository.cs`
+**File**: `Stepper.Api/Activity/ActivityRepository.cs`
 **Line**: 77-90
 **Description**: The `CountActivitiesAsync` method fetches all IDs to count them instead of using a database COUNT function. The comment acknowledges this.
 **Suggestion**: Consider creating a Supabase RPC function for efficient counting in production environments with large datasets.
@@ -193,7 +193,7 @@ return response.Models.Count;
 ```
 
 #### Issue #2: Real-time Subscription Database Query
-**File**: `WalkingApp.Mobile/src/services/api/activityApi.ts`
+**File**: `Stepper.Mobile/src/services/api/activityApi.ts`
 **Line**: 131-157
 **Description**: The real-time subscription handler makes a Supabase query to fetch full activity details with user join. While this is necessary for real-time updates, it creates a direct Supabase data dependency.
 **Suggestion**: This is acceptable per the plan's requirement to keep real-time via Supabase, but document this as technical debt for potential future backend WebSocket support.

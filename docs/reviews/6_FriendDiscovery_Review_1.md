@@ -83,7 +83,7 @@ END IF;
 #### Issue #3: Race Condition in Invite Code Usage Tracking
 **File**: `docs/migrations/010_create_discovery_functions.sql`
 **Line**: 100-109
-**File**: `WalkingApp.Api/Friends/Discovery/InviteCodeRepository.cs`
+**File**: `Stepper.Api/Friends/Discovery/InviteCodeRepository.cs`
 **Line**: 104-116
 
 **Description**: Both the database function and repository method have a race condition in usage tracking:
@@ -123,15 +123,15 @@ For the repository, remove the `IncrementUsageAsync` method entirely and rely so
 ### MAJOR
 
 #### Issue #4: Nested Class Violates One-Class-Per-File Rule
-**File**: `WalkingApp.Api/Friends/Discovery/FriendDiscoveryService.cs`
+**File**: `Stepper.Api/Friends/Discovery/FriendDiscoveryService.cs`
 **Line**: 272-277
 **Description**: The `InviteCodeValidationResult` class is defined as a private nested class inside `FriendDiscoveryService`. This violates the coding standard "No nested classes" (`.claude/policies/coding-standards.md` line 42) and the "One class per file" rule (line 48).
 
 **Suggestion**: Extract `InviteCodeValidationResult` to its own file:
 
-**New file**: `WalkingApp.Api/Friends/Discovery/InviteCodeValidationResult.cs`
+**New file**: `Stepper.Api/Friends/Discovery/InviteCodeValidationResult.cs`
 ```csharp
-namespace WalkingApp.Api.Friends.Discovery;
+namespace Stepper.Api.Friends.Discovery;
 
 /// <summary>
 /// Internal class for deserializing the validate_invite_code function result.
@@ -147,15 +147,15 @@ internal class InviteCodeValidationResult
 Update `FriendDiscoveryService.cs` to remove the nested class definition.
 
 #### Issue #5: Magic Strings for Deep Link URLs
-**File**: `WalkingApp.Api/Friends/Discovery/FriendDiscoveryService.cs`
+**File**: `Stepper.Api/Friends/Discovery/FriendDiscoveryService.cs`
 **Line**: 89, 184
-**Description**: The deep link URL scheme `"walkingapp://invite/"` is hardcoded as a magic string in two places. This violates the coding standard "No magic strings; use constants or strongly typed identifiers" (`.claude/policies/coding-standards.md` line 35). If the deep link scheme changes, it must be updated in multiple locations.
+**Description**: The deep link URL scheme `"Stepper://invite/"` is hardcoded as a magic string in two places. This violates the coding standard "No magic strings; use constants or strongly typed identifiers" (`.claude/policies/coding-standards.md` line 35). If the deep link scheme changes, it must be updated in multiple locations.
 
 **Suggestion**: Extract to a constant in a configuration class:
 
-**New file**: `WalkingApp.Api/Friends/Discovery/DiscoveryConstants.cs`
+**New file**: `Stepper.Api/Friends/Discovery/DiscoveryConstants.cs`
 ```csharp
-namespace WalkingApp.Api.Friends.Discovery;
+namespace Stepper.Api.Friends.Discovery;
 
 /// <summary>
 /// Constants for friend discovery feature.
@@ -165,7 +165,7 @@ internal static class DiscoveryConstants
     /// <summary>
     /// Deep link URL scheme for invite codes.
     /// </summary>
-    public const string InviteDeepLinkScheme = "walkingapp://invite/";
+    public const string InviteDeepLinkScheme = "Stepper://invite/";
 }
 ```
 
@@ -183,9 +183,9 @@ Alternatively, consider making this configurable via `appsettings.json` to suppo
 ### MINOR
 
 #### Issue #6: Repository IncrementUsageAsync Method Should Be Removed
-**File**: `WalkingApp.Api/Friends/Discovery/InviteCodeRepository.cs`
+**File**: `Stepper.Api/Friends/Discovery/InviteCodeRepository.cs`
 **Line**: 104-116
-**File**: `WalkingApp.Api/Friends/Discovery/IInviteCodeRepository.cs`
+**File**: `Stepper.Api/Friends/Discovery/IInviteCodeRepository.cs`
 **Line**: 42-46
 
 **Description**: The `IncrementUsageAsync` method is not used anywhere in the codebase (the service uses the database function for validation which handles incrementing atomically). This method also has the race condition mentioned in Issue #3. Dead code should be removed to reduce maintenance burden.
@@ -195,7 +195,7 @@ Alternatively, consider making this configurable via `appsettings.json` to suppo
 - Delete lines 104-116 from `InviteCodeRepository.cs`
 
 #### Issue #7: Missing XML Documentation on QrCodeId Property
-**File**: `WalkingApp.Api/Users/User.cs`
+**File**: `Stepper.Api/Users/User.cs`
 **Line**: 10
 **Description**: The `QrCodeId` property lacks XML documentation comments. The coding standard states "Public APIs must have XML documentation" (`.claude/policies/coding-standards.md` line 44). While this is a public property on a domain model, it should have documentation explaining its purpose.
 
@@ -306,7 +306,7 @@ Document this as a known performance consideration for future optimization.
 - [x] User search by display name with trigram matching
 - [x] QR code generation with QRCoder library
 - [x] Invite link generation with expiration and usage limits
-- [x] Deep link URL format: `walkingapp://invite/{code}`
+- [x] Deep link URL format: `Stepper://invite/{code}`
 - [x] 5 REST API endpoints
 - [x] Database migrations (4 files: 007, 008, 009, 010)
 - [x] RLS policies on invite_codes table

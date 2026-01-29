@@ -14,7 +14,7 @@ Implemented the Health Data settings modal for the Settings screen, allowing use
 
 ## Files Created
 
-### 1. `WalkingApp.Mobile/src/screens/settings/components/HealthDataModal.tsx`
+### 1. `Stepper.Mobile/src/screens/settings/components/HealthDataModal.tsx`
 
 A modal component for managing health data tracking settings:
 
@@ -32,11 +32,11 @@ A modal component for managing health data tracking settings:
 
 ## Files Modified
 
-### 1. `WalkingApp.Mobile/src/screens/settings/components/index.ts`
+### 1. `Stepper.Mobile/src/screens/settings/components/index.ts`
 
 Added export for the new `HealthDataModal` component.
 
-### 2. `WalkingApp.Mobile/src/screens/settings/SettingsScreen.tsx`
+### 2. `Stepper.Mobile/src/screens/settings/SettingsScreen.tsx`
 
 Changes made:
 - Imported `HealthDataModal` from components

@@ -10,12 +10,12 @@ Refactor the Groups feature to route all data operations through the .NET API in
 
 ## Affected Feature Slices
 
-### Backend (WalkingApp.Api/Groups)
+### Backend (Stepper.Api/Groups)
 - `GroupsController.cs`: Add missing endpoints (search, join-by-code)
 - `GroupService.cs` / `IGroupService.cs`: Add search and code join logic
 - Verify existing endpoints work with `/api/v1/` prefix
 
-### Mobile (WalkingApp.Mobile)
+### Mobile (Stepper.Mobile)
 - `services/api/groupsApi.ts`: Complete rewrite (except real-time subscription)
 
 ## Proposed Types
@@ -258,15 +258,15 @@ export const groupsApi = {
 ## Tests
 
 ### Backend Unit Tests
-- `WalkingApp.Api.Tests/Groups/GroupServiceSearchTests.cs`
-- `WalkingApp.Api.Tests/Groups/GroupServiceJoinByCodeTests.cs`
+- `Stepper.Api.Tests/Groups/GroupServiceSearchTests.cs`
+- `Stepper.Api.Tests/Groups/GroupServiceJoinByCodeTests.cs`
 
 ### Backend Integration Tests
-- `WalkingApp.Api.Tests/Groups/GroupsControllerSearchTests.cs`
-- `WalkingApp.Api.Tests/Groups/GroupsControllerJoinByCodeTests.cs`
+- `Stepper.Api.Tests/Groups/GroupsControllerSearchTests.cs`
+- `Stepper.Api.Tests/Groups/GroupsControllerJoinByCodeTests.cs`
 
 ### Mobile Tests
-- Update `WalkingApp.Mobile/src/services/api/__tests__/groupsApi.test.ts`
+- Update `Stepper.Mobile/src/services/api/__tests__/groupsApi.test.ts`
 - Mock `apiClient` instead of Supabase (except real-time)
 - Test all 20+ functions
 

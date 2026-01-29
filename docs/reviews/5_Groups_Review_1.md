@@ -43,7 +43,7 @@ The Groups feature implementation is substantially complete and demonstrates str
 ### BLOCKER
 
 #### Issue #1: N+1 Query Problem in GroupRepository.GetUserGroupsAsync
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/GroupRepository.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/GroupRepository.cs`
 **Lines**: 69-91
 
 **Description**: The `GetUserGroupsAsync` method performs a separate database query for each group membership in a loop. If a user is a member of 10 groups, this results in 11 database queries (1 for memberships + 10 for individual groups).
@@ -72,7 +72,7 @@ var groups = await client
 ```
 
 #### Issue #2: N+1 Query Problem in GroupService.GetMembersAsync
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/GroupService.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/GroupService.cs`
 **Lines**: 472-489
 
 **Description**: The `GetMembersAsync` method queries the user repository once per member in a loop. For a group with 50 members, this results in 51 database queries.
@@ -93,7 +93,7 @@ foreach (var m in memberships)
 2. Or add `GetUsersByIdsAsync(List<Guid> userIds)` to IUserRepository for batch fetching
 
 #### Issue #3: Missing CompetitionPeriod Domain Model
-**File**: Expected at `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/CompetitionPeriod.cs`
+**File**: Expected at `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/CompetitionPeriod.cs`
 **Status**: Not found
 
 **Description**: Plan 5 specifies `CompetitionPeriod` as a domain model in the "Proposed Types" table (line 23), but this class was not implemented. The functionality is embedded in `GroupService.CalculateCompetitionPeriod()` method instead.
@@ -105,7 +105,7 @@ foreach (var m in memberships)
 Since the current implementation works well and period calculation is internal logic, Option 2 is recommended, but this requires explicit plan amendment approval.
 
 #### Issue #4: Nested Class Violates "One Class Per File" Policy
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/GroupRepository.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/GroupRepository.cs`
 **Line**: 319
 
 **Description**: A private nested class `LeaderboardEntryResult` is defined inside `GroupRepository`, violating the coding standards policy that states "No nested classes" (coding-standards.md line 42).
@@ -122,25 +122,25 @@ private class LeaderboardEntryResult
 }
 ```
 
-**Suggestion**: Extract to a separate file: `WalkingApp.Api/Groups/LeaderboardEntryResult.cs` with `internal` visibility since it's only used within the Groups feature for JSON deserialization.
+**Suggestion**: Extract to a separate file: `Stepper.Api/Groups/LeaderboardEntryResult.cs` with `internal` visibility since it's only used within the Groups feature for JSON deserialization.
 
 ### MAJOR
 
 #### Issue #5: Cross-Feature Dependency on Steps.DTOs.DateRange
 **Files**:
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/IGroupRepository.cs` (line 1)
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/GroupRepository.cs` (line 4)
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/GroupService.cs` (line 3)
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/IGroupRepository.cs` (line 1)
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/GroupRepository.cs` (line 4)
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/GroupService.cs` (line 3)
 
-**Description**: The Groups feature has a cross-feature dependency on `WalkingApp.Api.Steps.DTOs.DateRange`. According to the architecture policy, features should be loosely coupled, and shared types should live in `/Common`.
+**Description**: The Groups feature has a cross-feature dependency on `Stepper.Api.Steps.DTOs.DateRange`. According to the architecture policy, features should be loosely coupled, and shared types should live in `/Common`.
 
 **Current**:
 ```csharp
-using WalkingApp.Api.Steps.DTOs;
+using Stepper.Api.Steps.DTOs;
 ```
 
 **Suggestion**: Move `DateRange` to a shared location such as:
-- `/WalkingApp.Api/Common/Models/DateRange.cs`
+- `/Stepper.Api/Common/Models/DateRange.cs`
 
 This is a shared value object used by multiple features, not specific to Steps. This promotes better separation of concerns and reduces coupling between Groups and Steps features.
 
@@ -148,8 +148,8 @@ This is a shared value object used by multiple features, not specific to Steps. 
 
 #### Issue #6: GroupEntity and GroupMembershipEntity Are Not Domain Models
 **Files**:
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/GroupEntity.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/GroupMembershipEntity.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/GroupEntity.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/GroupMembershipEntity.cs`
 
 **Description**: The plan does not specify `GroupEntity` and `GroupMembershipEntity` as separate types. These are Supabase-specific infrastructure concerns, not domain models. While this is a good design pattern (separating database entities from domain models), it introduces extra types not in the plan.
 
@@ -162,7 +162,7 @@ This is a shared value object used by multiple features, not specific to Steps. 
 ### MINOR
 
 #### Issue #7: JoinCode Visibility Logic Could Be More Explicit
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/GroupService.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/GroupService.cs`
 **Line**: 585
 
 **Description**: The join code visibility logic uses a ternary operator that could be more explicit about security concerns:
@@ -178,7 +178,7 @@ JoinCode = (role == MemberRole.Owner || role == MemberRole.Admin) ? group.JoinCo
 ```
 
 #### Issue #8: GetByJoinCodeAsync Missing Usage Example in Tests
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/IGroupRepository.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/IGroupRepository.cs`
 **Line**: 78-81
 
 **Description**: While `GetByJoinCodeAsync` is defined in the repository interface, there are no tests verifying it's actually used in the join flow. The join flow calls `GetByIdAsync`, not `GetByJoinCodeAsync`.
@@ -195,7 +195,7 @@ This is correct but inefficient. If users join via a join code (not a group ID),
 3. OR document that `GetByJoinCodeAsync` is reserved for future use
 
 #### Issue #9: Member Count Consistency
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/GroupRepository.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/GroupRepository.cs`
 **Lines**: Multiple locations (45, 64, 111, 238, 297)
 
 **Description**: The member count is calculated on-demand via `GetMemberCountAsync()` every time a group is retrieved. This is correct for consistency but has performance implications.

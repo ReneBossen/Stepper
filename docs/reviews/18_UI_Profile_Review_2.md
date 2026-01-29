@@ -96,8 +96,8 @@ No major issues found.
 #### Issue #1: TODO Comments for Future Features (Informational)
 
 **Files**:
-- `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\friends\UserProfileScreen.tsx` (lines 192, 212)
-- `E:\Github Projects\Stepper\WalkingApp.Mobile\src\services\api\usersApi.ts` (lines 185, 261)
+- `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\friends\UserProfileScreen.tsx` (lines 192, 212)
+- `E:\Github Projects\Stepper\Stepper.Mobile\src\services\api\usersApi.ts` (lines 185, 261)
 
 **Description**: TODO comments remain for features that depend on backend APIs not yet implemented:
 - Report user API
@@ -110,7 +110,7 @@ No major issues found.
 
 #### Issue #2: FriendActionButton Has Duplicate formatFriendsSince
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\profile\components\FriendActionButton.tsx` (lines 34-37)
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\profile\components\FriendActionButton.tsx` (lines 34-37)
 
 **Description**: The `FriendActionButton` component still has its own `formatFriendsSince` function that duplicates `formatJoinDate` from stringUtils.
 
@@ -136,24 +136,24 @@ const formatFriendsSince = (dateStr: string) => {
 
 | File | Status |
 |------|--------|
-| `WalkingApp.Mobile/src/screens/settings/ProfileScreen.tsx` | PASS |
-| `WalkingApp.Mobile/src/screens/settings/EditProfileScreen.tsx` | PASS |
-| `WalkingApp.Mobile/src/screens/friends/UserProfileScreen.tsx` | PASS |
-| `WalkingApp.Mobile/src/screens/profile/components/StatCard.tsx` | PASS |
-| `WalkingApp.Mobile/src/screens/profile/components/WeeklyActivityCard.tsx` | PASS |
-| `WalkingApp.Mobile/src/screens/profile/components/AchievementChip.tsx` | PASS |
-| `WalkingApp.Mobile/src/screens/profile/components/MutualGroupItem.tsx` | PASS |
-| `WalkingApp.Mobile/src/screens/profile/components/FriendActionButton.tsx` | PASS |
-| `WalkingApp.Mobile/src/screens/profile/components/PrivacyRestrictedView.tsx` | PASS |
-| `WalkingApp.Mobile/src/screens/profile/components/index.ts` | PASS |
-| `WalkingApp.Mobile/src/store/userStore.ts` | PASS |
-| `WalkingApp.Mobile/src/services/api/usersApi.ts` | PASS |
-| `WalkingApp.Mobile/src/services/api/index.ts` | PASS |
-| `WalkingApp.Mobile/src/navigation/stacks/SettingsStackNavigator.tsx` | PASS |
-| `WalkingApp.Mobile/src/navigation/stacks/FriendsStackNavigator.tsx` | PASS |
-| `WalkingApp.Mobile/src/utils/stringUtils.ts` | PASS |
-| `WalkingApp.Mobile/__mocks__/expo-image-picker.ts` | PASS |
-| `WalkingApp.Mobile/jest.config.js` | PASS |
+| `Stepper.Mobile/src/screens/settings/ProfileScreen.tsx` | PASS |
+| `Stepper.Mobile/src/screens/settings/EditProfileScreen.tsx` | PASS |
+| `Stepper.Mobile/src/screens/friends/UserProfileScreen.tsx` | PASS |
+| `Stepper.Mobile/src/screens/profile/components/StatCard.tsx` | PASS |
+| `Stepper.Mobile/src/screens/profile/components/WeeklyActivityCard.tsx` | PASS |
+| `Stepper.Mobile/src/screens/profile/components/AchievementChip.tsx` | PASS |
+| `Stepper.Mobile/src/screens/profile/components/MutualGroupItem.tsx` | PASS |
+| `Stepper.Mobile/src/screens/profile/components/FriendActionButton.tsx` | PASS |
+| `Stepper.Mobile/src/screens/profile/components/PrivacyRestrictedView.tsx` | PASS |
+| `Stepper.Mobile/src/screens/profile/components/index.ts` | PASS |
+| `Stepper.Mobile/src/store/userStore.ts` | PASS |
+| `Stepper.Mobile/src/services/api/usersApi.ts` | PASS |
+| `Stepper.Mobile/src/services/api/index.ts` | PASS |
+| `Stepper.Mobile/src/navigation/stacks/SettingsStackNavigator.tsx` | PASS |
+| `Stepper.Mobile/src/navigation/stacks/FriendsStackNavigator.tsx` | PASS |
+| `Stepper.Mobile/src/utils/stringUtils.ts` | PASS |
+| `Stepper.Mobile/__mocks__/expo-image-picker.ts` | PASS |
+| `Stepper.Mobile/jest.config.js` | PASS |
 | All test files | PASS |
 
 ## Test Summary

@@ -1,13 +1,13 @@
 # Mobile Cleanup Report
 
 **Date:** 2026-01-25
-**Purpose:** Remove direct Supabase calls from WalkingApp.Mobile (all backend logic should go through WalkingApp.Api)
+**Purpose:** Remove direct Supabase calls from Stepper.Mobile (all backend logic should go through Stepper.Api)
 
 ---
 
 ## Summary
 
-This cleanup enforces the architecture rule that WalkingApp.Mobile should ONLY contain frontend code. All backend/database logic must go through WalkingApp.Api endpoints.
+This cleanup enforces the architecture rule that Stepper.Mobile should ONLY contain frontend code. All backend/database logic must go through Stepper.Api endpoints.
 
 ### Files Deleted
 
@@ -135,10 +135,10 @@ TypeScript compilation: No errors
 
 ## Architecture Compliance
 
-After this cleanup, WalkingApp.Mobile follows the correct architecture:
+After this cleanup, Stepper.Mobile follows the correct architecture:
 
-1. **All data operations** go through `src/services/api/` which calls WalkingApp.Api
-2. **All authentication** goes through `authApi.ts` which calls WalkingApp.Api
+1. **All data operations** go through `src/services/api/` which calls Stepper.Api
+2. **All authentication** goes through `authApi.ts` which calls Stepper.Api
 3. **Supabase client** is only used for:
    - Real-time subscriptions (postgres_changes)
    - Google OAuth flow (signInWithOAuth, setSession)

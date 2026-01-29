@@ -137,21 +137,21 @@ None.
 
 #### Issue #1: Negative count edge case in FriendRequestsBanner
 
-**File**: `WalkingApp.Mobile/src/screens/friends/components/FriendRequestsBanner.tsx`
+**File**: `Stepper.Mobile/src/screens/friends/components/FriendRequestsBanner.tsx`
 **Line**: 22-24
 **Description**: The banner checks `if (count === 0)` to hide, but a negative count (while unlikely) would still render the banner. The test at line 172-179 in the test file acknowledges this behavior.
 **Suggestion**: Consider changing the condition to `if (count <= 0)` for defensive programming, although this is a very minor edge case since the count comes from an array length which is never negative.
 
 #### Issue #2: Username fallback in friendsApi.ts
 
-**File**: `WalkingApp.Mobile/src/services/api/friendsApi.ts`
+**File**: `Stepper.Mobile/src/services/api/friendsApi.ts`
 **Lines**: 58, 120, 164
 **Description**: The `username` field falls back to `display_name` with a comment noting "username not in DB, fallback to display_name". This is acceptable but creates a slight inconsistency where the FriendRequestsScreen displays `@{item.username}` which will show the display name with an @ prefix.
 **Suggestion**: Consider either adding a username column to the database in a future plan, or adjusting the UI to not show the @ prefix when using display_name as fallback. This is cosmetic only.
 
 #### Issue #3: Long press interaction not implemented
 
-**File**: `WalkingApp.Mobile/src/screens/friends/FriendsListScreen.tsx`
+**File**: `Stepper.Mobile/src/screens/friends/FriendsListScreen.tsx`
 **Description**: The plan's acceptance criteria mention "Long Press Friend: Show options (View Profile, Remove Friend)" but this interaction is not implemented.
 **Suggestion**: This could be considered out of scope for this iteration if the focus was on core functionality. Consider adding this in a future iteration if needed.
 

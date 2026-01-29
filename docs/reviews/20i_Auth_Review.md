@@ -78,7 +78,7 @@ This implementation successfully routes authentication through the .NET backend 
 
 #### Issue #1: Remaining Supabase Auth Usage in Non-Auth Code
 
-**Files**: Multiple files in `WalkingApp.Mobile/src/services/api/`
+**Files**: Multiple files in `Stepper.Mobile/src/services/api/`
 **Description**: While authentication flows (login, register, logout, forgot-password) correctly use the new authApi, there remain ~30 instances of `supabase.auth.getUser()` in production code:
 
 - `usersApi.ts` - 4 occurrences (lines 71, 90, 106, 264)
@@ -101,13 +101,13 @@ This implementation successfully routes authentication through the .NET backend 
 
 #### Issue #2: Password Minimum Length Inconsistency
 
-**File**: `WalkingApp.Api/Auth/AuthService.cs:15`
+**File**: `Stepper.Api/Auth/AuthService.cs:15`
 **Description**: Backend uses `MinPasswordLength = 6`, while the plan specifies "min 8 characters" in the DTOs documentation.
 **Suggestion**: This is a minor inconsistency. The plan's example code shows 8 characters, but 6 is a reasonable minimum. Ensure frontend validation matches backend (6 characters). Current implementation is consistent (both use 6).
 
 #### Issue #3: Console.error in tokenStorage
 
-**File**: `WalkingApp.Mobile/src/services/tokenStorage.ts:48,63,91`
+**File**: `Stepper.Mobile/src/services/tokenStorage.ts:48,63,91`
 **Description**: Uses `console.error` for error logging, which will appear in production.
 **Suggestion**: Consider using a proper logging abstraction or ensuring these logs are stripped in production builds. Low priority as this only occurs during error conditions.
 

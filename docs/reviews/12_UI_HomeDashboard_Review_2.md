@@ -12,7 +12,7 @@ This is a follow-up review to verify that all 6 issues identified in Review 1 ha
 
 ### Issue #1: Implicit `false` in Promise.all array (FIXED)
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\home\hooks\useHomeData.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\home\hooks\useHomeData.ts`
 **Lines**: 72-84
 
 **Previous Code**:
@@ -49,7 +49,7 @@ await Promise.all(fetchPromises);
 
 ### Issue #2: Greeting should auto-refresh periodically (FIXED)
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\home\components\GreetingHeader.tsx`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\home\components\GreetingHeader.tsx`
 **Lines**: 9-52
 
 **Previous Code**:
@@ -100,7 +100,7 @@ useEffect(() => {
 
 ### Issue #3: Magic number `1300` should be documented (FIXED)
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\home\hooks\useHomeData.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\home\hooks\useHomeData.ts`
 **Lines**: 149-152
 
 **Previous Code**:
@@ -123,7 +123,7 @@ const todayDistance = stats?.today ? Math.round((stats.today / STEPS_PER_KILOMET
 
 ### Issue #4: Streak calculation should use UTC time (FIXED)
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\services\api\stepsApi.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\services\api\stepsApi.ts`
 **Lines**: 63-89
 
 **Previous Code**:
@@ -171,7 +171,7 @@ if (allData) {
 
 ### Issue #5: Errors in real-time subscription should not be swallowed (FIXED)
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\services\api\activityApi.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\services\api\activityApi.ts`
 **Lines**: 66-117
 
 **Previous Code**:
@@ -249,8 +249,8 @@ subscribeToFeed: (callback: (item: ActivityItem) => void, onError?: (error: Erro
 ### Issue #6: `any` type for error handling should be replaced (FIXED)
 
 **Files**:
-- `E:\Github Projects\Stepper\WalkingApp.Mobile\src\store\stepsStore.ts`
-- `E:\Github Projects\Stepper\WalkingApp.Mobile\src\store\activityStore.ts`
+- `E:\Github Projects\Stepper\Stepper.Mobile\src\store\stepsStore.ts`
+- `E:\Github Projects\Stepper\Stepper.Mobile\src\store\activityStore.ts`
 
 **Previous Code**:
 ```typescript
@@ -309,7 +309,7 @@ export function getErrorMessage(error: unknown, fallbackMessage = 'An unexpected
 
 ## New Code Review: errorUtils.ts
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\utils\errorUtils.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\utils\errorUtils.ts`
 
 | Aspect | Status | Notes |
 |--------|--------|-------|
@@ -353,7 +353,7 @@ None identified.
 ### MINOR
 
 #### Issue #7: Missing unit tests for errorUtils.ts
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\utils\errorUtils.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\utils\errorUtils.ts`
 **Description**: The new `getErrorMessage` utility function lacks dedicated unit tests.
 **Impact**: Low - the function is simple and implicitly tested through store tests.
 **Suggestion**: Consider adding a test file at `src/utils/__tests__/errorUtils.test.ts` to document expected behavior:

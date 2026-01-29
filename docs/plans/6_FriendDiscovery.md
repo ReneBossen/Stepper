@@ -74,7 +74,7 @@ This plan implements the Friend Discovery feature to help users find and connect
 
 9. **Implement invite link generation** with expiration and usage limits
 
-10. **Configure deep link URL format**: `walkingapp://invite/{code}`
+10. **Configure deep link URL format**: `Stepper://invite/{code}`
 
 11. **Register services** in Program.cs
 

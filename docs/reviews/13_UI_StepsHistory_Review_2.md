@@ -55,7 +55,7 @@ This iteration successfully addresses all three MINOR issues identified in Revie
 
 ### Fix #1: Hardcoded Color Replaced with Theme Color
 
-**File**: `WalkingApp.Mobile/src/screens/steps/components/StepHistoryItem.tsx`
+**File**: `Stepper.Mobile/src/screens/steps/components/StepHistoryItem.tsx`
 **Lines**: 47-50
 
 **Before (Review 1)**:
@@ -80,7 +80,7 @@ The border color is now dynamically set via the inline style using `theme.colors
 
 ### Fix #2: Unused Variable Removed
 
-**File**: `WalkingApp.Mobile/src/screens/steps/components/StatsSummary.tsx`
+**File**: `Stepper.Mobile/src/screens/steps/components/StatsSummary.tsx`
 
 **Before (Review 1)**:
 ```typescript
@@ -103,7 +103,7 @@ This is the correct approach since it calculates the average based on days with 
 
 ### Fix #3: DateRangePicker Component Implemented
 
-**New File**: `WalkingApp.Mobile/src/screens/steps/components/DateRangePicker.tsx`
+**New File**: `Stepper.Mobile/src/screens/steps/components/DateRangePicker.tsx`
 
 The component has been implemented with the following features:
 - Modal dialog using React Native Paper's `Portal` and `Modal`
@@ -145,7 +145,7 @@ None identified.
 
 ### Observation #1: Missing Dedicated Unit Tests for DateRangePicker
 
-**File**: `WalkingApp.Mobile/src/screens/steps/components/__tests__/DateRangePicker.test.tsx`
+**File**: `Stepper.Mobile/src/screens/steps/components/__tests__/DateRangePicker.test.tsx`
 **Status**: Missing
 
 **Description**: While the `DateRangePicker` component is mocked and tested via the `StepsHistoryScreen` tests, there are no dedicated unit tests for the component itself. The component has significant logic that could benefit from direct testing:
@@ -179,12 +179,12 @@ None identified.
 
 | File | Status | Notes |
 |------|--------|-------|
-| `WalkingApp.Mobile/src/screens/steps/components/StepHistoryItem.tsx` | PASS | Hardcoded color replaced with theme color |
-| `WalkingApp.Mobile/src/screens/steps/components/StatsSummary.tsx` | PASS | Unused variable removed |
-| `WalkingApp.Mobile/src/screens/steps/components/DateRangePicker.tsx` | PASS | New component, clean implementation |
-| `WalkingApp.Mobile/src/screens/steps/components/index.ts` | PASS | DateRangePicker exported |
-| `WalkingApp.Mobile/src/screens/steps/StepsHistoryScreen.tsx` | PASS | DateRangePicker integrated properly |
-| `WalkingApp.Mobile/src/screens/steps/__tests__/StepsHistoryScreen.test.tsx` | PASS | Tests updated with DateRangePicker mock |
+| `Stepper.Mobile/src/screens/steps/components/StepHistoryItem.tsx` | PASS | Hardcoded color replaced with theme color |
+| `Stepper.Mobile/src/screens/steps/components/StatsSummary.tsx` | PASS | Unused variable removed |
+| `Stepper.Mobile/src/screens/steps/components/DateRangePicker.tsx` | PASS | New component, clean implementation |
+| `Stepper.Mobile/src/screens/steps/components/index.ts` | PASS | DateRangePicker exported |
+| `Stepper.Mobile/src/screens/steps/StepsHistoryScreen.tsx` | PASS | DateRangePicker integrated properly |
+| `Stepper.Mobile/src/screens/steps/__tests__/StepsHistoryScreen.test.tsx` | PASS | Tests updated with DateRangePicker mock |
 
 ## Test Results
 

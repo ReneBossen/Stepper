@@ -10,12 +10,12 @@ Final cleanup phase after all feature refactoring is complete. This plan ensures
 
 ## Affected Areas
 
-### Mobile (WalkingApp.Mobile)
+### Mobile (Stepper.Mobile)
 - All `services/api/*.ts` files
 - Store files that may have Supabase imports
 - Type definitions
 
-### Backend (WalkingApp.Api)
+### Backend (Stepper.Api)
 - Controller route consistency
 - API documentation
 
@@ -29,7 +29,7 @@ Final cleanup phase after all feature refactoring is complete. This plan ensures
 
 #### Step 1.1: Audit All API Files
 
-Check each file in `WalkingApp.Mobile/src/services/api/` for direct Supabase imports:
+Check each file in `Stepper.Mobile/src/services/api/` for direct Supabase imports:
 
 | File | Expected State |
 |------|---------------|
@@ -59,7 +59,7 @@ For files with allowed Supabase imports (groups, activity):
 
 #### Step 2.1: Audit Store Files
 
-Check each store in `WalkingApp.Mobile/src/store/` for direct Supabase usage:
+Check each store in `Stepper.Mobile/src/store/` for direct Supabase usage:
 
 - Stores should use API functions, not direct Supabase calls
 - Auth store is exception (uses Supabase Auth)
@@ -109,7 +109,7 @@ Ensure all public endpoints have complete XML documentation:
 #### Step 4.1: Backend Tests
 
 ```bash
-cd WalkingApp.Api.Tests
+cd Stepper.Api.Tests
 dotnet test
 ```
 
@@ -118,7 +118,7 @@ All tests must pass. Fix any failures.
 #### Step 4.2: Mobile Tests
 
 ```bash
-cd WalkingApp.Mobile
+cd Stepper.Mobile
 npm test
 ```
 

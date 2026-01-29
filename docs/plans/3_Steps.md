@@ -30,7 +30,7 @@ This plan implements the Steps feature for recording and retrieving step count d
 
 1. **Create Steps folder structure**:
    ```
-   WalkingApp.Api/Steps/
+   Stepper.Api/Steps/
    ├── StepsController.cs
    ├── IStepService.cs
    ├── StepService.cs
@@ -209,7 +209,7 @@ This plan implements the Steps feature for recording and retrieving step count d
 
 ## Tests
 
-**Unit Tests** (WalkingApp.UnitTests/Steps/):
+**Unit Tests** (Stepper.UnitTests/Steps/):
 - `StepServiceTests`
   - Test recording valid steps creates entry
   - Test step count validation (0-200000)
@@ -218,7 +218,7 @@ This plan implements the Steps feature for recording and retrieving step count d
   - Test daily aggregation calculation
   - Test date range validation
 
-**Integration Tests** (WalkingApp.Api.Tests/Steps/):
+**Integration Tests** (Stepper.Api.Tests/Steps/):
 - `StepsControllerTests`
   - POST /api/steps creates entry and returns 201
   - POST /api/steps returns 400 for invalid input

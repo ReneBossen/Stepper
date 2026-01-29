@@ -162,7 +162,7 @@ check_avds() {
     if [ -z "$avd_list" ]; then
         print_warning "No AVDs found"
         print_info "Create an AVD using Android Studio Device Manager"
-        print_info "Recommended: WalkingApp_Pixel7_API34"
+        print_info "Recommended: Stepper_Pixel7_API34"
         return 1
     fi
 
@@ -172,10 +172,10 @@ check_avds() {
     done <<< "$avd_list"
 
     # Check for recommended AVD
-    if echo "$avd_list" | grep -q "WalkingApp_Pixel7_API34"; then
-        print_info "Recommended AVD 'WalkingApp_Pixel7_API34' is configured"
+    if echo "$avd_list" | grep -q "Stepper_Pixel7_API34"; then
+        print_info "Recommended AVD 'Stepper_Pixel7_API34' is configured"
     else
-        print_warning "Recommended AVD 'WalkingApp_Pixel7_API34' not found"
+        print_warning "Recommended AVD 'Stepper_Pixel7_API34' not found"
         print_info "Consider creating it for Walking App development"
     fi
 
@@ -297,8 +297,8 @@ print_summary() {
         echo "Your Android development environment is ready."
         echo ""
         echo "Next steps:"
-        echo "  1. Start an emulator: emulator -avd WalkingApp_Pixel7_API34"
-        echo "  2. Navigate to mobile project: cd WalkingApp.Mobile"
+        echo "  1. Start an emulator: emulator -avd Stepper_Pixel7_API34"
+        echo "  2. Navigate to mobile project: cd Stepper.Mobile"
         echo "  3. Run Expo: npm run android"
         echo ""
     else

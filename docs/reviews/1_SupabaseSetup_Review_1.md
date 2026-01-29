@@ -42,7 +42,7 @@ None identified.
 ### MAJOR
 
 #### Issue #1: Missing Authorization Middleware Call
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Program.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Program.cs`
 **Line**: 32
 **Description**: The `app.UseAuthorization()` is called but there is no corresponding `app.UseAuthentication()` middleware registered. While the custom `SupabaseAuthMiddleware` populates `HttpContext.User`, ASP.NET Core's authorization system expects the standard authentication middleware to be present in the pipeline. This may cause issues when using `[Authorize]` attributes on controllers.
 
@@ -57,7 +57,7 @@ app.UseAuthorization();
 Alternatively, if using a custom middleware approach, consider removing `app.UseAuthorization()` since RLS policies handle authorization at the database level per the architecture document.
 
 #### Issue #2: JWT Token Validation Missing Issuer and Audience Checks
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Authentication/SupabaseAuthMiddleware.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Authentication/SupabaseAuthMiddleware.cs`
 **Line**: 76-84
 **Description**: The JWT token validation explicitly disables issuer and audience validation (`ValidateIssuer = false`, `ValidateAudience = false`). While this simplifies initial setup, it reduces security by allowing tokens from any issuer with a matching signature. Supabase JWT tokens include specific `iss` (issuer) and `aud` (audience) claims that should be validated.
 
@@ -81,7 +81,7 @@ Add `Issuer` and `Audience` properties to `SupabaseSettings` and configure them 
 ### MINOR
 
 #### Issue #3: Constructor Null Check in SupabaseClientFactory
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Database/SupabaseClientFactory.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Database/SupabaseClientFactory.cs`
 **Line**: 14-17
 **Description**: The constructor does not validate that `settings.Value` is not null before assigning to `_settings`. While the test validates that passing null throws `NullReferenceException`, it would be more defensive to use guard clauses with descriptive error messages.
 
@@ -96,7 +96,7 @@ public SupabaseClientFactory(IOptions<SupabaseSettings> settings)
 ```
 
 #### Issue #4: ExceptionHandlingMiddleware Generic Error Messages
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Middleware/ExceptionHandlingMiddleware.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Middleware/ExceptionHandlingMiddleware.cs`
 **Line**: 38-45
 **Description**: The exception handling uses generic error messages that don't expose sensitive information (good for security), but the `HttpRequestException` mapping to "A database error occurred." is misleading since `HttpRequestException` typically indicates HTTP client errors, not database errors. This may confuse debugging efforts.
 
@@ -108,7 +108,7 @@ HttpRequestException => (HttpStatusCode.BadGateway, "An external service error o
 Or create custom exception types for Supabase-specific errors.
 
 #### Issue #5: ApiResponse Errors Property Initialization
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Models/ApiResponse.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Models/ApiResponse.cs`
 **Line**: 22
 **Description**: The `Errors` property is initialized with `new()` which is fine, but the static factory methods also explicitly create new lists. This is redundant but not incorrect. For consistency and to avoid future bugs, consider making `Errors` a required init property or using a get-only property with a backing field.
 
@@ -275,25 +275,25 @@ All items from Plan 1 implemented:
 ## Relevant File Paths
 
 Implementation files reviewed:
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Configuration/SupabaseSettings.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Database/ISupabaseClientFactory.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Database/SupabaseClientFactory.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Authentication/SupabaseAuthMiddleware.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Extensions/ClaimsPrincipalExtensions.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Extensions/ServiceCollectionExtensions.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Middleware/ExceptionHandlingMiddleware.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Models/ApiResponse.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Program.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Configuration/SupabaseSettings.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Database/ISupabaseClientFactory.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Database/SupabaseClientFactory.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Authentication/SupabaseAuthMiddleware.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Extensions/ClaimsPrincipalExtensions.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Extensions/ServiceCollectionExtensions.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Middleware/ExceptionHandlingMiddleware.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Models/ApiResponse.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Program.cs`
 
 Test files reviewed:
-- `/mnt/c/Users/rene_/source/repos/walkingApp/tests/WalkingApp.UnitTests/Common/Database/SupabaseClientFactoryTests.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/tests/WalkingApp.UnitTests/Common/Authentication/SupabaseAuthMiddlewareTests.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/tests/WalkingApp.UnitTests/Common/Extensions/ClaimsPrincipalExtensionsTests.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/tests/WalkingApp.UnitTests/Common/Models/ApiResponseTests.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/tests/WalkingApp.UnitTests/Common/Middleware/ExceptionHandlingMiddlewareTests.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/tests/Stepper.UnitTests/Common/Database/SupabaseClientFactoryTests.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/tests/Stepper.UnitTests/Common/Authentication/SupabaseAuthMiddlewareTests.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/tests/Stepper.UnitTests/Common/Extensions/ClaimsPrincipalExtensionsTests.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/tests/Stepper.UnitTests/Common/Models/ApiResponseTests.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/tests/Stepper.UnitTests/Common/Middleware/ExceptionHandlingMiddlewareTests.cs`
 
 Configuration files reviewed:
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/appsettings.json`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/appsettings.Development.json.template`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/WalkingApp.Api.csproj`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/.gitignore`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/appsettings.json`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/appsettings.Development.json.template`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Stepper.Api.csproj`
+- `/mnt/c/Users/rene_/source/repos/Stepper/.gitignore`

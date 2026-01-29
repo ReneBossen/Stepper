@@ -24,13 +24,13 @@ This foundational plan establishes the Supabase integration for the Walking App,
 
 ## Implementation Steps
 
-1. **Add Supabase NuGet package** to `WalkingApp.Api.csproj`:
+1. **Add Supabase NuGet package** to `Stepper.Api.csproj`:
    - `Supabase` (official .NET client)
    - `Microsoft.AspNetCore.Authentication.JwtBearer` for token validation
 
 2. **Create Common folder structure**:
    ```
-   WalkingApp.Api/Common/
+   Stepper.Api/Common/
    ├── Configuration/
    │   └── SupabaseSettings.cs
    ├── Database/
@@ -120,12 +120,12 @@ No database tables in this plan - this is infrastructure setup. Supabase project
 
 ## Tests
 
-**Unit Tests** (WalkingApp.UnitTests/Common/):
+**Unit Tests** (Stepper.UnitTests/Common/):
 - `SupabaseClientFactoryTests` - Verify client creation
 - `ClaimsPrincipalExtensionsTests` - Verify user ID extraction
 - `ExceptionHandlingMiddlewareTests` - Verify error responses
 
-**Integration Tests** (WalkingApp.Api.Tests/Common/):
+**Integration Tests** (Stepper.Api.Tests/Common/):
 - `AuthenticationIntegrationTests` - Verify protected endpoints require valid tokens
 - `SupabaseConnectionTests` - Verify connection to test Supabase instance
 

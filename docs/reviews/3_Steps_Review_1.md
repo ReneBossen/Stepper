@@ -33,7 +33,7 @@ The Steps implementation is a well-structured vertical slice that adheres to the
 ### BLOCKER
 
 #### Issue #1: Performance Issue in Pagination - Fetching All Records for Count
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Steps/StepRepository.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Steps/StepRepository.cs`
 **Lines**: 80-85
 **Description**: The `GetByDateRangeAsync` method fetches ALL records matching the filter to get a count before fetching the paginated results. This performs two separate queries:
 1. First query fetches all matching records just to count them (line 80-83)
@@ -75,9 +75,9 @@ Alternatively, if the Supabase client doesn't expose this directly, consider:
 ### MAJOR
 
 #### Issue #2: Database Function Defined but Not Used
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/docs/migrations/003_create_step_entries_table.sql`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/docs/migrations/003_create_step_entries_table.sql`
 **Lines**: 69-93
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Steps/StepRepository.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Steps/StepRepository.cs`
 **Lines**: 103-127
 **Description**: The migration script defines a PostgreSQL function `get_daily_step_summary` for efficient server-side aggregation, but the repository implementation does not use it. Instead, `GetDailySummariesAsync` fetches all entries and performs aggregation in-memory on the application server:
 
@@ -115,7 +115,7 @@ This approach:
 **Recommendation**: Use the database function as it provides better performance and follows best practices for data aggregation.
 
 #### Issue #3: Duplicate Query in GetByDateRangeAsync
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Steps/StepRepository.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Steps/StepRepository.cs`
 **Lines**: 75-99
 **Description**: Even after fixing Issue #1, the method performs the same WHERE clause twice with identical filters. The code could be optimized to reduce duplication and improve maintainability.
 
@@ -133,7 +133,7 @@ private ISupabaseTable<StepEntryEntity, BaseModel> BuildDateRangeQuery(
 However, this may not be possible with the Supabase client API. If not feasible, at minimum add a comment explaining why the query is duplicated.
 
 #### Issue #4: Error Handling Inconsistency in DeleteAsync
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Steps/StepRepository.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Steps/StepRepository.cs`
 **Lines**: 130-147
 **Description**: The `DeleteAsync` method has a broad catch-all exception handler that returns false for any exception. This hides genuine errors (network issues, authentication failures, etc.) and makes debugging difficult:
 
@@ -174,7 +174,7 @@ catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
 This allows genuine errors to be caught by the global exception handler while properly handling "not found" cases.
 
 #### Issue #5: Missing Validation in DTOs
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Steps/DTOs/RecordStepsRequest.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Steps/DTOs/RecordStepsRequest.cs`
 **Lines**: 1-12
 **Description**: The `RecordStepsRequest` DTO lacks validation attributes. While validation is performed in the service layer, adding data annotations would provide:
 - Automatic model validation by ASP.NET Core
@@ -214,7 +214,7 @@ public class RecordStepsRequest
 Note: Keep the service-layer validation as it handles business rules (future date check) that can't be expressed with attributes.
 
 #### Issue #6: Missing Index Consideration for Source Column
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/docs/migrations/003_create_step_entries_table.sql`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/docs/migrations/003_create_step_entries_table.sql`
 **Lines**: 28-30
 **Description**: The migration creates indexes on `(user_id, date)` and `(date)`, but there's a unique constraint on `(user_id, date, source)`. If queries frequently filter by source or if the application needs to find entries by source, an additional index might improve performance. However, this depends on actual query patterns.
 
@@ -228,7 +228,7 @@ This is a minor issue and can be addressed through performance monitoring post-d
 ### MINOR
 
 #### Issue #7: Inconsistent Null Handling in StepEntryEntity Conversion
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Steps/StepEntryEntity.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Steps/StepEntryEntity.cs`
 **Lines**: 47-59
 **Description**: The `FromStepEntry` static method creates an entity but doesn't explicitly handle the case where `StepEntry` might have invalid state. While this is unlikely due to validation in the service layer, defensive programming suggests null checking.
 
@@ -252,7 +252,7 @@ public static StepEntryEntity FromStepEntry(StepEntry stepEntry)
 ```
 
 #### Issue #8: DateRange Value Object Lacks Validation
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Steps/DTOs/DateRange.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Steps/DTOs/DateRange.cs`
 **Lines**: 1-10
 **Description**: The `DateRange` class is described as a "value object" but has mutable properties and no validation. True value objects should be immutable and self-validating.
 
@@ -282,7 +282,7 @@ public class DateRange
 However, this may cause issues with model binding. If keeping it simple for API binding, at least use `init` instead of `set` for immutability after construction.
 
 #### Issue #9: Controller Could Return 204 No Content for Empty Results
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Steps/StepsController.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Steps/StepsController.cs`
 **Lines**: 63-81
 **Description**: When `GetToday()` returns zero steps (no entries for today), the API returns 200 OK with a zero-filled summary. This is acceptable, but RESTful best practices sometimes suggest 204 No Content for empty results.
 

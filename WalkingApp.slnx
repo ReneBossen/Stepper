@@ -1,6 +1,0 @@
-<Solution>
-  <Folder Name="/tests/">
-    <Project Path="tests/WalkingApp.UnitTests/WalkingApp.UnitTests.csproj" />
-  </Folder>
-  <Project Path="WalkingApp.Api/WalkingApp.Api.csproj" />
-</Solution>

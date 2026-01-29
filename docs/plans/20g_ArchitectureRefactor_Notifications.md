@@ -10,7 +10,7 @@ Create a new Notifications feature slice in the backend and refactor the mobile 
 
 ## Affected Feature Slices
 
-### Backend (WalkingApp.Api/Notifications) - NEW
+### Backend (Stepper.Api/Notifications) - NEW
 - `NotificationsController.cs`: HTTP endpoints
 - `NotificationService.cs` / `INotificationService.cs`: Business logic
 - `NotificationRepository.cs` / `INotificationRepository.cs`: Data access
@@ -18,7 +18,7 @@ Create a new Notifications feature slice in the backend and refactor the mobile 
 - `NotificationEntity.cs`: Database entity
 - `DTOs/`: Request/response types
 
-### Mobile (WalkingApp.Mobile)
+### Mobile (Stepper.Mobile)
 - `services/api/notificationsApi.ts`: Complete rewrite
 
 ## Proposed Types
@@ -44,7 +44,7 @@ Create a new Notifications feature slice in the backend and refactor the mobile 
 
 #### Step 1.1: Create Domain Model
 
-Create `WalkingApp.Api/Notifications/Notification.cs`:
+Create `Stepper.Api/Notifications/Notification.cs`:
 ```csharp
 public class Notification
 {
@@ -73,7 +73,7 @@ public enum NotificationType
 
 #### Step 1.2: Create Database Entity
 
-Create `WalkingApp.Api/Notifications/NotificationEntity.cs`:
+Create `Stepper.Api/Notifications/NotificationEntity.cs`:
 ```csharp
 [Table("notifications")]
 internal class NotificationEntity : BaseModel
@@ -111,7 +111,7 @@ internal class NotificationEntity : BaseModel
 
 #### Step 1.3: Create DTOs
 
-Create `WalkingApp.Api/Notifications/DTOs/NotificationResponse.cs`:
+Create `Stepper.Api/Notifications/DTOs/NotificationResponse.cs`:
 ```csharp
 public record NotificationResponse(
     Guid Id,
@@ -125,7 +125,7 @@ public record NotificationResponse(
 );
 ```
 
-Create `WalkingApp.Api/Notifications/DTOs/NotificationListResponse.cs`:
+Create `Stepper.Api/Notifications/DTOs/NotificationListResponse.cs`:
 ```csharp
 public record NotificationListResponse(
     List<NotificationResponse> Items,
@@ -135,14 +135,14 @@ public record NotificationListResponse(
 );
 ```
 
-Create `WalkingApp.Api/Notifications/DTOs/UnreadCountResponse.cs`:
+Create `Stepper.Api/Notifications/DTOs/UnreadCountResponse.cs`:
 ```csharp
 public record UnreadCountResponse(int Count);
 ```
 
 #### Step 1.4: Create Repository
 
-Create `WalkingApp.Api/Notifications/INotificationRepository.cs`:
+Create `Stepper.Api/Notifications/INotificationRepository.cs`:
 ```csharp
 public interface INotificationRepository
 {
@@ -157,14 +157,14 @@ public interface INotificationRepository
 }
 ```
 
-Create `WalkingApp.Api/Notifications/NotificationRepository.cs`:
+Create `Stepper.Api/Notifications/NotificationRepository.cs`:
 - Implement all methods using Supabase client
 - Query notifications table filtered by user_id
 - Order by created_at descending
 
 #### Step 1.5: Create Service
 
-Create `WalkingApp.Api/Notifications/INotificationService.cs`:
+Create `Stepper.Api/Notifications/INotificationService.cs`:
 ```csharp
 public interface INotificationService
 {
@@ -176,14 +176,14 @@ public interface INotificationService
 }
 ```
 
-Create `WalkingApp.Api/Notifications/NotificationService.cs`:
+Create `Stepper.Api/Notifications/NotificationService.cs`:
 - Validate notification belongs to user before operations
 - Map to response DTOs
 - Calculate pagination
 
 #### Step 1.6: Create Controller
 
-Create `WalkingApp.Api/Notifications/NotificationsController.cs`:
+Create `Stepper.Api/Notifications/NotificationsController.cs`:
 ```csharp
 [ApiController]
 [Route("api/v1/notifications")]
@@ -331,7 +331,7 @@ CREATE POLICY "Users can delete own notifications"
 ## Tests
 
 ### Backend Unit Tests
-- `WalkingApp.Api.Tests/Notifications/NotificationServiceTests.cs`
+- `Stepper.Api.Tests/Notifications/NotificationServiceTests.cs`
   - Test get all notifications
   - Test unread count
   - Test mark as read
@@ -340,13 +340,13 @@ CREATE POLICY "Users can delete own notifications"
   - Test authorization (can't access others' notifications)
 
 ### Backend Integration Tests
-- `WalkingApp.Api.Tests/Notifications/NotificationsControllerTests.cs`
+- `Stepper.Api.Tests/Notifications/NotificationsControllerTests.cs`
   - Test all endpoints
   - Test pagination
   - Test authorization
 
 ### Mobile Tests
-- Update `WalkingApp.Mobile/src/services/api/__tests__/notificationsApi.test.ts`
+- Update `Stepper.Mobile/src/services/api/__tests__/notificationsApi.test.ts`
 - Mock `apiClient` instead of Supabase
 
 ## Acceptance Criteria

@@ -75,8 +75,8 @@ No major issues found.
 #### Issue #1: Magic Strings for Competition Type Labels
 
 **Files**:
-- `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\groups\GroupDetailScreen.tsx` (lines 171-175)
-- `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\groups\components\GroupCard.tsx` (lines 22-26)
+- `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\groups\GroupDetailScreen.tsx` (lines 171-175)
+- `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\groups\components\GroupCard.tsx` (lines 22-26)
 
 **Description**: Competition type labels are defined inline as object literals in multiple places.
 
@@ -95,7 +95,7 @@ export const COMPETITION_TYPE_LABELS: Record<string, string> = {
 
 #### Issue #2: Type Assertion for Private Group Join Code
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\groups\GroupDetailScreen.tsx`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\groups\GroupDetailScreen.tsx`
 **Line**: 142
 
 **Description**: Uses `(currentGroup as any).join_code` which bypasses type safety.
@@ -112,8 +112,8 @@ currentGroup?.is_private
 #### Issue #3: Missing Accessibility Labels on Some Components
 
 **Files**:
-- `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\groups\components\GroupCard.tsx`
-- `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\groups\components\JoinGroupCard.tsx`
+- `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\groups\components\GroupCard.tsx`
+- `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\groups\components\JoinGroupCard.tsx`
 
 **Description**: The Pressable components in GroupCard and JoinGroupCard do not have `accessibilityLabel` or `accessibilityRole` props, which could affect screen reader users.
 
@@ -141,7 +141,7 @@ currentGroup?.is_private
 
 #### Issue #4: Hardcoded Border Color in GroupCard
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\groups\components\GroupCard.tsx`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\groups\components\GroupCard.tsx`
 **Line**: 211
 
 **Description**: The `borderTopColor` uses a hardcoded value `#e0e0e0` instead of using theme colors.
@@ -156,7 +156,7 @@ borderTopColor: '#e0e0e0',
 
 #### Issue #5: Unused Avatar Import in GroupCard
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\groups\components\GroupCard.tsx`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\groups\components\GroupCard.tsx`
 **Line**: 3
 
 **Description**: `Avatar` is imported from `react-native-paper` but never used in the component.
@@ -171,7 +171,7 @@ import { Card, Text, Chip, Avatar, useTheme } from 'react-native-paper';
 
 #### Issue #6: Inconsistent Period Display Logic
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\groups\GroupDetailScreen.tsx`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\groups\GroupDetailScreen.tsx`
 **Lines**: 210-211
 
 **Description**: The period display logic for daily competition is hard to read and could produce awkward text like "This Dail" for daily competitions.
@@ -199,7 +199,7 @@ const periodPrefix = {
 
 ### N+1 Query Pattern (Informational)
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\services\api\groupsApi.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\services\api\groupsApi.ts`
 **Lines**: 90-146
 
 **Description**: The `getMyGroups` function makes multiple sequential API calls inside a `Promise.all` for each group (member count + leaderboard RPC). While `Promise.all` parallelizes these calls, for a user with many groups, this could result in many concurrent requests.
@@ -232,14 +232,14 @@ const periodPrefix = {
 
 | File | Status |
 |------|--------|
-| `WalkingApp.Mobile/src/screens/groups/GroupsListScreen.tsx` | PASS |
-| `WalkingApp.Mobile/src/screens/groups/GroupDetailScreen.tsx` | PASS (minor issues) |
-| `WalkingApp.Mobile/src/screens/groups/components/GroupCard.tsx` | PASS (minor issues) |
-| `WalkingApp.Mobile/src/screens/groups/components/LeaderboardItem.tsx` | PASS |
-| `WalkingApp.Mobile/src/screens/groups/components/JoinGroupCard.tsx` | PASS (minor issue) |
-| `WalkingApp.Mobile/src/screens/groups/components/index.ts` | PASS |
-| `WalkingApp.Mobile/src/services/api/groupsApi.ts` | PASS |
-| `WalkingApp.Mobile/src/store/groupsStore.ts` | PASS |
+| `Stepper.Mobile/src/screens/groups/GroupsListScreen.tsx` | PASS |
+| `Stepper.Mobile/src/screens/groups/GroupDetailScreen.tsx` | PASS (minor issues) |
+| `Stepper.Mobile/src/screens/groups/components/GroupCard.tsx` | PASS (minor issues) |
+| `Stepper.Mobile/src/screens/groups/components/LeaderboardItem.tsx` | PASS |
+| `Stepper.Mobile/src/screens/groups/components/JoinGroupCard.tsx` | PASS (minor issue) |
+| `Stepper.Mobile/src/screens/groups/components/index.ts` | PASS |
+| `Stepper.Mobile/src/services/api/groupsApi.ts` | PASS |
+| `Stepper.Mobile/src/store/groupsStore.ts` | PASS |
 | `docs/migrations/017_fix_group_memberships_rls_recursion.sql` | PASS |
 | `supabase/migrations/20260124140000_fix_group_memberships_rls_recursion.sql` | PASS |
 | `scripts/seed-test-data.ts` | PASS |

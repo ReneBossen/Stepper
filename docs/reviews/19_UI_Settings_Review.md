@@ -92,7 +92,7 @@ No major issues found.
 
 #### Issue #1: Unused Import in NotificationSettingsScreen
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\settings\NotificationSettingsScreen.tsx`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\settings\NotificationSettingsScreen.tsx`
 **Line**: 12
 
 **Description**: The `expo-notifications` import is present but never used in the component.
@@ -112,7 +112,7 @@ The `Notifications` module is not referenced anywhere in the file. This was like
 
 #### Issue #2: Profile Visibility Setting Not Implemented
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\settings\SettingsScreen.tsx`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\settings\SettingsScreen.tsx`
 
 **Description**: The plan (wireframe lines 63-65) shows a "Profile Visibility" setting in the Privacy section, but it is not implemented in the Settings UI. The Privacy section only has:
 - Activity Visibility
@@ -145,7 +145,7 @@ However:
 
 #### Issue #3: Change Password and Email Not Implemented
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\settings\SettingsScreen.tsx`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\settings\SettingsScreen.tsx`
 
 **Description**: The plan (wireframe lines 20-30) shows:
 - Email setting with navigation arrow
@@ -161,7 +161,7 @@ Neither of these are implemented in the Account section. Currently only the Prof
 
 #### Issue #4: Notification Settings Not Persisted to Backend
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\settings\NotificationSettingsScreen.tsx`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\settings\NotificationSettingsScreen.tsx`
 **Lines**: 86-88
 
 **Description**: The detailed notification settings (friendRequests, friendAccepted, etc.) are only stored in local state. The code comment on lines 86-88 acknowledges this:
@@ -181,8 +181,8 @@ showSnackbar('Preference updated');
 #### Issue #5: Duplicate PrivacySettingType Definition
 
 **Files**:
-- `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\settings\SettingsScreen.tsx` (line 36)
-- `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\settings\components\PrivacyModal.tsx` (line 14)
+- `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\settings\SettingsScreen.tsx` (line 36)
+- `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\settings\components\PrivacyModal.tsx` (line 14)
 
 **Description**: The `PrivacySettingType` type is defined identically in both files:
 
@@ -208,16 +208,16 @@ None significant. The implementation follows established patterns and maintains 
 
 | File | Status |
 |------|--------|
-| `WalkingApp.Mobile/src/screens/settings/SettingsScreen.tsx` | PASS with minor issues |
-| `WalkingApp.Mobile/src/screens/settings/NotificationSettingsScreen.tsx` | PASS with unused import |
-| `WalkingApp.Mobile/src/screens/settings/components/UnitsModal.tsx` | PASS |
-| `WalkingApp.Mobile/src/screens/settings/components/DailyGoalModal.tsx` | PASS |
-| `WalkingApp.Mobile/src/screens/settings/components/ThemeModal.tsx` | PASS |
-| `WalkingApp.Mobile/src/screens/settings/components/PrivacyModal.tsx` | PASS |
-| `WalkingApp.Mobile/src/screens/settings/components/SignOutDialog.tsx` | PASS |
-| `WalkingApp.Mobile/src/screens/settings/components/index.ts` | PASS |
-| `WalkingApp.Mobile/src/navigation/types.ts` | PASS |
-| `WalkingApp.Mobile/src/navigation/stacks/SettingsStackNavigator.tsx` | PASS |
+| `Stepper.Mobile/src/screens/settings/SettingsScreen.tsx` | PASS with minor issues |
+| `Stepper.Mobile/src/screens/settings/NotificationSettingsScreen.tsx` | PASS with unused import |
+| `Stepper.Mobile/src/screens/settings/components/UnitsModal.tsx` | PASS |
+| `Stepper.Mobile/src/screens/settings/components/DailyGoalModal.tsx` | PASS |
+| `Stepper.Mobile/src/screens/settings/components/ThemeModal.tsx` | PASS |
+| `Stepper.Mobile/src/screens/settings/components/PrivacyModal.tsx` | PASS |
+| `Stepper.Mobile/src/screens/settings/components/SignOutDialog.tsx` | PASS |
+| `Stepper.Mobile/src/screens/settings/components/index.ts` | PASS |
+| `Stepper.Mobile/src/navigation/types.ts` | PASS |
+| `Stepper.Mobile/src/navigation/stacks/SettingsStackNavigator.tsx` | PASS |
 | All test files | PASS |
 
 ## Test Summary

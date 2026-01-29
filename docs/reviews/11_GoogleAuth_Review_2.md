@@ -142,7 +142,7 @@ The Google Authentication implementation has been **successfully refactored** fr
 **Recommendation**: Add to app.json when preparing for production:
 ```json
 "ios": {
-  "associatedDomains": ["applinks:walkingapp.com"]
+  "associatedDomains": ["applinks:Stepper.com"]
 }
 ```
 
@@ -322,7 +322,7 @@ export const useGoogleAuth = () => {
 const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
   clientId: GOOGLE_WEB_CLIENT_ID,
   androidClientId: GOOGLE_WEB_CLIENT_ID,
-  redirectUri: makeRedirectUri({ scheme: 'walkingapp' }),
+  redirectUri: makeRedirectUri({ scheme: 'Stepper' }),
 });
 ```
 **Assessment**: ✓ Proper expo-auth-session usage, secure configuration
