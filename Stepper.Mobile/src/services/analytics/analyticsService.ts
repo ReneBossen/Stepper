@@ -5,7 +5,6 @@
 
 import { Platform as RNPlatform } from 'react-native';
 import * as Application from 'expo-application';
-import * as Device from 'expo-device';
 import { analyticsConfig } from '@config/analytics.config';
 import {
   initializePostHog,
@@ -65,6 +64,22 @@ let eventQueue: QueuedEvent[] = [];
 const MAX_QUEUE_SIZE = 100;
 
 /**
+ * Get the device model name safely.
+ * expo-device requires native modules that may not be available in Expo Go.
+ */
+function getDeviceModel(): string {
+  try {
+    // Use require() instead of import to handle missing native module gracefully
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Device = require('expo-device');
+    return Device.modelName ?? 'unknown';
+  } catch {
+    // Native module not available (e.g., running in Expo Go)
+    return 'unknown';
+  }
+}
+
+/**
  * Get device information for user properties.
  */
 function getDeviceInfo(): {
@@ -74,7 +89,7 @@ function getDeviceInfo(): {
 } {
   const platform: Platform = RNPlatform.OS === 'ios' ? 'ios' : 'android';
   const appVersion = Application.nativeApplicationVersion ?? 'unknown';
-  const deviceModel = Device.modelName ?? 'unknown';
+  const deviceModel = getDeviceModel();
 
   return {
     platform,
