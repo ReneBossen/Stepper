@@ -1,21 +1,21 @@
 # Supabase Storage Setup Guide
 
-This guide explains how to configure Supabase Storage for user avatar uploads in the Walking App.
+This guide explains how to configure Supabase Storage for user avatar uploads in the Stepper.
 
 ## Overview
 
-The Walking App uses Supabase Storage to store user profile photos (avatars). This guide will walk you through creating the storage bucket and configuring security policies.
+The Stepper uses Supabase Storage to store user profile photos (avatars). This guide will walk you through creating the storage bucket and configuring security policies.
 
 ## Prerequisites
 
 - Access to Supabase Dashboard (https://app.supabase.com)
-- Your Walking App project open in Supabase
+- Your Stepper project open in Supabase
 
 ## Step 1: Create the Avatars Bucket
 
 1. **Navigate to Storage**
    - Log in to your Supabase Dashboard
-   - Select your Walking App project
+   - Select your Stepper project
    - Click on "Storage" in the left sidebar
 
 2. **Create New Bucket**
@@ -187,9 +187,9 @@ The mobile app's `usersApi.uploadAvatar()` function handles:
 
 ## Related Files
 
-- **Frontend API**: `WalkingApp.Mobile/src/services/api/usersApi.ts` (uploadAvatar function)
-- **User Store**: `WalkingApp.Mobile/src/store/userStore.ts` (avatar upload logic)
-- **Profile Setup**: `WalkingApp.Mobile/src/screens/onboarding/ProfileSetupScreen.tsx`
+- **Frontend API**: `Stepper.Mobile/src/services/api/usersApi.ts` (uploadAvatar function)
+- **User Store**: `Stepper.Mobile/src/store/userStore.ts` (avatar upload logic)
+- **Profile Setup**: `Stepper.Mobile/src/screens/onboarding/ProfileSetupScreen.tsx`
 
 ## Additional Resources
 

@@ -1,6 +1,6 @@
 # Scripts
 
-This directory contains utility scripts for the WalkingApp/Stepper project.
+This directory contains utility scripts for the Stepper/Stepper project.
 
 ## Prerequisites
 
@@ -61,22 +61,22 @@ All test users share the same password: `TestPassword123!`
 
 | User | Email |
 |------|-------|
-| Alice Walker | alice@testuser.walkingapp.local |
-| Bob Runner | bob@testuser.walkingapp.local |
-| Carol Strider | carol@testuser.walkingapp.local |
-| Dave Pacer | dave@testuser.walkingapp.local |
-| Emma Steps | emma@testuser.walkingapp.local |
-| Frank Marathon | frank@testuser.walkingapp.local |
-| Grace Hiker | grace@testuser.walkingapp.local |
-| Henry Trails | henry@testuser.walkingapp.local |
-| Ivy Jogger | ivy@testuser.walkingapp.local |
-| Jack Sprint | jack@testuser.walkingapp.local |
+| Alice Walker | alice@testuser.stepper.local |
+| Bob Runner | bob@testuser.stepper.local |
+| Carol Strider | carol@testuser.stepper.local |
+| Dave Pacer | dave@testuser.stepper.local |
+| Emma Steps | emma@testuser.stepper.local |
+| Frank Marathon | frank@testuser.stepper.local |
+| Grace Hiker | grace@testuser.stepper.local |
+| Henry Trails | henry@testuser.stepper.local |
+| Ivy Jogger | ivy@testuser.stepper.local |
+| Jack Sprint | jack@testuser.stepper.local |
 
 #### Notes:
 
 - The script is **idempotent** - running it multiple times will skip existing data
 - Use `--cleanup` flag to delete all test data before re-seeding
-- Test data is identified by the email domain `testuser.walkingapp.local`
+- Test data is identified by the email domain `testuser.stepper.local`
 - Step counts are randomized between 3,000-18,000 per day for realistic leaderboards
 
 ## Environment Variables

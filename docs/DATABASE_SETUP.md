@@ -1,6 +1,6 @@
-# Walking App Database Setup Guide
+# Stepper Database Setup Guide
 
-This comprehensive guide will help you set up the complete database schema for the Walking App in Supabase.
+This comprehensive guide will help you set up the complete database schema for the Stepper in Supabase.
 
 ## Table of Contents
 
@@ -27,7 +27,7 @@ Before starting, ensure you have:
 ### Step 1: Access Supabase SQL Editor
 
 1. Go to https://app.supabase.com
-2. Select your Walking App project
+2. Select your Stepper project
 3. Click **"SQL Editor"** in the left sidebar
 4. Click **"New Query"** button in the top right
 
@@ -339,7 +339,7 @@ After successful database setup:
 
 ### 1. Update Mobile App Configuration
 
-Create or update `WalkingApp.Mobile/.env` with your Supabase credentials:
+Create or update `Stepper.Mobile/.env` with your Supabase credentials:
 
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
@@ -355,7 +355,7 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 ### 2. Test the Mobile App
 
 ```bash
-cd WalkingApp.Mobile
+cd Stepper.Mobile
 npm install
 npx expo start
 ```
@@ -455,4 +455,4 @@ After completing this guide, you should have:
 - [ ] Tested mobile app authentication
 - [ ] Successfully created a user profile
 
-**Congratulations!** Your Walking App database is now fully configured and ready to use.
+**Congratulations!** Your Stepper database is now fully configured and ready to use.

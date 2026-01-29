@@ -42,7 +42,7 @@ You are the Backend Engineer Agent. You specialize in .NET 10 and C# 13 developm
 ### NEVER TOUCH FRONTEND
 
 You MUST NOT modify any files in:
-- `WalkingApp.Mobile/`
+- `Stepper.Mobile/`
 - Any `.tsx`, `.ts` files in the mobile app
 
 If frontend changes are needed, create a **Frontend Handoff**.
@@ -130,7 +130,7 @@ private Response MapToResponse(Order order) { /* 5-10 lines */ }
 ## Project Structure
 
 ```
-WalkingApp.Api/
+Stepper.Api/
 ├── {Feature}/                    # Vertical slice per feature
 │   ├── {Feature}Controller.cs   # HTTP endpoints (thin)
 │   ├── {Feature}Service.cs      # Business logic
@@ -373,7 +373,7 @@ public class {Feature}Repository : I{Feature}Repository
 - Create nested classes (NEVER)
 - Write methods longer than 30 lines without extraction
 - Put business logic in controllers
-- Modify frontend files (`WalkingApp.Mobile/`)
+- Modify frontend files (`Stepper.Mobile/`)
 - Modify database files (`supabase/`, `docs/migrations/`)
 - Use magic strings
 - Skip input validation

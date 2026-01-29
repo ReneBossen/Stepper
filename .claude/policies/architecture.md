@@ -1,4 +1,4 @@
-# Architecture: Walking App
+# Architecture: Stepper
 
 ## Architectural Pattern: Screaming Architecture
 
@@ -10,7 +10,7 @@ This project follows **Screaming Architecture** principles where the folder stru
 > — Robert C. Martin
 
 When you look at the project structure, you should immediately see:
-- This is a **Walking App**
+- This is a **Stepper**
 - It tracks **Steps**
 - It manages **Users**, **Friends**, and **Groups**
 
@@ -19,7 +19,7 @@ You should NOT see generic technical folders like "Controllers", "Services", "Re
 ## Solution Structure
 
 ```
-WalkingApp.Api/
+Stepper.Api/
 ├── Users/                      # User management & profiles
 │   ├── UsersController.cs      # HTTP endpoints
 │   ├── UserService.cs          # Business logic
@@ -70,13 +70,13 @@ WalkingApp.Api/
 └── Program.cs                  # Application entry point
 
 tests/
-├── WalkingApp.Api.Tests/       # Integration tests
+├── Stepper.Api.Tests/       # Integration tests
 │   ├── Users/
 │   ├── Steps/
 │   ├── Friends/
 │   └── Groups/
 │
-└── WalkingApp.UnitTests/       # Unit tests
+└── Stepper.UnitTests/       # Unit tests
     ├── Users/
     ├── Steps/
     ├── Friends/
@@ -369,7 +369,7 @@ Groups/
 
 When adding a new feature:
 
-1. Create a new folder at the root level: `WalkingApp.Api/{FeatureName}/`
+1. Create a new folder at the root level: `Stepper.Api/{FeatureName}/`
 2. Add the vertical slice components:
    - Controller (HTTP endpoints)
    - Service (business logic)

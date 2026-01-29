@@ -1,7 +1,7 @@
 {
   "name": "stepper-scripts",
   "version": "1.0.0",
-  "description": "Scripts and utilities for the WalkingApp/Stepper project",
+  "description": "Scripts and utilities for the Stepper project",
   "scripts": {
     "seed": "npx ts-node scripts/seed-test-data.ts",
     "seed:cleanup": "npx ts-node scripts/seed-test-data.ts --cleanup"

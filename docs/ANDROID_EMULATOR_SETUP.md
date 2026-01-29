@@ -1,6 +1,6 @@
 # Android Emulator Setup Guide
 
-Complete guide for setting up Android Studio, Android SDK, and Android Virtual Device (AVD) for developing the Walking App.
+Complete guide for setting up Android Studio, Android SDK, and Android Virtual Device (AVD) for developing the Stepper.
 
 ## Android Version Information (January 2026)
 
@@ -311,7 +311,7 @@ Or if project is open:
 
 ### Step 4: Configure AVD
 
-1. **AVD Name**: `WalkingApp_Pixel7_API36`
+1. **AVD Name**: `Stepper_Pixel7_API36`
 2. **Startup orientation**: Portrait
 3. Click "Show Advanced Settings"
 
@@ -333,7 +333,7 @@ Or if project is open:
 ### Step 5: Verify AVD Creation
 
 In Device Manager, you should see:
-- **WalkingApp_Pixel7_API36**
+- **Stepper_Pixel7_API36**
 - A play button to launch it
 
 ## Verification
@@ -377,7 +377,7 @@ The script checks:
     Version: Android emulator version 34.2.16.0
 
 [✓] Available AVDs found:
-    - WalkingApp_Pixel7_API36
+    - Stepper_Pixel7_API36
 
 [✓] All checks passed!
 ```
@@ -388,17 +388,17 @@ The script checks:
 
 **Option A: From Android Studio**
 1. Open Device Manager
-2. Click play button next to "WalkingApp_Pixel7_API36"
+2. Click play button next to "Stepper_Pixel7_API36"
 3. Wait for emulator to boot (first boot takes 1-2 minutes)
 
 **Option B: From Command Line (Windows)**
 ```powershell
-emulator -avd WalkingApp_Pixel7_API36
+emulator -avd Stepper_Pixel7_API36
 ```
 
 **Option C: From WSL2**
 ```bash
-emulator -avd WalkingApp_Pixel7_API36 &
+emulator -avd Stepper_Pixel7_API36 &
 ```
 
 ### Step 2: Verify Emulator is Running
@@ -419,7 +419,7 @@ emulator-5554   device
 In WSL2, navigate to mobile project:
 
 ```bash
-cd WalkingApp.Mobile
+cd Stepper.Mobile
 
 # Start Expo
 npm run android
@@ -434,7 +434,7 @@ npx expo start --android
 
 - Expo CLI should detect the running emulator
 - App should build and install automatically
-- Walking App should launch on emulator
+- Stepper should launch on emulator
 - You should see the app's splash screen or home screen
 
 ### Step 5: Test Hot Reload
@@ -664,7 +664,7 @@ ABC123XYZ    device
 ### Step 5: Run Expo on Device
 
 ```bash
-cd WalkingApp.Mobile
+cd Stepper.Mobile
 npm run android:device
 ```
 
@@ -685,10 +685,10 @@ npm run android:device
 emulator -list-avds
 
 # Start specific AVD
-emulator -avd WalkingApp_Pixel7_API36
+emulator -avd Stepper_Pixel7_API36
 
 # Start with options
-emulator -avd WalkingApp_Pixel7_API36 -gpu host -no-boot-anim
+emulator -avd Stepper_Pixel7_API36 -gpu host -no-boot-anim
 
 # List connected devices
 adb devices
@@ -740,4 +740,4 @@ If you encounter issues not covered in this guide:
 
 ---
 
-**Next Steps**: After successful setup, proceed to testing the Walking App on your emulator and begin UI development.
+**Next Steps**: After successful setup, proceed to testing the Stepper on your emulator and begin UI development.

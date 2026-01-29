@@ -1,6 +1,0 @@
-@WalkingApp.Api_HostAddress = http://localhost:5157
-
-GET {{WalkingApp.Api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

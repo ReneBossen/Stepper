@@ -148,7 +148,7 @@ The codebase follows **Screaming Architecture** principles where folders reflect
 ### Backend Structure
 
 ```
-WalkingApp.Api/
+Stepper.Api/
     Auth/           # Authentication endpoints
     Users/          # User profiles and preferences
     Steps/          # Activity tracking
@@ -177,7 +177,7 @@ For a complete list of API endpoints, see [API Reference](API_REFERENCE.md).
 
 ## Getting Started
 
-- **Backend Setup**: See the README in `/WalkingApp.Api`
+- **Backend Setup**: See the README in `/Stepper.Api`
 - **Mobile Setup**: See the README in `/mobile`
 - **Database Setup**: See [Database Setup Guide](DATABASE_SETUP.md)
 - **Android Emulator**: See [Android Emulator Setup](ANDROID_EMULATOR_SETUP.md)

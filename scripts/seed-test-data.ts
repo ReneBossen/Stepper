@@ -1,7 +1,7 @@
 /**
  * Seed Test Data Script
  *
- * This script generates comprehensive test data for the WalkingApp using the Supabase Admin API.
+ * This script generates comprehensive test data for the Stepper using the Supabase Admin API.
  * It creates test users, groups, group memberships, friendships, and step entries.
  *
  * Usage:
@@ -41,7 +41,7 @@ const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROL
 });
 
 // Test email domain for identifying test users
-const TEST_EMAIL_DOMAIN = 'testuser.walkingapp.local';
+const TEST_EMAIL_DOMAIN = 'testuser.stepper.local';
 
 // ============================================================================
 // Test Data Definitions
@@ -674,7 +674,7 @@ async function main(): Promise<void> {
   const shouldCleanup = args.includes('--cleanup');
 
   console.log('========================================');
-  console.log('  WalkingApp Test Data Seed Script');
+  console.log('  Stepper Test Data Seed Script');
   console.log('========================================');
   console.log('');
 
@@ -720,7 +720,7 @@ async function main(): Promise<void> {
     console.log(`  - Step entries generated for 7-14 days`);
     console.log('');
     console.log('Test User Credentials:');
-    console.log('  Email format: {name}@testuser.walkingapp.local');
+    console.log('  Email format: {name}@testuser.stepper.local');
     console.log('  Password: TestPassword123!');
     console.log('');
     console.log('Example logins:');

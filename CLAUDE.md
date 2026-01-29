@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**WalkingApp** (Stepper) is a mobile fitness application for tracking daily steps, competing with friends, and joining groups.
+**Stepper** (Stepper) is a mobile fitness application for tracking daily steps, competing with friends, and joining groups.
 
 | Layer | Technology |
 |-------|------------|

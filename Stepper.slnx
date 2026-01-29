@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/Stepper.UnitTests/Stepper.UnitTests.csproj" />
+  </Folder>
+  <Project Path="Stepper.Api/Stepper.Api.csproj" />
+</Solution>

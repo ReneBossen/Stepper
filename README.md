@@ -1,10 +1,10 @@
-# Walking App
+# Stepper
 
 A mobile application for tracking steps and distance, competing with friends and groups.
 
 ## Project Structure
 
-- `WalkingApp.Api/` - .NET 10 Backend API
+- `Stepper.Api/` - .NET 10 Backend API
 
 ## Features
 
@@ -24,7 +24,7 @@ A mobile application for tracking steps and distance, competing with friends and
 ### Backend API
 
 ```bash
-cd WalkingApp.Api
+cd Stepper.Api
 dotnet run
 ```
 
@@ -35,7 +35,7 @@ The API will be available at `https://localhost:5001`
 #### Quick Start
 
 ```bash
-cd WalkingApp.Mobile
+cd Stepper.Mobile
 npm install
 npm run android
 ```
