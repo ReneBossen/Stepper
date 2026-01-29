@@ -49,7 +49,7 @@ The Friends feature implementation is well-structured and follows clean architec
 ### BLOCKER
 
 #### Issue #1: N+1 Query Problem in GetPendingRequestsAsync
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Friends/FriendService.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Friends/FriendService.cs`
 **Lines**: 86-99
 **Description**: The method loops through all pending requests and makes a separate database call for each requester's profile. With N pending requests, this results in N+1 database queries (1 to fetch friendships + N to fetch user profiles).
 
@@ -77,14 +77,14 @@ foreach (var friendship in friendships)
 ```
 
 #### Issue #2: N+1 Query Problem in GetSentRequestsAsync and GetFriendsAsync
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Friends/FriendService.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Friends/FriendService.cs`
 **Lines**: 116-129 (GetSentRequestsAsync), 202-221 (GetFriendsAsync)
 **Description**: Same N+1 query issue as Issue #1. GetSentRequestsAsync fetches addressee profiles in a loop, and GetFriendsAsync fetches friend profiles in a loop.
 
 **Suggestion**: Apply the same batch fetching pattern as suggested in Issue #1.
 
 #### Issue #3: Missing API Endpoint - GET /api/friends/{friendId}
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Friends/FriendsController.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Friends/FriendsController.cs`
 **Description**: The plan specifies 9 endpoints, but only 8 are implemented. The missing endpoint is `GET /api/friends/{friendId}` which should return a specific friend's profile (as stated in Plan line 112).
 
 **Current endpoints**:
@@ -141,7 +141,7 @@ public async Task<ActionResult<ApiResponse<FriendResponse>>> GetFriend(Guid frie
 Note: You'll also need to add a public method to IFriendService that exposes GetFriendshipAsync (currently only in the repository).
 
 #### Issue #4: Logic Bug in BlockUserAsync
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Friends/FriendRepository.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Friends/FriendRepository.cs`
 **Lines**: 265-266
 **Description**: When creating a new blocked relationship, the method calls `SendRequestAsync` which creates a friendship with status "pending", not "blocked". This is incorrect.
 
@@ -179,7 +179,7 @@ return created.ToFriendship();
 ### MAJOR
 
 #### Issue #5: RLS UPDATE Policy May Be Too Restrictive
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/docs/migrations/004_create_friendships_table.sql`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/docs/migrations/004_create_friendships_table.sql`
 **Lines**: 47-50
 **Description**: The RLS UPDATE policy requires status to be 'pending' in the USING clause, which means accepted/rejected friendships cannot be updated (e.g., to block someone who is already a friend). This conflicts with the BlockUserAsync implementation which tries to update existing friendships to "blocked" status.
 
@@ -212,7 +212,7 @@ CREATE POLICY "Users can block friendships"
 ```
 
 #### Issue #6: Missing Authorization Attribute on Controller
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Friends/FriendsController.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Friends/FriendsController.cs`
 **Lines**: 11-13
 **Description**: The FriendsController class does not have an `[Authorize]` attribute. While the controller checks for user authentication in each method using `User.GetUserId()`, explicit authorization attributes are a security best practice and provide defense in depth. Without the attribute, the endpoints rely solely on manual authentication checks which could be accidentally omitted in new methods.
 
@@ -236,7 +236,7 @@ However, I notice that UsersController also doesn't have this attribute. This ma
 ### MINOR
 
 #### Issue #7: Inconsistent Display Name in GetSentRequestsAsync
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Friends/FriendService.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Friends/FriendService.cs`
 **Lines**: 118-124
 **Description**: In GetSentRequestsAsync, the response uses `RequesterDisplayName` and `RequesterAvatarUrl` fields but populates them with the addressee's profile data. This is semantically confusing even though it may be functionally correct for displaying who the request was sent to.
 
@@ -257,7 +257,7 @@ responses.Add(new FriendRequestResponse
 **Suggestion**: Consider creating a separate DTO for sent requests (e.g., `SentFriendRequestResponse`) with appropriately named fields like `AddresseeDisplayName` and `AddresseeAvatarUrl`, or add addressee fields to the existing DTO. This improves code clarity and API usability.
 
 #### Issue #8: NotImplementedException Could Return 503 Instead of 501
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Friends/FriendsController.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Friends/FriendsController.cs`
 **Lines**: 235-238
 **Description**: The GetFriendSteps endpoint returns 501 Not Implemented for NotImplementedException. While technically correct, 503 Service Unavailable might be more appropriate since this is a temporary condition pending the Steps feature implementation, not a permanently unimplemented feature.
 

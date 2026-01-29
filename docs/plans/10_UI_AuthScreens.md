@@ -348,7 +348,7 @@ Allow users to request a password reset link via email.
 ```typescript
 // Supabase Auth - Password Reset
 const { error } = await supabase.auth.resetPasswordForEmail(email, {
-  redirectTo: 'walkingapp://reset-password',
+  redirectTo: 'Stepper://reset-password',
 });
 ```
 

@@ -47,7 +47,7 @@ This iteration successfully addresses all blocker and major issues from the prev
 **Status**: FIXED
 
 **Implementation**:
-- File: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Friends/FriendService.cs`
+- File: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Friends/FriendService.cs`
 - Lines: 95-98
 - Solution: Added `GetByIdsAsync` to UserRepository and batch fetch all requester profiles in a single query
 
@@ -84,7 +84,7 @@ var userProfiles = await _userRepository.GetByIdsAsync(friendIds);
 **Status**: FIXED
 
 **Implementation**:
-- File: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Friends/FriendsController.cs`
+- File: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Friends/FriendsController.cs`
 - Lines: 207-234
 - Solution: Added complete endpoint implementation with proper error handling
 
@@ -120,7 +120,7 @@ The service method `GetFriendAsync` (lines 342-374) verifies the friendship exis
 **Status**: FIXED
 
 **Implementation**:
-- File: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Friends/FriendRepository.cs`
+- File: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Friends/FriendRepository.cs`
 - Lines: 265-286
 - Solution: Changed to create "blocked" status directly instead of calling SendRequestAsync
 
@@ -146,7 +146,7 @@ This ensures blocking creates the correct "blocked" status directly.
 **Status**: FIXED
 
 **Implementation**:
-- File: `/mnt/c/Users/rene_/source/repos/walkingApp/docs/migrations/005_update_friendships_rls_for_blocking.sql`
+- File: `/mnt/c/Users/rene_/source/repos/Stepper/docs/migrations/005_update_friendships_rls_for_blocking.sql`
 - Solution: Added new RLS policy specifically for blocking operations
 
 ```sql
@@ -179,7 +179,7 @@ CREATE POLICY "Users can send friend requests"
 **Status**: COMPLETE
 
 **Implementation**:
-- File: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Friends/FriendService.cs`
+- File: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Friends/FriendService.cs`
 - Lines: 273-323
 - Features:
   - Verifies friendship is accepted before returning data
@@ -236,7 +236,7 @@ public async Task<FriendStepsResponse> GetFriendStepsAsync(Guid userId, Guid fri
 **Status**: COMPLETE
 
 **Implementation**:
-- File: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Users/UserRepository.cs`
+- File: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Users/UserRepository.cs`
 - Lines: 81-100
 - Features:
   - Uses Supabase IN operator for efficient batch queries

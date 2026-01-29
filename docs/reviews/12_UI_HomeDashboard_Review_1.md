@@ -56,7 +56,7 @@ None identified.
 ### MINOR
 
 #### Issue #1: Implicit `false` value in Promise.all array
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\home\hooks\useHomeData.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\home\hooks\useHomeData.ts`
 **Line**: 77-78
 **Description**: The `fetchAllData` callback includes a conditional expression that can evaluate to `false`:
 ```typescript
@@ -84,7 +84,7 @@ await Promise.all(promises);
 ```
 
 #### Issue #2: GreetingHeader greeting not updating on time change
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\home\components\GreetingHeader.tsx`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\home\components\GreetingHeader.tsx`
 **Line**: 19-28
 **Description**: The greeting is calculated using `useMemo` with an empty dependency array, meaning it will never update even if the user keeps the app open across time boundaries (e.g., from morning to afternoon).
 ```typescript
@@ -96,7 +96,7 @@ const greeting = useMemo(() => {
 **Suggestion**: This is acceptable behavior for most use cases since users typically don't keep the home screen open for hours. However, if this is a concern, consider adding a timer or recalculating on screen focus. For now, document this as intentional behavior or add `displayName` to deps to at least recalculate when user data changes.
 
 #### Issue #3: Magic number for distance calculation
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\home\hooks\useHomeData.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\home\hooks\useHomeData.ts`
 **Line**: 143
 **Description**: The distance calculation uses a magic number `1300`:
 ```typescript
@@ -113,7 +113,7 @@ const todayDistance = stats?.today
 ```
 
 #### Issue #4: Streak calculation timezone sensitivity
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\services\api\stepsApi.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\services\api\stepsApi.ts`
 **Line**: 69-81
 **Description**: The streak calculation compares dates using local time zones:
 ```typescript
@@ -126,7 +126,7 @@ This could produce incorrect results due to timezone offsets. The `entry.date` i
 **Suggestion**: Normalize both dates to UTC midnight or use a date library like `date-fns` for consistent date arithmetic.
 
 #### Issue #5: Missing error handling in real-time subscription callback
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\services\api\activityApi.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\services\api\activityApi.ts`
 **Line**: 74-99
 **Description**: The real-time subscription callback fetches additional data but doesn't handle errors:
 ```typescript
@@ -162,9 +162,9 @@ async (payload) => {
 ```
 
 #### Issue #6: `any` type used for error handling
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\store\stepsStore.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\store\stepsStore.ts`
 **Lines**: 48, 59, 69, 79
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\store\activityStore.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\store\activityStore.ts`
 **Line**: 25
 **Description**: Error types are cast to `any`:
 ```typescript

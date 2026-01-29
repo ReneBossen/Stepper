@@ -65,7 +65,7 @@ This plan extends the existing Users feature to provide comprehensive user prefe
 
 4. **Create Users/Preferences folder structure**:
    ```
-   WalkingApp.Api/Users/Preferences/
+   Stepper.Api/Users/Preferences/
    ├── PreferencesController.cs
    ├── IPreferencesService.cs
    ├── PreferencesService.cs

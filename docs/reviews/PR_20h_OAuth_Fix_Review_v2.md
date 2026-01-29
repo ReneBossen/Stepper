@@ -26,10 +26,10 @@ Additionally, there is **1 flaky test** that continues to fail intermittently.
 
 | # | Severity | Issue | Status | Notes |
 |---|----------|-------|--------|-------|
-| 1 | BLOCKER | 17 Console.WriteLine debug statements | **FIXED** | Verified: no Console.WriteLine in WalkingApp.Api |
+| 1 | BLOCKER | 17 Console.WriteLine debug statements | **FIXED** | Verified: no Console.WriteLine in Stepper.Api |
 | 2 | BLOCKER | 11 console.log debug statements | **FIXED** | Verified: no debug console.log in src/ (only legitimate console.error) |
 | 3 | BLOCKER | Null reference warning in UsersController | **FIXED** | Line 43: `if (profile == null)` check added |
-| 4 | MAJOR | Deprecated SupabaseAuthMiddleware | **FIXED** | File deleted from WalkingApp.Api |
+| 4 | MAJOR | Deprecated SupabaseAuthMiddleware | **FIXED** | File deleted from Stepper.Api |
 | 5 | MAJOR | OAuth token expiry hardcoded | **FIXED** | Added JSDoc comment explaining the value |
 | 6 | MAJOR | Silent OAuth session expiry | **FIXED** | Lines 39, 118 in client.ts: `useAuthStore.getState().setUser(null)` |
 | 7 | MAJOR | Magic string "accepted" | **FIXED** | `FriendshipStatusStrings.Accepted` constant created and used |
@@ -46,7 +46,7 @@ Additionally, there is **1 flaky test** that continues to fail intermittently.
 
 #### Issue #1: Test File Not Deleted for Deleted Middleware
 
-**File:** `tests/WalkingApp.UnitTests/Common/Authentication/SupabaseAuthMiddlewareTests.cs`
+**File:** `tests/Stepper.UnitTests/Common/Authentication/SupabaseAuthMiddlewareTests.cs`
 
 **Description:** The `SupabaseAuthMiddleware.cs` was correctly deleted, but its corresponding test file `SupabaseAuthMiddlewareTests.cs` was NOT deleted. This causes a compilation error because the test file references the non-existent class.
 
@@ -59,14 +59,14 @@ error CS0246: The type or namespace name 'SupabaseAuthMiddleware' could not be f
 
 **Suggestion:** Delete the file:
 ```
-tests/WalkingApp.UnitTests/Common/Authentication/SupabaseAuthMiddlewareTests.cs
+tests/Stepper.UnitTests/Common/Authentication/SupabaseAuthMiddlewareTests.cs
 ```
 
 ---
 
 #### Issue #2: Test Expectation Incorrect After Behavior Change
 
-**File:** `WalkingApp.Mobile/src/services/api/__tests__/client.test.ts`
+**File:** `Stepper.Mobile/src/services/api/__tests__/client.test.ts`
 **Lines:** 183-205
 
 **Description:** The test "should not attempt refresh for expired OAuth tokens" expects that `clearTokens` is NOT called when OAuth tokens expire. However, the fix for Issue #6 (silent OAuth session expiry) correctly added calls to `clearTokens` and `useAuthStore.getState().setUser(null)` when OAuth tokens expire. The test expectation is now wrong.
@@ -122,7 +122,7 @@ jest.mock('@store/authStore', () => ({
 
 #### Issue #3: Flaky Timing Test
 
-**File:** `WalkingApp.Mobile/src/services/__tests__/tokenStorage.test.ts`
+**File:** `Stepper.Mobile/src/services/__tests__/tokenStorage.test.ts`
 **Line:** 50
 
 **Description:** The test "should store tokens concurrently using Promise.all" uses timing assertions that are non-deterministic and flaky. The threshold was previously increased from 25ms to accommodate CI, but it still fails intermittently.
@@ -149,7 +149,7 @@ expect(SecureStore.setItemAsync).toHaveBeenCalledTimes(4);
 
 #### Issue #4: Pre-existing console.log in PermissionsScreen
 
-**File:** `WalkingApp.Mobile/src/screens/onboarding/PermissionsScreen.tsx`
+**File:** `Stepper.Mobile/src/screens/onboarding/PermissionsScreen.tsx`
 **Line:** 45
 
 **Description:** A single `console.log('Push token:', token.data)` statement exists. This appears to be pre-existing code (not introduced in this PR) but should be guarded or removed.
@@ -274,7 +274,7 @@ This is MINOR because it's pre-existing code and the push token is not sensitive
 These are quick fixes that should take less than 30 minutes.
 
 **Next Steps:**
-- [ ] Delete `tests/WalkingApp.UnitTests/Common/Authentication/SupabaseAuthMiddlewareTests.cs`
+- [ ] Delete `tests/Stepper.UnitTests/Common/Authentication/SupabaseAuthMiddlewareTests.cs`
 - [ ] Update `client.test.ts` line 200 to expect `mockClearTokens` to be called
 - [ ] Add `useAuthStore` mock to `client.test.ts`
 - [ ] (Optional) Fix flaky timing test in `tokenStorage.test.ts`
@@ -295,22 +295,22 @@ These are quick fixes that should take less than 30 minutes.
 
 ```bash
 # Verify no Console.WriteLine in API code
-cd WalkingApp.Api && grep -r "Console.WriteLine" --include="*.cs" .
+cd Stepper.Api && grep -r "Console.WriteLine" --include="*.cs" .
 # Expected: No output
 
 # Verify no debug console.log in mobile src
-cd WalkingApp.Mobile && grep -r "console.log" src/ --include="*.ts" --include="*.tsx" | grep -v "console.error" | grep -v test
+cd Stepper.Mobile && grep -r "console.log" src/ --include="*.ts" --include="*.tsx" | grep -v "console.error" | grep -v test
 # Expected: Only PermissionsScreen.tsx line 45 (pre-existing)
 
 # Verify build
-dotnet build WalkingApp.Api
+dotnet build Stepper.Api
 # Expected: 0 errors, 0 warnings
 
 # Run backend tests
-dotnet test tests/WalkingApp.UnitTests
+dotnet test tests/Stepper.UnitTests
 # Expected: Currently fails due to orphaned test file
 
 # Run mobile tests
-cd WalkingApp.Mobile && npm test
+cd Stepper.Mobile && npm test
 # Expected: Currently 2 failures
 ```

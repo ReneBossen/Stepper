@@ -10,7 +10,7 @@ Create a new Activity feature slice in the backend and refactor the mobile Activ
 
 ## Affected Feature Slices
 
-### Backend (WalkingApp.Api/Activity) - NEW
+### Backend (Stepper.Api/Activity) - NEW
 - `ActivityController.cs`: HTTP endpoints
 - `ActivityService.cs` / `IActivityService.cs`: Business logic
 - `ActivityRepository.cs` / `IActivityRepository.cs`: Data access
@@ -18,7 +18,7 @@ Create a new Activity feature slice in the backend and refactor the mobile Activ
 - `ActivityEntity.cs`: Database entity
 - `DTOs/`: Request/response types
 
-### Mobile (WalkingApp.Mobile)
+### Mobile (Stepper.Mobile)
 - `services/api/activityApi.ts`: Complete rewrite (except real-time)
 
 ## Proposed Types
@@ -43,7 +43,7 @@ Create a new Activity feature slice in the backend and refactor the mobile Activ
 
 #### Step 1.1: Create Domain Model
 
-Create `WalkingApp.Api/Activity/ActivityItem.cs`:
+Create `Stepper.Api/Activity/ActivityItem.cs`:
 ```csharp
 public class ActivityItem
 {
@@ -71,7 +71,7 @@ public enum ActivityType
 
 #### Step 1.2: Create Database Entity
 
-Create `WalkingApp.Api/Activity/ActivityEntity.cs`:
+Create `Stepper.Api/Activity/ActivityEntity.cs`:
 ```csharp
 [Table("activity_feed")]
 internal class ActivityEntity : BaseModel
@@ -103,7 +103,7 @@ internal class ActivityEntity : BaseModel
 
 #### Step 1.3: Create DTOs
 
-Create `WalkingApp.Api/Activity/DTOs/ActivityItemResponse.cs`:
+Create `Stepper.Api/Activity/DTOs/ActivityItemResponse.cs`:
 ```csharp
 public record ActivityItemResponse(
     Guid Id,
@@ -118,7 +118,7 @@ public record ActivityItemResponse(
 );
 ```
 
-Create `WalkingApp.Api/Activity/DTOs/ActivityFeedResponse.cs`:
+Create `Stepper.Api/Activity/DTOs/ActivityFeedResponse.cs`:
 ```csharp
 public record ActivityFeedResponse(
     List<ActivityItemResponse> Items,
@@ -129,7 +129,7 @@ public record ActivityFeedResponse(
 
 #### Step 1.4: Create Repository
 
-Create `WalkingApp.Api/Activity/IActivityRepository.cs`:
+Create `Stepper.Api/Activity/IActivityRepository.cs`:
 ```csharp
 public interface IActivityRepository
 {
@@ -139,7 +139,7 @@ public interface IActivityRepository
 }
 ```
 
-Create `WalkingApp.Api/Activity/ActivityRepository.cs`:
+Create `Stepper.Api/Activity/ActivityRepository.cs`:
 - Query activity_feed table for friends' activities
 - Join with users table for names/avatars
 - Filter to only show friends' activities
@@ -147,7 +147,7 @@ Create `WalkingApp.Api/Activity/ActivityRepository.cs`:
 
 #### Step 1.5: Create Service
 
-Create `WalkingApp.Api/Activity/IActivityService.cs`:
+Create `Stepper.Api/Activity/IActivityService.cs`:
 ```csharp
 public interface IActivityService
 {
@@ -155,7 +155,7 @@ public interface IActivityService
 }
 ```
 
-Create `WalkingApp.Api/Activity/ActivityService.cs`:
+Create `Stepper.Api/Activity/ActivityService.cs`:
 - Get user's friends list
 - Fetch activities from friends
 - Map to response DTOs
@@ -163,7 +163,7 @@ Create `WalkingApp.Api/Activity/ActivityService.cs`:
 
 #### Step 1.6: Create Controller
 
-Create `WalkingApp.Api/Activity/ActivityController.cs`:
+Create `Stepper.Api/Activity/ActivityController.cs`:
 ```csharp
 [ApiController]
 [Route("api/v1/activity")]
@@ -280,19 +280,19 @@ CREATE POLICY "Users can view friends activities"
 ## Tests
 
 ### Backend Unit Tests
-- `WalkingApp.Api.Tests/Activity/ActivityServiceTests.cs`
+- `Stepper.Api.Tests/Activity/ActivityServiceTests.cs`
   - Test feed retrieval
   - Test pagination
   - Test friend filtering
 
 ### Backend Integration Tests
-- `WalkingApp.Api.Tests/Activity/ActivityControllerTests.cs`
+- `Stepper.Api.Tests/Activity/ActivityControllerTests.cs`
   - Test feed endpoint
   - Test authorization
   - Test pagination parameters
 
 ### Mobile Tests
-- Update `WalkingApp.Mobile/src/services/api/__tests__/activityApi.test.ts`
+- Update `Stepper.Mobile/src/services/api/__tests__/activityApi.test.ts`
 - Mock `apiClient` instead of Supabase (except real-time)
 
 ## Acceptance Criteria

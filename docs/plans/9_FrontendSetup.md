@@ -12,7 +12,7 @@ This plan establishes the frontend foundation for the Walking App using Expo wit
 ## Project Structure
 
 ```
-WalkingApp.Mobile/
+Stepper.Mobile/
 ├── app.json                    # Expo configuration
 ├── App.tsx                     # Entry point
 ├── package.json                # Dependencies
@@ -64,8 +64,8 @@ WalkingApp.Mobile/
 
 1. **Create Expo project with TypeScript**:
    ```bash
-   npx create-expo-app@latest WalkingApp.Mobile --template expo-template-blank-typescript
-   cd WalkingApp.Mobile
+   npx create-expo-app@latest Stepper.Mobile --template expo-template-blank-typescript
+   cd Stepper.Mobile
    ```
 
 2. **Configure app.json**:
@@ -74,9 +74,9 @@ WalkingApp.Mobile/
      "expo": {
        "name": "Walking App",
        "slug": "walking-app",
-       "scheme": "walkingapp",
+       "scheme": "Stepper",
        "android": {
-         "package": "com.walkingapp.mobile"
+         "package": "com.Stepper.mobile"
        }
      }
    }
@@ -322,12 +322,12 @@ No direct database changes. Frontend consumes existing backend APIs.
 2. Create Device > Pixel 7
 3. Select API 34 system image
 4. Configure: 2048 MB RAM, 2048 MB storage
-5. Name: WalkingApp_Test
+5. Name: Stepper_Test
 
 ### Running
 ```bash
 # Start emulator
-emulator -avd WalkingApp_Test
+emulator -avd Stepper_Test
 
 # Start Expo
 npx expo start

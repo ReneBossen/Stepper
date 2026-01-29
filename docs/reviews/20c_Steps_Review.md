@@ -40,23 +40,23 @@ The implementation successfully refactors the Steps feature to route all data op
 
 | File | Status | Notes |
 |------|--------|-------|
-| `WalkingApp.Api/Steps/DTOs/StepStatsResponse.cs` | PASS | Matches plan specification, includes XML documentation |
-| `WalkingApp.Api/Steps/IStepService.cs` | PASS | Interface updated with GetStatsAsync method |
-| `WalkingApp.Api/Steps/StepService.cs` | PASS | Comprehensive stats calculation with proper streak logic |
-| `WalkingApp.Api/Steps/StepsController.cs` | PASS | New GET /stats endpoint, thin controller pattern |
-| `WalkingApp.Api/Steps/IStepRepository.cs` | PASS | Added GetDailyGoalAsync and GetAllDailySummariesAsync |
-| `WalkingApp.Api/Steps/StepRepository.cs` | PASS | Implements new repository methods |
-| `tests/WalkingApp.UnitTests/Steps/StepServiceStatsTests.cs` | PASS | 25 comprehensive tests covering all scenarios |
+| `Stepper.Api/Steps/DTOs/StepStatsResponse.cs` | PASS | Matches plan specification, includes XML documentation |
+| `Stepper.Api/Steps/IStepService.cs` | PASS | Interface updated with GetStatsAsync method |
+| `Stepper.Api/Steps/StepService.cs` | PASS | Comprehensive stats calculation with proper streak logic |
+| `Stepper.Api/Steps/StepsController.cs` | PASS | New GET /stats endpoint, thin controller pattern |
+| `Stepper.Api/Steps/IStepRepository.cs` | PASS | Added GetDailyGoalAsync and GetAllDailySummariesAsync |
+| `Stepper.Api/Steps/StepRepository.cs` | PASS | Implements new repository methods |
+| `tests/Stepper.UnitTests/Steps/StepServiceStatsTests.cs` | PASS | 25 comprehensive tests covering all scenarios |
 
 ### Mobile
 
 | File | Status | Notes |
 |------|--------|-------|
-| `WalkingApp.Mobile/src/services/api/stepsApi.ts` | PASS | Zero Supabase calls, uses apiClient |
-| `WalkingApp.Mobile/src/store/stepsStore.ts` | PASS | Updated to use new stepsApi types |
-| `WalkingApp.Mobile/src/screens/home/hooks/useHomeData.ts` | PASS | Uses stats from store correctly |
-| `WalkingApp.Mobile/src/screens/steps/StepsHistoryScreen.tsx` | PASS | Uses store correctly |
-| `WalkingApp.Mobile/src/services/api/__tests__/stepsApi.test.ts` | PASS | 20 tests, mocks apiClient |
+| `Stepper.Mobile/src/services/api/stepsApi.ts` | PASS | Zero Supabase calls, uses apiClient |
+| `Stepper.Mobile/src/store/stepsStore.ts` | PASS | Updated to use new stepsApi types |
+| `Stepper.Mobile/src/screens/home/hooks/useHomeData.ts` | PASS | Uses stats from store correctly |
+| `Stepper.Mobile/src/screens/steps/StepsHistoryScreen.tsx` | PASS | Uses store correctly |
+| `Stepper.Mobile/src/services/api/__tests__/stepsApi.test.ts` | PASS | 20 tests, mocks apiClient |
 
 ## Issues
 
@@ -72,14 +72,14 @@ None.
 
 #### Issue #1: Hardcoded Start Date in GetAllDailySummariesAsync
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Api\Steps\StepRepository.cs`
+**File**: `E:\Github Projects\Stepper\Stepper.Api\Steps\StepRepository.cs`
 **Line**: 179
 **Description**: The method uses a hardcoded start date of `2020-01-01` which is a reasonable assumption but could be improved.
 **Suggestion**: Consider documenting this as an assumption or making it configurable. For now, this is acceptable as it covers a reasonable historical range.
 
 #### Issue #2: Real-time subscription still uses direct Supabase
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\screens\home\hooks\useHomeData.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\screens\home\hooks\useHomeData.ts`
 **Lines**: 103-124
 **Description**: The real-time subscription for step_entries changes still uses direct Supabase client. This is noted in Plan 20h for cleanup, so not a blocker for this plan.
 **Suggestion**: Track this for Plan 20h (Cleanup phase).

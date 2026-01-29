@@ -37,7 +37,7 @@ This plan implements the Groups feature for competitive walking challenges. User
 
 1. **Create Groups folder structure**:
    ```
-   WalkingApp.Api/Groups/
+   Stepper.Api/Groups/
    ├── GroupsController.cs
    ├── IGroupService.cs
    ├── GroupService.cs
@@ -374,7 +374,7 @@ This plan implements the Groups feature for competitive walking challenges. User
 
 ## Tests
 
-**Unit Tests** (WalkingApp.UnitTests/Groups/):
+**Unit Tests** (Stepper.UnitTests/Groups/):
 - `GroupServiceTests`
   - Test creating group makes user owner
   - Test join code generated for private groups
@@ -385,7 +385,7 @@ This plan implements the Groups feature for competitive walking challenges. User
   - Test leaderboard calculation is correct
   - Test member count updates correctly
 
-**Integration Tests** (WalkingApp.Api.Tests/Groups/):
+**Integration Tests** (Stepper.Api.Tests/Groups/):
 - `GroupsControllerTests`
   - POST /api/groups creates group
   - GET /api/groups returns user's groups

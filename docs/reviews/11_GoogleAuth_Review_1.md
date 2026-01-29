@@ -170,7 +170,7 @@ const handleGoogleSignIn = async () => {
     const { url } = await signInWithGoogleOAuth();
     if (url) {
       // Supabase will handle the callback automatically
-      await WebBrowser.openAuthSessionAsync(url, 'walkingapp://');
+      await WebBrowser.openAuthSessionAsync(url, 'Stepper://');
       // Session is set automatically by detectSessionInUrl
     }
   } catch (err: any) {
@@ -236,7 +236,7 @@ export const signInWithGoogleOAuth = async () => {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: 'walkingapp://', // Explicit redirect URL
+      redirectTo: 'Stepper://', // Explicit redirect URL
       // skipBrowserRedirect defaults to false - let Supabase handle it
     },
   });
@@ -338,7 +338,7 @@ export const useGoogleSignIn = () => {
     try {
       const { url } = await signInWithGoogleOAuth();
       if (url) {
-        const result = await WebBrowser.openAuthSessionAsync(url, 'walkingapp://');
+        const result = await WebBrowser.openAuthSessionAsync(url, 'Stepper://');
         // Handle result...
       }
     } catch (err: any) {
@@ -409,7 +409,7 @@ setGoogleError(err.message || 'Failed to sign in with Google');
 ```json
 "ios": {
   "supportsTablet": true,
-  "bundleIdentifier": "com.walkingapp.mobile"
+  "bundleIdentifier": "com.Stepper.mobile"
 }
 ```
 
@@ -417,9 +417,9 @@ setGoogleError(err.message || 'Failed to sign in with Google');
 ```json
 "ios": {
   "supportsTablet": true,
-  "bundleIdentifier": "com.walkingapp.mobile",
+  "bundleIdentifier": "com.Stepper.mobile",
   "associatedDomains": [
-    "applinks:walkingapp.com"
+    "applinks:Stepper.com"
   ]
 }
 ```
@@ -635,7 +635,7 @@ This is a **critical security vulnerability**.
 
 ```typescript
 // 1. Validate OAuth callback URL source
-if (!result.url.startsWith('walkingapp://')) {
+if (!result.url.startsWith('Stepper://')) {
   throw new Error('Invalid OAuth callback URL');
 }
 

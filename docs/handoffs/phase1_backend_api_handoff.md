@@ -17,16 +17,16 @@ Implemented two new API endpoints for health data synchronization to support Hea
 
 | File | Purpose |
 |------|---------|
-| `WalkingApp.Api/Steps/DTOs/SyncStepsRequest.cs` | Request DTO for bulk sync with validation attributes |
-| `WalkingApp.Api/Steps/DTOs/SyncStepsResponse.cs` | Response DTO with created/updated/total counts |
-| `WalkingApp.Api/Steps/DTOs/DeleteBySourceResponse.cs` | Response DTO with deleted count |
+| `Stepper.Api/Steps/DTOs/SyncStepsRequest.cs` | Request DTO for bulk sync with validation attributes |
+| `Stepper.Api/Steps/DTOs/SyncStepsResponse.cs` | Response DTO with created/updated/total counts |
+| `Stepper.Api/Steps/DTOs/DeleteBySourceResponse.cs` | Response DTO with deleted count |
 
 ### Unit Tests
 
 | File | Purpose |
 |------|---------|
-| `tests/WalkingApp.UnitTests/Steps/StepServiceSyncTests.cs` | Service layer tests for sync operations |
-| `tests/WalkingApp.UnitTests/Steps/StepsControllerSyncTests.cs` | Controller tests for new endpoints |
+| `tests/Stepper.UnitTests/Steps/StepServiceSyncTests.cs` | Service layer tests for sync operations |
+| `tests/Stepper.UnitTests/Steps/StepsControllerSyncTests.cs` | Controller tests for new endpoints |
 
 ## Files Modified
 
@@ -34,21 +34,21 @@ Implemented two new API endpoints for health data synchronization to support Hea
 
 | File | Changes |
 |------|---------|
-| `WalkingApp.Api/Steps/IStepRepository.cs` | Added `UpsertByDateAndSourceAsync` and `DeleteBySourceAsync` method signatures |
-| `WalkingApp.Api/Steps/StepRepository.cs` | Implemented upsert and delete by source operations |
+| `Stepper.Api/Steps/IStepRepository.cs` | Added `UpsertByDateAndSourceAsync` and `DeleteBySourceAsync` method signatures |
+| `Stepper.Api/Steps/StepRepository.cs` | Implemented upsert and delete by source operations |
 
 ### Service Layer
 
 | File | Changes |
 |------|---------|
-| `WalkingApp.Api/Steps/IStepService.cs` | Added `SyncStepsAsync` and `DeleteBySourceAsync` method signatures |
-| `WalkingApp.Api/Steps/StepService.cs` | Implemented sync and delete operations with validation |
+| `Stepper.Api/Steps/IStepService.cs` | Added `SyncStepsAsync` and `DeleteBySourceAsync` method signatures |
+| `Stepper.Api/Steps/StepService.cs` | Implemented sync and delete operations with validation |
 
 ### Controller Layer
 
 | File | Changes |
 |------|---------|
-| `WalkingApp.Api/Steps/StepsController.cs` | Added `SyncSteps` and `DeleteBySource` endpoints |
+| `Stepper.Api/Steps/StepsController.cs` | Added `SyncSteps` and `DeleteBySource` endpoints |
 
 ## API Contract
 

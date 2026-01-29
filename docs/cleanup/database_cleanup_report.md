@@ -102,7 +102,7 @@ Mobile App
 
 ### Files Using users.preferences (JSONB column)
 
-#### 1. `WalkingApp.Api/Users/UserEntity.cs` (Lines 26-27, 44-106)
+#### 1. `Stepper.Api/Users/UserEntity.cs` (Lines 26-27, 44-106)
 
 ```csharp
 [Column("preferences")]
@@ -136,7 +136,7 @@ public static UserEntity FromUser(User user)
 
 **Impact:** This entity reads/writes the JSONB column when loading/saving users.
 
-#### 2. `WalkingApp.Api/Users/User.cs` (Line 18)
+#### 2. `Stepper.Api/Users/User.cs` (Line 18)
 
 ```csharp
 public UserPreferences Preferences { get; set; } = new();
@@ -144,7 +144,7 @@ public UserPreferences Preferences { get; set; } = new();
 
 **Impact:** Domain model carries preferences from the JSONB column.
 
-#### 3. `WalkingApp.Api/Users/UserService.cs` (Multiple locations)
+#### 3. `Stepper.Api/Users/UserService.cs` (Multiple locations)
 
 - Line 143: `Preferences = new UserPreferences()` when creating new user
 - Lines 196-217: `GetPreferencesAsync` and `UpdatePreferencesAsync` methods
@@ -153,7 +153,7 @@ public UserPreferences Preferences { get; set; } = new();
 
 **Impact:** Business logic reads/writes preferences through the User domain model (which uses JSONB).
 
-#### 4. `WalkingApp.Api/Users/DTOs/GetProfileResponse.cs` (Line 8)
+#### 4. `Stepper.Api/Users/DTOs/GetProfileResponse.cs` (Line 8)
 
 ```csharp
 public UserPreferences Preferences { get; set; } = new();
@@ -161,7 +161,7 @@ public UserPreferences Preferences { get; set; } = new();
 
 **Impact:** API response includes preferences from JSONB column.
 
-#### 5. `WalkingApp.Api/Users/DTOs/UpdateProfileRequest.cs` (Line 7)
+#### 5. `Stepper.Api/Users/DTOs/UpdateProfileRequest.cs` (Line 7)
 
 ```csharp
 public UserPreferences? Preferences { get; set; }
@@ -171,7 +171,7 @@ public UserPreferences? Preferences { get; set; }
 
 ### Files Using user_preferences Table (Correct)
 
-#### 1. `WalkingApp.Api/Steps/UserPreferencesEntity.cs`
+#### 1. `Stepper.Api/Steps/UserPreferencesEntity.cs`
 
 ```csharp
 [Table("user_preferences")]
@@ -187,7 +187,7 @@ internal class UserPreferencesEntity : BaseModel
 
 **Usage:** StepRepository uses this to get daily step goal for goal progress calculations.
 
-#### 2. `WalkingApp.Api/Steps/StepRepository.cs` (Lines 159-169)
+#### 2. `Stepper.Api/Steps/StepRepository.cs` (Lines 159-169)
 
 ```csharp
 public async Task<int> GetDailyGoalAsync(Guid userId)
@@ -209,7 +209,7 @@ public async Task<int> GetDailyGoalAsync(Guid userId)
 
 ### Files Using Backend Preferences API
 
-#### 1. `WalkingApp.Mobile/src/services/api/userPreferencesApi.ts`
+#### 1. `Stepper.Mobile/src/services/api/userPreferencesApi.ts`
 
 The mobile app calls the backend API at `/users/me/preferences`:
 - `getPreferences()` - calls `GET /users/me/preferences`
@@ -217,7 +217,7 @@ The mobile app calls the backend API at `/users/me/preferences`:
 
 The mobile app receives a simplified response from the backend and maps it to a full preferences model. The backend response structure comes from the JSONB column.
 
-#### 2. `WalkingApp.Mobile/src/store/userStore.ts`
+#### 2. `Stepper.Mobile/src/store/userStore.ts`
 
 Uses `userPreferencesApi` to fetch and update preferences. The store combines user profile data with preferences.
 
@@ -246,7 +246,7 @@ If a user changes their daily step goal, the change is saved to the JSONB column
 Modify the backend to read/write from `user_preferences` table instead of JSONB column:
 
 1. **Create new UserPreferencesRepository:**
-   - Add `WalkingApp.Api/Users/UserPreferencesRepository.cs`
+   - Add `Stepper.Api/Users/UserPreferencesRepository.cs`
    - Implement CRUD operations against `user_preferences` table
    - Use existing `Steps/UserPreferencesEntity.cs` as template (expand it)
 
@@ -379,14 +379,14 @@ When removing the `preferences` column, no RLS policy changes are needed as the 
 
 | File | Change Type | Description |
 |------|-------------|-------------|
-| `WalkingApp.Api/Users/UserEntity.cs` | Modify | Remove `PreferencesJson`, update `ToUser()`, `FromUser()` |
-| `WalkingApp.Api/Users/User.cs` | Modify | Remove `Preferences` property |
-| `WalkingApp.Api/Users/UserService.cs` | Modify | Update to use UserPreferencesRepository |
-| `WalkingApp.Api/Users/UserRepository.cs` | No change | Does not handle preferences |
-| `WalkingApp.Api/Users/DTOs/GetProfileResponse.cs` | Modify | Remove `Preferences` property |
-| `WalkingApp.Api/Users/DTOs/UpdateProfileRequest.cs` | Modify | Remove `Preferences` property |
-| `WalkingApp.Api/Users/DTOs/UserPreferences.cs` | Keep | Still needed for preferences endpoint |
-| `WalkingApp.Api/Steps/UserPreferencesEntity.cs` | Move | Move to Users/ and expand columns |
+| `Stepper.Api/Users/UserEntity.cs` | Modify | Remove `PreferencesJson`, update `ToUser()`, `FromUser()` |
+| `Stepper.Api/Users/User.cs` | Modify | Remove `Preferences` property |
+| `Stepper.Api/Users/UserService.cs` | Modify | Update to use UserPreferencesRepository |
+| `Stepper.Api/Users/UserRepository.cs` | No change | Does not handle preferences |
+| `Stepper.Api/Users/DTOs/GetProfileResponse.cs` | Modify | Remove `Preferences` property |
+| `Stepper.Api/Users/DTOs/UpdateProfileRequest.cs` | Modify | Remove `Preferences` property |
+| `Stepper.Api/Users/DTOs/UserPreferences.cs` | Keep | Still needed for preferences endpoint |
+| `Stepper.Api/Steps/UserPreferencesEntity.cs` | Move | Move to Users/ and expand columns |
 
 ### Database
 

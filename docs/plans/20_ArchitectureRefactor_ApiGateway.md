@@ -2,7 +2,7 @@
 
 ## Summary
 
-The WalkingApp mobile application currently bypasses the .NET API backend and makes direct calls to Supabase for all data operations. This violates the intended architecture where the mobile app should route ALL operations through the .NET API, including authentication. This master plan coordinates the complete refactoring effort.
+The Stepper mobile application currently bypasses the .NET API backend and makes direct calls to Supabase for all data operations. This violates the intended architecture where the mobile app should route ALL operations through the .NET API, including authentication. This master plan coordinates the complete refactoring effort.
 
 **User Decisions:**
 1. **API Versioning**: YES - All endpoints will use `/api/v1/` prefix

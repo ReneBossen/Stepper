@@ -7,7 +7,7 @@
 
 ## Summary
 
-This report documents the comprehensive cleanup of the WalkingApp.Api backend codebase. The cleanup focused on identifying and removing unused code, checking for consistency, and documenting questionable items that require user decision.
+This report documents the comprehensive cleanup of the Stepper.Api backend codebase. The cleanup focused on identifying and removing unused code, checking for consistency, and documenting questionable items that require user decision.
 
 ---
 
@@ -15,14 +15,14 @@ This report documents the comprehensive cleanup of the WalkingApp.Api backend co
 
 | File | Change |
 |------|--------|
-| `WalkingApp.Api/Friends/IFriendRepository.cs` | Removed unused `BlockUserAsync` method declaration |
-| `WalkingApp.Api/Friends/FriendRepository.cs` | Removed unused `BlockUserAsync` method implementation |
+| `Stepper.Api/Friends/IFriendRepository.cs` | Removed unused `BlockUserAsync` method declaration |
+| `Stepper.Api/Friends/FriendRepository.cs` | Removed unused `BlockUserAsync` method implementation |
 
 ## Files Deleted
 
 | File | Reason |
 |------|--------|
-| `WalkingApp.Api/Friends/Discovery/DTOs/SearchUsersRequest.cs` | Unused DTO - controller uses `[FromQuery] string query` instead |
+| `Stepper.Api/Friends/Discovery/DTOs/SearchUsersRequest.cs` | Unused DTO - controller uses `[FromQuery] string query` instead |
 
 ---
 
@@ -31,8 +31,8 @@ This report documents the comprehensive cleanup of the WalkingApp.Api backend co
 ### 1. BlockUserAsync Method (Unused)
 
 **Location**:
-- `WalkingApp.Api/Friends/IFriendRepository.cs` (interface declaration)
-- `WalkingApp.Api/Friends/FriendRepository.cs` (implementation)
+- `Stepper.Api/Friends/IFriendRepository.cs` (interface declaration)
+- `Stepper.Api/Friends/FriendRepository.cs` (implementation)
 
 **Reason**: This method was defined in the repository interface and implemented, but was never used by any service or controller. The blocking functionality was never exposed through the API endpoints.
 
@@ -40,7 +40,7 @@ This report documents the comprehensive cleanup of the WalkingApp.Api backend co
 
 ### 2. SearchUsersRequest DTO (Unused)
 
-**Location**: `WalkingApp.Api/Friends/Discovery/DTOs/SearchUsersRequest.cs`
+**Location**: `Stepper.Api/Friends/Discovery/DTOs/SearchUsersRequest.cs`
 
 **Reason**: The `FriendDiscoveryController.SearchUsers` method takes the search query directly as a `[FromQuery] string query` parameter, so this request DTO class was never used.
 

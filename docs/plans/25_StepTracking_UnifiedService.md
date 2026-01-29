@@ -386,7 +386,7 @@ const {
 ## File Structure
 
 ```
-WalkingApp.Mobile/src/
+Stepper.Mobile/src/
   services/
     health/
       types.ts                    # Shared interfaces (HealthDataProvider, etc.)

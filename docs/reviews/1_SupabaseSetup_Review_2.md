@@ -38,14 +38,14 @@ The Supabase setup implementation has been successfully revised to address all f
 ### MAJOR Issues - RESOLVED ✓
 
 #### Issue #1: Missing Authorization Middleware Call - RESOLVED ✓
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Program.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Program.cs`
 **Original Issue**: Lines 30-32 called `app.UseAuthorization()` without corresponding `app.UseAuthentication()`, which could cause issues with `[Authorize]` attributes.
 **Resolution**: Removed `app.UseAuthorization()` call entirely (commit `2ffbb2c`). This is the correct approach as the architecture relies on Supabase RLS (Row Level Security) policies for authorization at the database level, not ASP.NET Core's authorization system.
 **Verification**: Program.cs now correctly uses only `SupabaseAuthMiddleware` for authentication, which populates `HttpContext.User`. Future features will rely on RLS policies for authorization.
 **Status**: RESOLVED - Correct architectural decision
 
 #### Issue #2: JWT Token Validation Missing Issuer and Audience Checks - RESOLVED ✓
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Authentication/SupabaseAuthMiddleware.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Authentication/SupabaseAuthMiddleware.cs`
 **Original Issue**: Lines 76-84 explicitly disabled issuer and audience validation, reducing security.
 **Resolution**:
 - Added `JwtIssuer` and `JwtAudience` required properties to `SupabaseSettings` (commit `e2c8efb`)
@@ -61,7 +61,7 @@ The Supabase setup implementation has been successfully revised to address all f
 ### MINOR Issues - RESOLVED ✓
 
 #### Issue #3: Constructor Null Check in SupabaseClientFactory - RESOLVED ✓
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Database/SupabaseClientFactory.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Database/SupabaseClientFactory.cs`
 **Original Issue**: Constructor lacked defensive guard clauses with descriptive error messages.
 **Resolution**: Added explicit guard clauses (commit `08858ce`):
 ```csharp
@@ -72,14 +72,14 @@ ArgumentNullException.ThrowIfNull(settings.Value);
 **Status**: RESOLVED - Defensive programming improved
 
 #### Issue #4: ExceptionHandlingMiddleware Generic Error Messages - RESOLVED ✓
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Middleware/ExceptionHandlingMiddleware.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Middleware/ExceptionHandlingMiddleware.cs`
 **Original Issue**: `HttpRequestException` was mapped to "A database error occurred." which was misleading.
 **Resolution**: Changed error message to "An external service error occurred." (commit `ad84786`)
 **Verification**: Line 43 now correctly describes the error as an external service issue, which accurately represents Supabase API errors
 **Status**: RESOLVED - Error messages more accurate
 
 #### Issue #5: ApiResponse Errors Property Initialization - RESOLVED ✓
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Models/ApiResponse.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Models/ApiResponse.cs`
 **Original Issue**: Redundant initialization of `Errors` property with both inline initialization and in factory methods.
 **Resolution**: Removed redundant `new()` initialization (commit `8f5dae0`), keeping only the `= new()` inline initialization
 **Verification**: Line 22 now uses simplified initialization. Factory methods no longer redundantly create new lists.
@@ -261,9 +261,9 @@ Passed!  - Failed:     0, Passed:    51, Skipped:     0, Total:    51, Duration:
 - Common/Models/ApiResponse.cs (cleaner initialization)
 - appsettings.json (added new JWT settings)
 - appsettings.Development.json.template (added new JWT settings)
-- tests/WalkingApp.UnitTests/Common/Authentication/SupabaseAuthMiddlewareTests.cs (updated fixtures)
-- tests/WalkingApp.UnitTests/Common/Database/SupabaseClientFactoryTests.cs (updated fixtures)
-- tests/WalkingApp.UnitTests/Common/Middleware/ExceptionHandlingMiddlewareTests.cs (updated assertions)
+- tests/Stepper.UnitTests/Common/Authentication/SupabaseAuthMiddlewareTests.cs (updated fixtures)
+- tests/Stepper.UnitTests/Common/Database/SupabaseClientFactoryTests.cs (updated fixtures)
+- tests/Stepper.UnitTests/Common/Middleware/ExceptionHandlingMiddlewareTests.cs (updated assertions)
 
 **All changes are directly traceable to review feedback.**
 
@@ -330,25 +330,25 @@ No new issues identified. The implementation is ready for merge to master.
 ## Relevant File Paths
 
 **Implementation files reviewed:**
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Program.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Configuration/SupabaseSettings.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Database/ISupabaseClientFactory.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Database/SupabaseClientFactory.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Authentication/SupabaseAuthMiddleware.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Extensions/ClaimsPrincipalExtensions.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Extensions/ServiceCollectionExtensions.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Middleware/ExceptionHandlingMiddleware.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Models/ApiResponse.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Program.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Configuration/SupabaseSettings.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Database/ISupabaseClientFactory.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Database/SupabaseClientFactory.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Authentication/SupabaseAuthMiddleware.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Extensions/ClaimsPrincipalExtensions.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Extensions/ServiceCollectionExtensions.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Middleware/ExceptionHandlingMiddleware.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Models/ApiResponse.cs`
 
 **Test files reviewed:**
-- `/mnt/c/Users/rene_/source/repos/walkingApp/tests/WalkingApp.UnitTests/Common/Database/SupabaseClientFactoryTests.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/tests/WalkingApp.UnitTests/Common/Authentication/SupabaseAuthMiddlewareTests.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/tests/WalkingApp.UnitTests/Common/Extensions/ClaimsPrincipalExtensionsTests.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/tests/WalkingApp.UnitTests/Common/Models/ApiResponseTests.cs`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/tests/WalkingApp.UnitTests/Common/Middleware/ExceptionHandlingMiddlewareTests.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/tests/Stepper.UnitTests/Common/Database/SupabaseClientFactoryTests.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/tests/Stepper.UnitTests/Common/Authentication/SupabaseAuthMiddlewareTests.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/tests/Stepper.UnitTests/Common/Extensions/ClaimsPrincipalExtensionsTests.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/tests/Stepper.UnitTests/Common/Models/ApiResponseTests.cs`
+- `/mnt/c/Users/rene_/source/repos/Stepper/tests/Stepper.UnitTests/Common/Middleware/ExceptionHandlingMiddlewareTests.cs`
 
 **Configuration files reviewed:**
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/appsettings.json`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/appsettings.Development.json.template`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/WalkingApp.Api.csproj`
-- `/mnt/c/Users/rene_/source/repos/walkingApp/.gitignore`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/appsettings.json`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/appsettings.Development.json.template`
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Stepper.Api.csproj`
+- `/mnt/c/Users/rene_/source/repos/Stepper/.gitignore`

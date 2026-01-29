@@ -14,7 +14,7 @@ Implemented platform-specific health services (HealthKit for iOS, Google Fit for
 
 ## Files Created
 
-### 1. `WalkingApp.Mobile/src/services/health/healthKitService.ts`
+### 1. `Stepper.Mobile/src/services/health/healthKitService.ts`
 
 HealthKit service implementation for iOS with the following features:
 
@@ -30,7 +30,7 @@ Key implementation notes:
 - Handles Apple's privacy model where read permissions cannot be queried directly
 - Uses `includeManuallyAdded: true` to include all step data sources
 
-### 2. `WalkingApp.Mobile/src/services/health/googleFitService.ts`
+### 2. `Stepper.Mobile/src/services/health/googleFitService.ts`
 
 Google Fit service implementation for Android with the following features:
 
@@ -50,7 +50,7 @@ Key implementation notes:
 
 ## Files Modified
 
-### 1. `WalkingApp.Mobile/src/services/health/healthProviderFactory.ts`
+### 1. `Stepper.Mobile/src/services/health/healthProviderFactory.ts`
 
 Updated to return real implementations:
 - Imports `createHealthKitService` and `createGoogleFitService`
@@ -59,13 +59,13 @@ Updated to return real implementations:
 - Android returns GoogleFitService
 - Unsupported platforms return null
 
-### 2. `WalkingApp.Mobile/src/services/health/index.ts`
+### 2. `Stepper.Mobile/src/services/health/index.ts`
 
 Added exports for the new services:
 - `HealthKitService`, `createHealthKitService`
 - `GoogleFitService`, `createGoogleFitService`
 
-### 3. `WalkingApp.Mobile/app.json`
+### 3. `Stepper.Mobile/app.json`
 
 Added health-related configuration:
 

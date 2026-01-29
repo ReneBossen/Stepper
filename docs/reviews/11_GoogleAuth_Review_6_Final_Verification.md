@@ -48,7 +48,7 @@ jest.mock('@hooks/useGoogleAuth');
 
 **Current State**:
 - No imports from `@hooks/useGoogleAuth` in any source file
-- Grep search confirms: `No matches found` in `/WalkingApp.Mobile/src`
+- Grep search confirms: `No matches found` in `/Stepper.Mobile/src`
 
 ### Test File Compiles
 

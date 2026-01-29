@@ -67,9 +67,9 @@ You'll need the SHA-1 from your release keystore. If you haven't created one yet
 4. **Configure Android Client**
    - **Application type**: Select **Android**
    - **Name**: `Stepper Android` (or any descriptive name)
-   - **Package name**: `com.walkingapp.mobile`
+   - **Package name**: `com.Stepper.mobile`
      - This MUST match the package name in `Stepper.Mobile/app.json`
-     - Current value in app.json: `"package": "com.walkingapp.mobile"`
+     - Current value in app.json: `"package": "com.Stepper.mobile"`
    - **SHA-1 certificate fingerprint**: Paste the SHA-1 from Step 1
 
 5. **Create the Client**
@@ -153,8 +153,8 @@ npx expo run:android
 **Cause**: Package name in Google Cloud Console doesn't match app.json
 
 **Solution**:
-- Verify package name in Google Cloud Console is: `com.walkingapp.mobile`
-- Verify `app.json` has: `"android": { "package": "com.walkingapp.mobile" }`
+- Verify package name in Google Cloud Console is: `com.Stepper.mobile`
+- Verify `app.json` has: `"android": { "package": "com.Stepper.mobile" }`
 - Update Google Cloud Console if needed
 
 ## Important Notes
@@ -174,7 +174,7 @@ For iOS, you'll need to create an **iOS OAuth client** separately:
 
 1. Go to Google Cloud Console → Credentials
 2. Create OAuth client ID → iOS
-3. Add your iOS bundle identifier: `com.walkingapp.mobile`
+3. Add your iOS bundle identifier: `com.Stepper.mobile`
 4. Add the iOS client ID to `GOOGLE_IOS_CLIENT_ID` in `.env`
 5. Update `useGoogleAuth.ts` to use `iosClientId` parameter
 
@@ -213,7 +213,7 @@ Google.useIdTokenAuthRequest({
   androidClientId: GOOGLE_ANDROID_CLIENT_ID, // Used for Android
   iosClientId: GOOGLE_IOS_CLIENT_ID,         // (Optional) for iOS
   redirectUri: makeRedirectUri({
-    scheme: 'walkingapp',
+    scheme: 'Stepper',
   }),
 });
 ```

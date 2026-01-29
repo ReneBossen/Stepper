@@ -40,30 +40,30 @@ The Notifications feature implementation is well-executed and follows the Scream
 ### Backend Files
 | File | Lines | Status |
 |------|-------|--------|
-| `WalkingApp.Api/Notifications/NotificationsController.cs` | 201 | PASS |
-| `WalkingApp.Api/Notifications/NotificationService.cs` | 176 | PASS |
-| `WalkingApp.Api/Notifications/INotificationService.cs` | 49 | PASS |
-| `WalkingApp.Api/Notifications/NotificationRepository.cs` | 167 | PASS |
-| `WalkingApp.Api/Notifications/INotificationRepository.cs` | 55 | PASS |
-| `WalkingApp.Api/Notifications/Notification.cs` | 53 | PASS |
-| `WalkingApp.Api/Notifications/NotificationEntity.cs` | 106 | PASS |
-| `WalkingApp.Api/Notifications/NotificationType.cs` | 33 | PASS |
-| `WalkingApp.Api/Notifications/DTOs/NotificationResponse.cs` | 48 | PASS |
-| `WalkingApp.Api/Notifications/DTOs/NotificationListResponse.cs` | 28 | PASS |
-| `WalkingApp.Api/Notifications/DTOs/UnreadCountResponse.cs` | 13 | PASS |
-| `WalkingApp.Api/Common/Extensions/ServiceCollectionExtensions.cs` | 115 | PASS |
+| `Stepper.Api/Notifications/NotificationsController.cs` | 201 | PASS |
+| `Stepper.Api/Notifications/NotificationService.cs` | 176 | PASS |
+| `Stepper.Api/Notifications/INotificationService.cs` | 49 | PASS |
+| `Stepper.Api/Notifications/NotificationRepository.cs` | 167 | PASS |
+| `Stepper.Api/Notifications/INotificationRepository.cs` | 55 | PASS |
+| `Stepper.Api/Notifications/Notification.cs` | 53 | PASS |
+| `Stepper.Api/Notifications/NotificationEntity.cs` | 106 | PASS |
+| `Stepper.Api/Notifications/NotificationType.cs` | 33 | PASS |
+| `Stepper.Api/Notifications/DTOs/NotificationResponse.cs` | 48 | PASS |
+| `Stepper.Api/Notifications/DTOs/NotificationListResponse.cs` | 28 | PASS |
+| `Stepper.Api/Notifications/DTOs/UnreadCountResponse.cs` | 13 | PASS |
+| `Stepper.Api/Common/Extensions/ServiceCollectionExtensions.cs` | 115 | PASS |
 
 ### Mobile Files
 | File | Lines | Status |
 |------|-------|--------|
-| `WalkingApp.Mobile/src/services/api/notificationsApi.ts` | 105 | PASS |
+| `Stepper.Mobile/src/services/api/notificationsApi.ts` | 105 | PASS |
 
 ### Test Files
 | File | Tests | Status |
 |------|-------|--------|
-| `tests/WalkingApp.UnitTests/Notifications/NotificationServiceTests.cs` | 26 | PASS |
-| `tests/WalkingApp.UnitTests/Notifications/NotificationsControllerTests.cs` | 27 | PASS |
-| `WalkingApp.Mobile/src/services/api/__tests__/notificationsApi.test.ts` | 17 | PASS |
+| `tests/Stepper.UnitTests/Notifications/NotificationServiceTests.cs` | 26 | PASS |
+| `tests/Stepper.UnitTests/Notifications/NotificationsControllerTests.cs` | 27 | PASS |
+| `Stepper.Mobile/src/services/api/__tests__/notificationsApi.test.ts` | 17 | PASS |
 
 ### Database Migration
 | File | Status |
@@ -83,13 +83,13 @@ None.
 ### MINOR
 
 #### Issue #1: NotificationType Enum Differs from Plan
-**File**: `WalkingApp.Api/Notifications/NotificationType.cs`
+**File**: `Stepper.Api/Notifications/NotificationType.cs`
 **Lines**: 1-33
 **Description**: The plan specified these types: `FriendRequest`, `FriendRequestAccepted`, `GroupInvite`, `GroupJoinRequest`, `Achievement`, `Milestone`, `System`. The implementation uses: `General`, `FriendRequest`, `FriendAccepted`, `GroupInvite`, `GoalAchieved`.
 **Assessment**: This is acceptable because the implementation aligns with the database enum type `notification_type` which has: `friend_request`, `friend_accepted`, `group_invite`, `goal_achieved`, `general`. The plan was aspirational and the implementation correctly matches the actual database schema.
 
 #### Issue #2: DTO Structure Differs from Plan
-**File**: `WalkingApp.Api/Notifications/DTOs/NotificationResponse.cs`
+**File**: `Stepper.Api/Notifications/DTOs/NotificationResponse.cs`
 **Lines**: 1-48
 **Description**: The plan specified `RelatedEntityId` (Guid?) and `RelatedEntityType` (string?) fields. The implementation uses a `Data` (string?) field which stores JSON.
 **Assessment**: This is a reasonable adaptation. The database uses a `JSONB` field called `data` which provides more flexibility for storing related entity information. This is actually better than the plan as it allows for richer metadata without schema changes.

@@ -48,7 +48,7 @@ None identified.
 
 #### Issue #1: Mobile usersApi.ts retains direct Supabase calls for some methods
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\services\api\usersApi.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\services\api\usersApi.ts`
 **Lines**: 171-350
 **Description**: The following methods still use direct Supabase calls:
 - `getUserProfile()` (line 171)
@@ -64,7 +64,7 @@ None identified.
 
 #### Issue #2: UserPreferences mobile model mismatch with backend
 
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\services\api\userPreferencesApi.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\services\api\userPreferencesApi.ts`
 **Lines**: 82-106
 **Description**: The mobile `UserPreferences` interface has granular notification and privacy settings that the backend does not support. The mapping function (`mapPreferencesResponse`) derives these from the simplified backend model.
 

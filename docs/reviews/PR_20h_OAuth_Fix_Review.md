@@ -51,9 +51,9 @@ The review identifies **3 BLOCKERS**, **5 MAJOR**, and **7 MINOR** issues.
 #### Issue #1: Debug Console.WriteLine Statements in Backend Production Code
 
 **Files:**
-- `WalkingApp.Api/Common/Authentication/SupabaseAuthHandler.cs` (lines 45, 50, 54, 61, 65, 75, 81)
-- `WalkingApp.Api/Common/Middleware/ExceptionHandlingMiddleware.cs` (lines 23, 27, 31, 32)
-- `WalkingApp.Api/Users/UsersController.cs` (lines 33, 37, 43, 45, 50, 51)
+- `Stepper.Api/Common/Authentication/SupabaseAuthHandler.cs` (lines 45, 50, 54, 61, 65, 75, 81)
+- `Stepper.Api/Common/Middleware/ExceptionHandlingMiddleware.cs` (lines 23, 27, 31, 32)
+- `Stepper.Api/Users/UsersController.cs` (lines 33, 37, 43, 45, 50, 51)
 
 **Description:** 17 `Console.WriteLine` debug statements were added during debugging. These:
 1. Pollute production logs with debug noise
@@ -81,10 +81,10 @@ Console.WriteLine($"[UsersController] StackTrace: {ex.StackTrace}");
 #### Issue #2: Debug console.log Statements in Mobile Production Code
 
 **Files:**
-- `WalkingApp.Mobile/src/services/tokenStorage.ts` (lines 91, 93, 99, 107)
-- `WalkingApp.Mobile/src/services/api/client.ts` (lines 36, 115)
-- `WalkingApp.Mobile/src/store/authStore.ts` (line 143)
-- `WalkingApp.Mobile/src/screens/auth/LoginScreen.tsx` (lines 101, 103, 120)
+- `Stepper.Mobile/src/services/tokenStorage.ts` (lines 91, 93, 99, 107)
+- `Stepper.Mobile/src/services/api/client.ts` (lines 36, 115)
+- `Stepper.Mobile/src/store/authStore.ts` (line 143)
+- `Stepper.Mobile/src/screens/auth/LoginScreen.tsx` (lines 101, 103, 120)
 
 **Description:** 11 `console.log` debug statements were added. These:
 1. Expose internal state and token handling logic
@@ -111,7 +111,7 @@ if (__DEV__) {
 
 #### Issue #3: Possible Null Reference Warning in UsersController
 
-**File:** `WalkingApp.Api/Users/UsersController.cs`
+**File:** `Stepper.Api/Users/UsersController.cs`
 **Line:** 46
 
 **Description:** Compiler warning CS8604 - possible null reference. The `profile` variable from `EnsureProfileExistsAsync` could potentially be null.
@@ -139,7 +139,7 @@ return Ok(ApiResponse<GetProfileResponse>.SuccessResponse(profile));
 
 #### Issue #4: Deprecated Middleware Still Present
 
-**File:** `WalkingApp.Api/Common/Authentication/SupabaseAuthMiddleware.cs`
+**File:** `Stepper.Api/Common/Authentication/SupabaseAuthMiddleware.cs`
 
 **Description:** The middleware is marked as `[Obsolete]` but still exists with 180+ lines of duplicated JWKS validation code. It's no longer used in `Program.cs` (replaced by `SupabaseAuthHandler`).
 
@@ -151,7 +151,7 @@ return Ok(ApiResponse<GetProfileResponse>.SuccessResponse(profile));
 
 #### Issue #5: OAuth Token Expiry Hardcoded Default
 
-**File:** `WalkingApp.Mobile/src/screens/auth/LoginScreen.tsx`
+**File:** `Stepper.Mobile/src/screens/auth/LoginScreen.tsx`
 **Line:** 24
 
 **Description:** The `DEFAULT_EXPIRES_IN` is hardcoded to 3600 seconds (1 hour). If Supabase changes its token expiry, this could cause issues.
@@ -168,7 +168,7 @@ const DEFAULT_EXPIRES_IN = 3600;
 
 #### Issue #6: OAuth Tokens Cannot Be Refreshed - Silent Session Loss
 
-**File:** `WalkingApp.Mobile/src/services/api/client.ts`
+**File:** `Stepper.Mobile/src/services/api/client.ts`
 **Lines:** 31-40
 
 **Description:** When OAuth tokens expire, the code silently clears tokens and returns null, which will cause the next API call to fail without giving the user feedback about needing to re-authenticate.
@@ -195,7 +195,7 @@ if (tokenType === 'oauth') {
 
 #### Issue #7: Magic String "accepted" in UserRepository
 
-**File:** `WalkingApp.Api/Users/UserRepository.cs`
+**File:** `Stepper.Api/Users/UserRepository.cs`
 **Lines:** 94, 100
 
 **Description:** The friendship status "accepted" is hardcoded as a string. This should be a constant or enum.
@@ -222,8 +222,8 @@ public static class FriendshipStatus
 #### Issue #8: Missing Authorization Check on User Stats/Activity Endpoints
 
 **Files:**
-- `WalkingApp.Api/Users/UsersController.cs` (lines 249-312)
-- `WalkingApp.Api/Users/UserService.cs`
+- `Stepper.Api/Users/UsersController.cs` (lines 249-312)
+- `Stepper.Api/Users/UserService.cs`
 
 **Description:** The `GetUserStats`, `GetUserActivity`, and `GetMutualGroups` endpoints allow any authenticated user to query stats for ANY other user by ID. There's no check if the requesting user has permission to view this data (e.g., are they friends? Is the profile public?).
 
@@ -245,7 +245,7 @@ return Ok(ApiResponse<UserStatsResponse>.SuccessResponse(stats));
 
 #### Issue #9: Inconsistent Error Message Format
 
-**File:** `WalkingApp.Api/Users/UsersController.cs`
+**File:** `Stepper.Api/Users/UsersController.cs`
 
 **Description:** Error messages use different formats - some include "An error occurred:", others don't. Stack traces are exposed in some exceptions via Console.WriteLine.
 
@@ -256,10 +256,10 @@ return Ok(ApiResponse<UserStatsResponse>.SuccessResponse(stats));
 #### Issue #10: Query Entity Duplication
 
 **Files:**
-- `WalkingApp.Api/Users/FriendshipQueryEntity.cs`
-- `WalkingApp.Api/Users/GroupMembershipQueryEntity.cs`
-- `WalkingApp.Api/Users/GroupQueryEntity.cs`
-- `WalkingApp.Api/Users/StepEntryQueryEntity.cs`
+- `Stepper.Api/Users/FriendshipQueryEntity.cs`
+- `Stepper.Api/Users/GroupMembershipQueryEntity.cs`
+- `Stepper.Api/Users/GroupQueryEntity.cs`
+- `Stepper.Api/Users/StepEntryQueryEntity.cs`
 
 **Description:** These "query entities" duplicate column mappings from their respective feature folders to avoid cross-feature dependencies. While architecturally sound, this creates maintenance burden when schemas change.
 
@@ -269,7 +269,7 @@ return Ok(ApiResponse<UserStatsResponse>.SuccessResponse(stats));
 
 #### Issue #11: TODO Comment for Missing Privacy Field
 
-**File:** `WalkingApp.Mobile/src/services/api/usersApi.ts`
+**File:** `Stepper.Mobile/src/services/api/usersApi.ts`
 **Line:** 203
 
 **Description:** A TODO indicates missing functionality.
@@ -285,7 +285,7 @@ is_private: false, // TODO: Backend doesn't provide this yet
 
 #### Issue #12: N+1 Query Potential in GetUserGroups
 
-**File:** `WalkingApp.Api/Groups/GroupRepository.cs`
+**File:** `Stepper.Api/Groups/GroupRepository.cs`
 **Lines:** 92-96
 
 **Description:** The code fetches member counts in a loop, which could cause N+1 queries.
@@ -304,7 +304,7 @@ foreach (var groupId in groupIds)
 
 #### Issue #13: AutoConnectRealtime Changed to False
 
-**File:** `WalkingApp.Api/Common/Database/SupabaseClientFactory.cs`
+**File:** `Stepper.Api/Common/Database/SupabaseClientFactory.cs`
 **Line:** 31
 
 **Description:** `AutoConnectRealtime` was changed from `true` to `false` without clear documentation of why.
@@ -327,7 +327,7 @@ foreach (var groupId in groupIds)
 
 #### Issue #15: Test Timing Threshold Increased
 
-**File:** `WalkingApp.Mobile/src/services/__tests__/tokenStorage.test.ts`
+**File:** `Stepper.Mobile/src/services/__tests__/tokenStorage.test.ts`
 **Line:** 226 (approximately)
 
 **Description:** The timing threshold for parallel operations was increased from 25ms to 100ms, suggesting flaky tests.

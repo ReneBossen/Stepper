@@ -39,7 +39,7 @@ Cannot find module '@hooks/useGoogleAuth' or its corresponding type declarations
 
 ### MAJOR Issue #1: Session Verification - IMPLEMENTED
 
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Mobile/src/screens/auth/LoginScreen.tsx`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Mobile/src/screens/auth/LoginScreen.tsx`
 **Lines**: 74-86
 
 **Required Change**: Add verification that session and user exist after `setSession()`
@@ -68,7 +68,7 @@ if (!sessionData.session || !sessionData.user) {
 
 ### MAJOR Issue #2: URL Prefix Validation - IMPLEMENTED
 
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Mobile/src/screens/auth/LoginScreen.tsx`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Mobile/src/screens/auth/LoginScreen.tsx`
 **Lines**: 54-58
 
 **Required Change**: Validate that redirect URL starts with the expected scheme
@@ -83,14 +83,14 @@ if (!redirectUrl.startsWith(OAUTH_REDIRECT_SCHEME)) {
 ```
 
 **Assessment**: **CORRECTLY IMPLEMENTED**
-- Uses constant `OAUTH_REDIRECT_SCHEME = 'walkingapp://'`
+- Uses constant `OAUTH_REDIRECT_SCHEME = 'Stepper://'`
 - Validates URL prefix before processing
 - Sets user-friendly error message on validation failure
 - Returns early to prevent further processing
 
 ### MINOR Issue #3: Magic Strings Replaced - IMPLEMENTED
 
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Mobile/src/screens/auth/LoginScreen.tsx`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Mobile/src/screens/auth/LoginScreen.tsx`
 **Lines**: 14-17
 
 **Required Change**: Extract OAuth parameter names to constants
@@ -98,7 +98,7 @@ if (!redirectUrl.startsWith(OAUTH_REDIRECT_SCHEME)) {
 **Implementation**:
 ```typescript
 // OAuth configuration constants
-const OAUTH_REDIRECT_SCHEME = 'walkingapp://';
+const OAUTH_REDIRECT_SCHEME = 'Stepper://';
 const TOKEN_PARAM_ACCESS = 'access_token';
 const TOKEN_PARAM_REFRESH = 'refresh_token';
 ```
@@ -125,7 +125,7 @@ const refreshToken = params.get(TOKEN_PARAM_REFRESH);
 
 **Verification**:
 ```bash
-ls /mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Mobile/src/hooks/
+ls /mnt/c/Users/rene_/source/repos/Stepper/Stepper.Mobile/src/hooks/
 # Result: useGoogleAuth.ts NOT PRESENT (only useAppTheme.ts and useSupabaseAuth.ts exist)
 ```
 
@@ -138,7 +138,7 @@ ls /mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Mobile/src/hooks/
 
 **Verification**:
 ```bash
-ls /mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Mobile/src/hooks/__tests__/
+ls /mnt/c/Users/rene_/source/repos/Stepper/Stepper.Mobile/src/hooks/__tests__/
 # Result: useGoogleAuth.test.ts NOT PRESENT (only useAppTheme.test.ts and useSupabaseAuth.test.ts exist)
 ```
 
@@ -223,7 +223,7 @@ declare module '@env' {
 
 #### Issue #1: Test File Imports Deleted Module
 
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Mobile/src/screens/auth/__tests__/LoginScreen.test.tsx`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Mobile/src/screens/auth/__tests__/LoginScreen.test.tsx`
 **Lines**: 5, 10, 92, 103-108, 548-720
 
 **Description**: The test file was not updated when the `useGoogleAuth` hook was deleted. It still:
@@ -256,7 +256,7 @@ None. All MAJOR issues from Review 4 have been addressed.
 
 #### Issue #2: Supabase Test File Has Stale Mock
 
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Mobile/src/services/__tests__/supabase.test.ts`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Mobile/src/services/__tests__/supabase.test.ts`
 **Line**: 31
 
 **Description**: The test mock still includes `signInWithIdToken`, though this is harmless since the function was removed from the actual implementation.

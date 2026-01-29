@@ -27,23 +27,23 @@ The Plan 20d implementation successfully refactors the Friends feature to route 
 
 | File | Path | Status |
 |------|------|--------|
-| FriendsController.cs | `WalkingApp.Api/Friends/FriendsController.cs` | PASS |
-| IFriendService.cs | `WalkingApp.Api/Friends/IFriendService.cs` | PASS |
-| FriendService.cs | `WalkingApp.Api/Friends/FriendService.cs` | PASS |
-| IFriendRepository.cs | `WalkingApp.Api/Friends/IFriendRepository.cs` | PASS |
-| FriendRepository.cs | `WalkingApp.Api/Friends/FriendRepository.cs` | PASS |
-| FriendDiscoveryController.cs | `WalkingApp.Api/Friends/Discovery/FriendDiscoveryController.cs` | PASS |
-| FriendServiceTests.cs | `tests/WalkingApp.UnitTests/Friends/FriendServiceTests.cs` | PASS |
-| FriendsControllerTests.cs | `tests/WalkingApp.UnitTests/Friends/FriendsControllerTests.cs` | PASS |
-| FriendRepositoryTests.cs | `tests/WalkingApp.UnitTests/Friends/FriendRepositoryTests.cs` | PASS |
+| FriendsController.cs | `Stepper.Api/Friends/FriendsController.cs` | PASS |
+| IFriendService.cs | `Stepper.Api/Friends/IFriendService.cs` | PASS |
+| FriendService.cs | `Stepper.Api/Friends/FriendService.cs` | PASS |
+| IFriendRepository.cs | `Stepper.Api/Friends/IFriendRepository.cs` | PASS |
+| FriendRepository.cs | `Stepper.Api/Friends/FriendRepository.cs` | PASS |
+| FriendDiscoveryController.cs | `Stepper.Api/Friends/Discovery/FriendDiscoveryController.cs` | PASS |
+| FriendServiceTests.cs | `tests/Stepper.UnitTests/Friends/FriendServiceTests.cs` | PASS |
+| FriendsControllerTests.cs | `tests/Stepper.UnitTests/Friends/FriendsControllerTests.cs` | PASS |
+| FriendRepositoryTests.cs | `tests/Stepper.UnitTests/Friends/FriendRepositoryTests.cs` | PASS |
 
 ### Mobile
 
 | File | Path | Status |
 |------|------|--------|
-| friendsApi.ts | `WalkingApp.Mobile/src/services/api/friendsApi.ts` | PASS |
-| friendsStore.ts | `WalkingApp.Mobile/src/store/friendsStore.ts` | PASS |
-| friendsApi.test.ts | `WalkingApp.Mobile/src/services/api/__tests__/friendsApi.test.ts` | PASS |
+| friendsApi.ts | `Stepper.Mobile/src/services/api/friendsApi.ts` | PASS |
+| friendsStore.ts | `Stepper.Mobile/src/store/friendsStore.ts` | PASS |
+| friendsApi.test.ts | `Stepper.Mobile/src/services/api/__tests__/friendsApi.test.ts` | PASS |
 
 ## Issues
 
@@ -59,7 +59,7 @@ None.
 
 #### Issue #1: Confusing DTO Reuse for Outgoing Requests
 
-**File**: `WalkingApp.Api/Friends/FriendService.cs`
+**File**: `Stepper.Api/Friends/FriendService.cs`
 **Lines**: 144-155
 
 **Description**: The `GetSentRequestsAsync` method reuses `RequesterDisplayName` and `RequesterAvatarUrl` fields to store addressee information. While the mobile mapping handles this correctly, it creates confusion about the DTO's semantic meaning.
@@ -83,7 +83,7 @@ responses.Add(new FriendRequestResponse
 
 #### Issue #2: Username Fallback to DisplayName
 
-**File**: `WalkingApp.Mobile/src/services/api/friendsApi.ts`
+**File**: `Stepper.Mobile/src/services/api/friendsApi.ts`
 **Lines**: 89, 101, 112, 122
 
 **Description**: The `username` field is mapped from `displayName` as a fallback because the backend does not provide a username field. This is acceptable but may need to be addressed when usernames are added to the system.

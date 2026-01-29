@@ -322,7 +322,7 @@ This approach ensures we make multiple quick retry attempts within a reasonable 
 ## File Structure
 
 ```
-WalkingApp.Mobile/src/
+Stepper.Mobile/src/
   services/
     sync/
       backgroundSyncService.ts    # Background task registration

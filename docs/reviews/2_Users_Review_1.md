@@ -37,7 +37,7 @@ None identified. The implementation is ready for merge from a blocking perspecti
 ### MAJOR
 
 #### Issue #1: Magic String in Default Display Name Generation
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Users/UserService.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Users/UserService.cs`
 **Line**: 88
 **Description**: The default display name generation uses inline string manipulation with magic values:
 ```csharp
@@ -58,7 +58,7 @@ DisplayName = defaultName.Length > DefaultDisplayNameMaxLength
 ```
 
 #### Issue #2: Potential KeyNotFoundException Instead of UnauthorizedAccessException
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Users/UserRepository.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Users/UserRepository.cs`
 **Line**: 86
 **Description**: The `GetAuthenticatedClientAsync()` method accesses `HttpContext.Items["SupabaseToken"]` which will throw `KeyNotFoundException` if the key doesn't exist. This is acknowledged in test comments (UserRepositoryTests.cs lines 77-79) but creates inconsistent exception behavior. The test expects `KeyNotFoundException` when the token key is missing, but semantically this should be `UnauthorizedAccessException` to match the pattern when the token is null or empty.
 
@@ -82,7 +82,7 @@ private async Task<Client> GetAuthenticatedClientAsync()
 ```
 
 #### Issue #3: UpdatedAt Timestamp Set in Service Layer Instead of Database Trigger
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Users/UserService.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Users/UserService.cs`
 **Line**: 63
 **Description**: The service layer manually sets `UpdatedAt = DateTime.UtcNow` before updating. However, the migration script (002_create_users_table.sql lines 59-62) includes a database trigger that automatically updates the `updated_at` column. This creates redundancy and potential inconsistency if the service-set value differs from the database trigger value by milliseconds.
 
@@ -96,7 +96,7 @@ var updatedUser = await _userRepository.UpdateAsync(existingUser);
 This ensures a single source of truth and leverages the database's NOW() function for consistency.
 
 #### Issue #4: RLS Policy References Non-Existent Table
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/docs/migrations/002_create_users_table.sql`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/docs/migrations/002_create_users_table.sql`
 **Lines**: 40-47
 **Description**: The "Users can view friends profiles" RLS policy references the `friendships` table which doesn't exist yet (Plan 4). While there's a comment acknowledging this (lines 38-39), deploying this migration will cause the policy to fail or behave unexpectedly until the friendships table exists.
 
@@ -118,7 +118,7 @@ CREATE POLICY "Users can view friends profiles"
 ### MINOR
 
 #### Issue #5: Inconsistent Validation Error Messages
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Users/UserService.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Users/UserService.cs`
 **Lines**: 103, 107, 111
 **Description**: Validation error messages have inconsistent punctuation. Some end with a period, others don't:
 - Line 103: `"Display name cannot be empty."` (has period)
@@ -137,28 +137,28 @@ throw new ArgumentException("Display name must be at least 2 characters long");
 ```
 
 #### Issue #6: UserEntity Class is Internal but Could Be Private
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Users/UserRepository.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Users/UserRepository.cs`
 **Line**: 101
 **Description**: The `UserEntity` class is marked as `internal` but is only used within `UserRepository.cs`. Since it's an implementation detail of the repository, it could be more restrictive.
 
 **Suggestion**: Consider making it a private nested class or keeping it internal if you anticipate integration tests needing access. The current approach is acceptable, but worth documenting the decision.
 
 #### Issue #7: Missing XML Documentation on UserEntity Members
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Users/UserRepository.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Users/UserRepository.cs`
 **Lines**: 103-119
 **Description**: While `UserEntity` has a class-level XML doc comment, its properties and methods lack XML documentation. According to coding standards, public APIs should have XML documentation. While `UserEntity` is internal, its public members should still be documented for maintainability.
 
 **Suggestion**: Add XML documentation to UserEntity properties and methods, or add a comment explaining why they're intentionally undocumented (implementation detail).
 
 #### Issue #8: Test Comment Acknowledges Inconsistent Exception Type
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/tests/WalkingApp.UnitTests/Users/UserRepositoryTests.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/tests/Stepper.UnitTests/Users/UserRepositoryTests.cs`
 **Lines**: 77-79
 **Description**: Test includes a comment stating "This could be improved to return UnauthorizedAccessException instead" which acknowledges Issue #2. This technical debt should be addressed rather than documented in tests.
 
 **Suggestion**: Address Issue #2 to resolve this, then update the test and remove the comment.
 
 #### Issue #9: PreferencesJson Default Value Mismatch
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Users/UserRepository.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Users/UserRepository.cs`
 **Line**: 113
 **Description**: `UserEntity.PreferencesJson` defaults to `"{}"` but the database schema (002_create_users_table.sql line 10) also sets `DEFAULT '{}'`. This creates redundancy, though not harmful.
 

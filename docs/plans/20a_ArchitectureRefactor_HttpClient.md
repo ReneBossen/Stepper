@@ -10,11 +10,11 @@ Set up the HTTP client infrastructure in the mobile app that will be used by all
 
 ## Affected Feature Slices
 
-### Mobile (WalkingApp.Mobile)
+### Mobile (Stepper.Mobile)
 - **config/**: New API configuration file
 - **services/api/**: New HTTP client and types
 
-### Backend (WalkingApp.Api)
+### Backend (Stepper.Api)
 - **Common/**: API versioning setup
 - **Program.cs**: Route prefix configuration
 
@@ -52,7 +52,7 @@ Add route prefix to all controllers:
 
 ### Step 2: Mobile - API Configuration
 
-Create `WalkingApp.Mobile/src/config/api.ts`:
+Create `Stepper.Mobile/src/config/api.ts`:
 
 ```typescript
 export const API_CONFIG = {
@@ -67,7 +67,7 @@ export const API_CONFIG = {
 
 ### Step 3: Mobile - API Types
 
-Create `WalkingApp.Mobile/src/services/api/types.ts`:
+Create `Stepper.Mobile/src/services/api/types.ts`:
 
 ```typescript
 // Matches backend ApiResponse<T> format
@@ -104,7 +104,7 @@ export class ApiError extends Error {
 
 ### Step 4: Mobile - HTTP Client
 
-Create `WalkingApp.Mobile/src/services/api/client.ts`:
+Create `Stepper.Mobile/src/services/api/client.ts`:
 
 ```typescript
 import { supabase } from '../supabase';
@@ -245,7 +245,7 @@ Update `babel.config.js` if needed for environment variable support.
 
 ### Step 6: Update Index Exports
 
-Create/update `WalkingApp.Mobile/src/services/api/index.ts`:
+Create/update `Stepper.Mobile/src/services/api/index.ts`:
 
 ```typescript
 export { apiClient } from './client';
@@ -265,7 +265,7 @@ export { ApiError, type ApiResponse, type ApiErrorResponse } from './types';
 ## Tests
 
 ### Unit Tests to Add
-- `WalkingApp.Mobile/src/services/api/__tests__/client.test.ts`
+- `Stepper.Mobile/src/services/api/__tests__/client.test.ts`
   - Test auth token injection
   - Test error handling
   - Test timeout handling

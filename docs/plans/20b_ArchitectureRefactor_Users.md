@@ -10,13 +10,13 @@ Refactor the Users feature to route all data operations through the .NET API ins
 
 ## Affected Feature Slices
 
-### Backend (WalkingApp.Api/Users)
+### Backend (Stepper.Api/Users)
 - `UsersController.cs`: Add preferences and avatar endpoints
 - `UserService.cs` / `IUserService.cs`: Add new business logic
 - `UserRepository.cs` / `IUserRepository.cs`: Add data access methods
 - `DTOs/`: New request/response types
 
-### Mobile (WalkingApp.Mobile)
+### Mobile (Stepper.Mobile)
 - `services/api/usersApi.ts`: Complete rewrite
 - `services/api/userPreferencesApi.ts`: Complete rewrite
 
@@ -36,7 +36,7 @@ Refactor the Users feature to route all data operations through the .NET API ins
 
 #### Step 1.1: Add DTOs
 
-Create `WalkingApp.Api/Users/DTOs/UserPreferencesResponse.cs`:
+Create `Stepper.Api/Users/DTOs/UserPreferencesResponse.cs`:
 ```csharp
 public record UserPreferencesResponse(
     bool NotificationsEnabled,
@@ -46,7 +46,7 @@ public record UserPreferencesResponse(
 );
 ```
 
-Create `WalkingApp.Api/Users/DTOs/UpdateUserPreferencesRequest.cs`:
+Create `Stepper.Api/Users/DTOs/UpdateUserPreferencesRequest.cs`:
 ```csharp
 public record UpdateUserPreferencesRequest(
     bool? NotificationsEnabled,
@@ -98,7 +98,7 @@ public async Task<ActionResult<ApiResponse<UserPreferencesResponse>>> UpdatePref
 
 #### Step 2.1: Add DTO
 
-Create `WalkingApp.Api/Users/DTOs/AvatarUploadResponse.cs`:
+Create `Stepper.Api/Users/DTOs/AvatarUploadResponse.cs`:
 ```csharp
 public record AvatarUploadResponse(string AvatarUrl);
 ```
@@ -209,16 +209,16 @@ export const userPreferencesApi = {
 ## Tests
 
 ### Backend Unit Tests
-- `WalkingApp.Api.Tests/Users/UserServicePreferencesTests.cs`
-- `WalkingApp.Api.Tests/Users/UserServiceAvatarTests.cs`
+- `Stepper.Api.Tests/Users/UserServicePreferencesTests.cs`
+- `Stepper.Api.Tests/Users/UserServiceAvatarTests.cs`
 
 ### Backend Integration Tests
-- `WalkingApp.Api.Tests/Users/UsersControllerPreferencesTests.cs`
-- `WalkingApp.Api.Tests/Users/UsersControllerAvatarTests.cs`
+- `Stepper.Api.Tests/Users/UsersControllerPreferencesTests.cs`
+- `Stepper.Api.Tests/Users/UsersControllerAvatarTests.cs`
 
 ### Mobile Tests
-- Update `WalkingApp.Mobile/src/services/api/__tests__/usersApi.test.ts`
-- Update `WalkingApp.Mobile/src/services/api/__tests__/userPreferencesApi.test.ts`
+- Update `Stepper.Mobile/src/services/api/__tests__/usersApi.test.ts`
+- Update `Stepper.Mobile/src/services/api/__tests__/userPreferencesApi.test.ts`
 - Mock `apiClient` instead of Supabase
 
 ## Acceptance Criteria

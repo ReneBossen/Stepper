@@ -149,7 +149,7 @@ This is **exactly** what the current implementation does.
 **Attack Scenario Analysis**:
 
 ```
-Attacker attempts: walkingapp://#access_token=FORGED_TOKEN&refresh_token=FORGED_REFRESH
+Attacker attempts: Stepper://#access_token=FORGED_TOKEN&refresh_token=FORGED_REFRESH
 ```
 
 **Why it fails**:
@@ -184,7 +184,7 @@ This comment is accurate and follows Supabase's recommended approach.
 - State parameter for CSRF protection
 - Client-side token validation before Supabase
 
-**However**: expo-auth-session **does not work** with Google OAuth on Android because Google rejects custom URI schemes (`walkingapp://`) for OAuth clients configured as Android apps.
+**However**: expo-auth-session **does not work** with Google OAuth on Android because Google rejects custom URI schemes (`Stepper://`) for OAuth clients configured as Android apps.
 
 **What the browser-based approach DOES provide**:
 - Server-side token validation (via Supabase)
@@ -331,7 +331,7 @@ The previous reviews identified the manual token extraction as a BLOCKER due to 
 
 #### Issue #1: Missing Session Verification After `setSession()`
 
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Mobile/src/screens/auth/LoginScreen.tsx`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Mobile/src/screens/auth/LoginScreen.tsx`
 **Lines**: 63-71
 
 **Description**: After `setSession()` returns without error, the code assumes success but doesn't verify the session actually exists.
@@ -368,7 +368,7 @@ if (verifyError || !session?.user) {
 
 #### Issue #2: Incomplete Error Handling for Invalid URL Format
 
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Mobile/src/screens/auth/LoginScreen.tsx`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Mobile/src/screens/auth/LoginScreen.tsx`
 **Lines**: 52-77
 
 **Description**: The token extraction only checks for the presence of `#` but doesn't validate the overall URL structure.
@@ -387,7 +387,7 @@ if (hashIndex !== -1) {
 
 **Recommendation**: Add URL prefix validation:
 ```typescript
-if (!redirectUrl.startsWith('walkingapp://')) {
+if (!redirectUrl.startsWith('Stepper://')) {
   setGoogleError('Invalid redirect source');
   return;
 }
@@ -405,7 +405,7 @@ if (hashIndex === -1) {
 
 #### Issue #3: Magic Strings for URL Parameters
 
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Mobile/src/screens/auth/LoginScreen.tsx`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Mobile/src/screens/auth/LoginScreen.tsx`
 **Lines**: 58-59
 
 **Description**: Token parameter names hardcoded as strings.
@@ -430,7 +430,7 @@ export const OAUTH_PARAMS = {
 #### Issue #4: Unused `useGoogleAuth` Hook (635 Lines Dead Code)
 
 **Files**:
-- `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Mobile/src/hooks/useGoogleAuth.ts` (83 lines)
+- `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Mobile/src/hooks/useGoogleAuth.ts` (83 lines)
 - Tests: 534 lines
 
 **Description**: The expo-auth-session based hook exists but is not used because it doesn't work with Google OAuth.
@@ -443,7 +443,7 @@ export const OAUTH_PARAMS = {
 
 #### Issue #5: Console Error Logging Could Expose Error Details
 
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Mobile/src/screens/auth/LoginScreen.tsx`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Mobile/src/screens/auth/LoginScreen.tsx`
 **Line**: 84
 
 **Description**: Error logging shows error messages which could potentially contain sensitive information.
@@ -467,7 +467,7 @@ console.error('Google sign-in error:', err.message || 'Unknown error');
 
 **Root Cause**: Google's OAuth policy for Android clients:
 - Android OAuth clients require redirect URIs that match the app's package signature
-- Custom URI schemes (`walkingapp://`) are NOT allowed for Android OAuth clients
+- Custom URI schemes (`Stepper://`) are NOT allowed for Android OAuth clients
 - This is a Google restriction, not a Supabase or Expo limitation
 
 **Solutions Tried**:
@@ -544,7 +544,7 @@ All of these are present in the current implementation.
 **Attack**: Attacker constructs fake tokens and injects via deep link
 
 ```
-walkingapp://#access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.FORGED.SIGNATURE&refresh_token=FAKE
+Stepper://#access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.FORGED.SIGNATURE&refresh_token=FAKE
 ```
 
 **Result**: **BLOCKED**

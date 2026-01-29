@@ -33,7 +33,7 @@ This plan implements the Friends feature for social connections between users. U
 
 1. **Create Friends folder structure**:
    ```
-   WalkingApp.Api/Friends/
+   Stepper.Api/Friends/
    ├── FriendsController.cs
    ├── IFriendService.cs
    ├── FriendService.cs
@@ -246,7 +246,7 @@ This plan implements the Friends feature for social connections between users. U
 
 ## Tests
 
-**Unit Tests** (WalkingApp.UnitTests/Friends/):
+**Unit Tests** (Stepper.UnitTests/Friends/):
 - `FriendServiceTests`
   - Test sending request creates pending friendship
   - Test cannot send request to self
@@ -257,7 +257,7 @@ This plan implements the Friends feature for social connections between users. U
   - Test friend list only includes accepted
   - Test removing friend deletes relationship
 
-**Integration Tests** (WalkingApp.Api.Tests/Friends/):
+**Integration Tests** (Stepper.Api.Tests/Friends/):
 - `FriendsControllerTests`
   - POST /api/friends/requests creates pending request
   - GET /api/friends/requests/incoming returns received requests

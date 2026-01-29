@@ -700,7 +700,7 @@ adb kill-server && adb start-server
 adb install path/to/app.apk
 
 # Clear app data
-adb shell pm clear com.walkingapp.mobile
+adb shell pm clear com.Stepper.mobile
 
 # View logs
 adb logcat

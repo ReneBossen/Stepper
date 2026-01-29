@@ -28,7 +28,7 @@ This plan implements the Users feature for managing user profiles linked to Supa
 
 1. **Create Users folder structure**:
    ```
-   WalkingApp.Api/Users/
+   Stepper.Api/Users/
    ├── UsersController.cs
    ├── IUserService.cs
    ├── UserService.cs
@@ -158,14 +158,14 @@ This plan implements the Users feature for managing user profiles linked to Supa
 
 ## Tests
 
-**Unit Tests** (WalkingApp.UnitTests/Users/):
+**Unit Tests** (Stepper.UnitTests/Users/):
 - `UserServiceTests`
   - Test profile retrieval returns correct data
   - Test profile update validates input
   - Test display name validation (length, characters)
   - Test avatar URL validation (format)
 
-**Integration Tests** (WalkingApp.Api.Tests/Users/):
+**Integration Tests** (Stepper.Api.Tests/Users/):
 - `UsersControllerTests`
   - GET /api/users/me returns 401 without token
   - GET /api/users/me returns profile for authenticated user

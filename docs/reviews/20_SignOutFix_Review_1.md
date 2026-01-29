@@ -6,14 +6,14 @@
 
 ## Summary
 
-This review covers recent modifications to the sign-out flow and related user state management in the WalkingApp.Mobile project. The changes add WHERE clauses to update operations in `usersApi.ts`, introduce a `clearUser` action to `userStore.ts`, implement sign-out handling with race condition prevention in `App.tsx`, and add `scope: 'global'` to the sign-out call in `supabase.ts`. Overall, the changes are well-structured and address important security and correctness concerns, but there is one failing test that must be updated and a missing test for the new `clearUser` action.
+This review covers recent modifications to the sign-out flow and related user state management in the Stepper.Mobile project. The changes add WHERE clauses to update operations in `usersApi.ts`, introduce a `clearUser` action to `userStore.ts`, implement sign-out handling with race condition prevention in `App.tsx`, and add `scope: 'global'` to the sign-out call in `supabase.ts`. Overall, the changes are well-structured and address important security and correctness concerns, but there is one failing test that must be updated and a missing test for the new `clearUser` action.
 
 ## Files Reviewed
 
-1. `E:\Github Projects\Stepper\WalkingApp.Mobile\src\services\api\usersApi.ts`
-2. `E:\Github Projects\Stepper\WalkingApp.Mobile\src\store\userStore.ts`
-3. `E:\Github Projects\Stepper\WalkingApp.Mobile\App.tsx`
-4. `E:\Github Projects\Stepper\WalkingApp.Mobile\src\services\supabase.ts`
+1. `E:\Github Projects\Stepper\Stepper.Mobile\src\services\api\usersApi.ts`
+2. `E:\Github Projects\Stepper\Stepper.Mobile\src\store\userStore.ts`
+3. `E:\Github Projects\Stepper\Stepper.Mobile\App.tsx`
+4. `E:\Github Projects\Stepper\Stepper.Mobile\src\services\supabase.ts`
 
 ## Checklist Results
 
@@ -47,7 +47,7 @@ This review covers recent modifications to the sign-out flow and related user st
 ### BLOCKER
 
 #### Issue #1: Failing Test - signOut Parameter Change
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\services\__tests__\supabase.test.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\services\__tests__\supabase.test.ts`
 **Line**: 395-401
 **Description**: The test `should call signOut without parameters` now fails because the implementation was changed to call `signOut({ scope: 'global' })`. The test expects no parameters but receives `{ scope: 'global' }`.
 
@@ -71,7 +71,7 @@ it('should call signOut with global scope to invalidate all sessions', async () 
 ### MAJOR
 
 #### Issue #2: Missing Test for clearUser Action
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\store\__tests__\userStore.test.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\store\__tests__\userStore.test.ts`
 **Description**: The new `clearUser` action in `userStore.ts` (line 116-118) has no corresponding test coverage. This action is critical for sign-out functionality and should be tested.
 
 **Suggestion**: Add a test suite for `clearUser`:
@@ -101,7 +101,7 @@ describe('clearUser', () => {
 ### MINOR
 
 #### Issue #3: Consider Adding JSDoc to clearUser
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\src\store\userStore.ts`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\src\store\userStore.ts`
 **Line**: 116-118
 **Description**: The `clearUser` action lacks documentation. While the function name is self-explanatory, adding a JSDoc comment would improve consistency with other parts of the codebase.
 
@@ -116,7 +116,7 @@ clearUser: () => {
 ```
 
 #### Issue #4: isSigningOut Flag Reset Timing
-**File**: `E:\Github Projects\Stepper\WalkingApp.Mobile\App.tsx`
+**File**: `E:\Github Projects\Stepper\Stepper.Mobile\App.tsx`
 **Line**: 61-63
 **Description**: The `isSigningOut` flag is reset after a 1000ms timeout. While this works, it introduces a "magic number" and the timeout may be too short or too long depending on network conditions. Consider documenting why this specific value was chosen.
 

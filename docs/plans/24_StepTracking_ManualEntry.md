@@ -184,7 +184,7 @@ In history view, manual entries could show:
 ## File Structure
 
 ```
-WalkingApp.Mobile/src/
+Stepper.Mobile/src/
   components/
     steps/
       ManualStepEntryModal.tsx    # Modal component for entry

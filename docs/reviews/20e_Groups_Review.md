@@ -59,7 +59,7 @@ The `GroupRepository.cs` properly:
 
 ### groupsApi.ts Refactoring
 
-**File**: `WalkingApp.Mobile/src/services/api/groupsApi.ts`
+**File**: `Stepper.Mobile/src/services/api/groupsApi.ts`
 
 The file has been completely rewritten to:
 - Use `apiClient` for all HTTP operations
@@ -155,14 +155,14 @@ None identified.
 
 #### Issue #1: Pending Status Not Yet Implemented in Database
 
-**File**: `WalkingApp.Api/Groups/GroupService.cs`
+**File**: `Stepper.Api/Groups/GroupService.cs`
 **Lines**: 706-711
 **Description**: The `GetMembersAsync` with status filter delegates to the base method without actual filtering. The comment notes "status filtering not yet implemented in DB".
 **Suggestion**: This is acceptable for MVP as documented, but should be tracked for future implementation when pending member approval workflow is needed.
 
 #### Issue #2: require_approval Field Not Supported
 
-**File**: `WalkingApp.Mobile/src/services/api/groupsApi.ts`
+**File**: `Stepper.Mobile/src/services/api/groupsApi.ts`
 **Line**: 479
 **Description**: `getGroupDetails` returns `require_approval: false` hardcoded as backend doesn't support this yet.
 **Suggestion**: Track as technical debt for when approval workflow is implemented.

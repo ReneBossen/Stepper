@@ -226,7 +226,7 @@ This ensures user control over their health data and respects their privacy choi
 ## File Structure
 
 ```
-WalkingApp.Mobile/src/
+Stepper.Mobile/src/
   services/
     health/
       healthKitService.ts       # HealthKit-specific implementation

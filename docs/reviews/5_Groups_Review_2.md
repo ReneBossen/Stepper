@@ -43,7 +43,7 @@ The Groups feature implementation has successfully addressed all BLOCKER issues 
 ### BLOCKER Issues (All Fixed)
 
 #### Issue #1: N+1 Query in GetUserGroupsAsync - FIXED
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/GroupRepository.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/GroupRepository.cs`
 **Lines**: 69-116
 
 **Status**: RESOLVED
@@ -68,7 +68,7 @@ var groups = await client
 **Impact**: Reduces database queries from N+1 to 2 queries (1 for memberships, 1 for all groups).
 
 #### Issue #2: N+1 Query in GetMembersAsync - FIXED
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/GroupService.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/GroupService.cs`
 **Lines**: 448-504
 
 **Status**: RESOLVED
@@ -90,7 +90,7 @@ var users = await _userRepository.GetByIdsAsync(userIds);
 **Impact**: Reduces database queries from N+1 to 1 query using the UserRepository.GetByIdsAsync batch method.
 
 #### Issue #3: Missing CompetitionPeriod Domain Model - FIXED
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/CompetitionPeriod.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/CompetitionPeriod.cs`
 **Status**: Created and implemented
 
 **What was added**:
@@ -120,10 +120,10 @@ public class CompetitionPeriod
 - Includes comprehensive XML documentation
 - Constructor validates that end date >= start date
 - Uses init-only properties for immutability
-- Located at `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/CompetitionPeriod.cs`
+- Located at `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/CompetitionPeriod.cs`
 
 #### Issue #4: Nested Class Violates Policy - FIXED
-**File**: Extracted to `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/LeaderboardEntryResult.cs`
+**File**: Extracted to `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/LeaderboardEntryResult.cs`
 **Previous Location**: `GroupRepository.cs` line 319 (nested)
 
 **Status**: RESOLVED
@@ -136,7 +136,7 @@ public class CompetitionPeriod
 
 **Content**:
 ```csharp
-namespace WalkingApp.Api.Groups;
+namespace Stepper.Api.Groups;
 
 /// <summary>
 /// Result model for leaderboard database function deserialization.
@@ -156,22 +156,22 @@ internal class LeaderboardEntryResult
 ### MAJOR Issues (All Fixed)
 
 #### Issue #5: Cross-Feature Dependency on DateRange - FIXED
-**Previous Location**: `WalkingApp.Api.Steps.DTOs.DateRange`
-**New Location**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Common/Models/DateRange.cs`
+**Previous Location**: `Stepper.Api.Steps.DTOs.DateRange`
+**New Location**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Common/Models/DateRange.cs`
 
 **Status**: RESOLVED
 
 **What was done**:
 - Moved DateRange to shared Common.Models folder
 - Updated all imports in Groups feature files:
-  - `GroupRepository.cs`: line 4 now uses `using WalkingApp.Api.Common.Models;`
-  - `GroupService.cs`: line 2 now uses `using WalkingApp.Api.Common.Models;`
-  - `IGroupRepository.cs`: line 1 now uses `using WalkingApp.Api.Common.Models;`
-  - `GroupsController.cs`: line 3 now uses `using WalkingApp.Api.Common.Models;`
+  - `GroupRepository.cs`: line 4 now uses `using Stepper.Api.Common.Models;`
+  - `GroupService.cs`: line 2 now uses `using Stepper.Api.Common.Models;`
+  - `IGroupRepository.cs`: line 1 now uses `using Stepper.Api.Common.Models;`
+  - `GroupsController.cs`: line 3 now uses `using Stepper.Api.Common.Models;`
 
 **Content**:
 ```csharp
-namespace WalkingApp.Api.Common.Models;
+namespace Stepper.Api.Common.Models;
 
 /// <summary>
 /// Value object representing a date range for queries.
@@ -187,7 +187,7 @@ public class DateRange
 **Impact**: Groups and Steps features are now decoupled. DateRange is properly positioned as a shared value object used by multiple features.
 
 #### Issue #6: Undocumented Entity Pattern - FIXED
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/.claude/policies/architecture.md`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/.claude/policies/architecture.md`
 **Lines**: 276-367
 
 **Status**: RESOLVED
@@ -208,7 +208,7 @@ public class DateRange
 ### MINOR Issues (All Fixed)
 
 #### Issue #7: Security Comment Added
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/GroupService.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/GroupService.cs`
 **Line**: 597
 
 **Status**: RESOLVED
@@ -222,7 +222,7 @@ JoinCode = (role == MemberRole.Owner || role == MemberRole.Admin) ? group.JoinCo
 **Impact**: Developers reading the code now understand this is an intentional security decision, not just a filter.
 
 #### Issue #8: GetByJoinCodeAsync Documented
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/IGroupRepository.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/IGroupRepository.cs`
 **Lines**: 76-83
 
 **Status**: RESOLVED
@@ -242,7 +242,7 @@ Task<Group?> GetByJoinCodeAsync(string joinCode);
 **Impact**: Clarifies that this method is intentional but reserved, preventing future confusion about unused code.
 
 #### Issue #9: Member Count Approach Documented
-**File**: `/mnt/c/Users/rene_/source/repos/walkingApp/WalkingApp.Api/Groups/IGroupRepository.cs`
+**File**: `/mnt/c/Users/rene_/source/repos/Stepper/Stepper.Api/Groups/IGroupRepository.cs`
 **Lines**: 101-109
 
 **Status**: RESOLVED

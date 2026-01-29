@@ -251,7 +251,7 @@ This ensures user control over their fitness data and respects their privacy cho
 ## File Structure
 
 ```
-WalkingApp.Mobile/src/
+Stepper.Mobile/src/
   services/
     health/
       googleFitService.ts       # Google Fit-specific implementation

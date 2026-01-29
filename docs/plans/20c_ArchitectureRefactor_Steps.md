@@ -10,12 +10,12 @@ Refactor the Steps feature to route all data operations through the .NET API ins
 
 ## Affected Feature Slices
 
-### Backend (WalkingApp.Api/Steps)
+### Backend (Stepper.Api/Steps)
 - `StepsController.cs`: Add stats endpoint
 - `StepService.cs` / `IStepService.cs`: Add statistics calculation
 - `DTOs/`: New response type for stats
 
-### Mobile (WalkingApp.Mobile)
+### Mobile (Stepper.Mobile)
 - `services/api/stepsApi.ts`: Complete rewrite
 
 ## Proposed Types
@@ -32,7 +32,7 @@ Refactor the Steps feature to route all data operations through the .NET API ins
 
 #### Step 1.1: Add DTO
 
-Create `WalkingApp.Api/Steps/DTOs/StepStatsResponse.cs`:
+Create `Stepper.Api/Steps/DTOs/StepStatsResponse.cs`:
 ```csharp
 public record StepStatsResponse(
     int TodaySteps,
@@ -151,17 +151,17 @@ export const stepsApi = {
 ## Tests
 
 ### Backend Unit Tests
-- `WalkingApp.Api.Tests/Steps/StepServiceStatsTests.cs`
+- `Stepper.Api.Tests/Steps/StepServiceStatsTests.cs`
   - Test today's steps calculation
   - Test weekly aggregation
   - Test monthly aggregation
   - Test streak calculation
 
 ### Backend Integration Tests
-- `WalkingApp.Api.Tests/Steps/StepsControllerStatsTests.cs`
+- `Stepper.Api.Tests/Steps/StepsControllerStatsTests.cs`
 
 ### Mobile Tests
-- Update `WalkingApp.Mobile/src/services/api/__tests__/stepsApi.test.ts`
+- Update `Stepper.Mobile/src/services/api/__tests__/stepsApi.test.ts`
 - Mock `apiClient` instead of Supabase
 
 ## Acceptance Criteria

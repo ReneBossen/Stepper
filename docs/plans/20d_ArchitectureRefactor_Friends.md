@@ -10,11 +10,11 @@ Refactor the Friends feature to route all data operations through the .NET API i
 
 ## Affected Feature Slices
 
-### Backend (WalkingApp.Api/Friends)
+### Backend (Stepper.Api/Friends)
 - Verify existing endpoints work with `/api/v1/` prefix
 - No new endpoints needed (feature is complete)
 
-### Mobile (WalkingApp.Mobile)
+### Mobile (Stepper.Mobile)
 - `services/api/friendsApi.ts`: Complete rewrite
 
 ## Implementation Steps
@@ -151,7 +151,7 @@ Review and update `friendsStore.ts` if the response format differs from current 
 - Verify all endpoints work with `/api/v1/` prefix
 
 ### Mobile Tests
-- Update `WalkingApp.Mobile/src/services/api/__tests__/friendsApi.test.ts`
+- Update `Stepper.Mobile/src/services/api/__tests__/friendsApi.test.ts`
 - Mock `apiClient` instead of Supabase
 - Test all 12 functions
 
