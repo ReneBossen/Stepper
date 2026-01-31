@@ -81,7 +81,6 @@ public class UserService : IUserService
     {
         ValidateUserId(userId);
         ArgumentNullException.ThrowIfNull(request);
-        ValidateUpdateProfileRequest(request);
 
         var existingUser = await _userRepository.GetByIdAsync(userId);
 
@@ -90,13 +89,7 @@ public class UserService : IUserService
             throw new KeyNotFoundException($"User profile not found for user ID: {userId}");
         }
 
-        existingUser.DisplayName = request.DisplayName;
-        existingUser.AvatarUrl = request.AvatarUrl;
-
-        if (request.OnboardingCompleted.HasValue)
-        {
-            existingUser.OnboardingCompleted = request.OnboardingCompleted.Value;
-        }
+        ApplyProfileUpdates(existingUser, request);
 
         // Note: UpdatedAt is automatically set by the database trigger (update_users_updated_at)
         var updatedUser = await _userRepository.UpdateAsync(existingUser);
@@ -305,20 +298,6 @@ public class UserService : IUserService
         };
     }
 
-    /// <summary>
-    /// Validates the update profile request.
-    /// </summary>
-    /// <remarks>
-    /// Future considerations:
-    /// - Add rate limiting to prevent abuse of profile updates (e.g., max 10 updates per hour)
-    /// - Add profanity filter for display name validation to prevent inappropriate content
-    /// </remarks>
-    private static void ValidateUpdateProfileRequest(UpdateProfileRequest request)
-    {
-        ValidateDisplayName(request.DisplayName);
-        ValidateAvatarUrl(request.AvatarUrl);
-    }
-
     private static void ValidateDisplayName(string displayName)
     {
         if (string.IsNullOrWhiteSpace(displayName))
@@ -399,6 +378,26 @@ public class UserService : IUserService
         if (request.PrivateProfile.HasValue)
         {
             preferences.PrivacyProfileVisibility = request.PrivateProfile.Value ? "private" : "public";
+        }
+    }
+
+    private static void ApplyProfileUpdates(User user, UpdateProfileRequest request)
+    {
+        if (!string.IsNullOrWhiteSpace(request.DisplayName))
+        {
+            ValidateDisplayName(request.DisplayName);
+            user.DisplayName = request.DisplayName;
+        }
+
+        if (request.AvatarUrl != null)
+        {
+            ValidateAvatarUrl(request.AvatarUrl);
+            user.AvatarUrl = request.AvatarUrl;
+        }
+
+        if (request.OnboardingCompleted.HasValue)
+        {
+            user.OnboardingCompleted = request.OnboardingCompleted.Value;
         }
     }
 

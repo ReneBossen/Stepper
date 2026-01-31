@@ -1,4 +1,11 @@
 import { POSTHOG_API_KEY, POSTHOG_HOST } from '@env';
+import Constants from 'expo-constants';
+
+/**
+ * Check if running in Expo Go (not a development build).
+ * Session replay requires native modules not available in Expo Go.
+ */
+const isExpoGo = Constants.appOwnership === 'expo';
 
 /**
  * PostHog analytics configuration.
@@ -42,12 +49,14 @@ export const analyticsConfig = {
 
   /**
    * Session replay configuration.
+   * Note: Session replay requires native modules and is disabled in Expo Go.
    */
   sessionReplay: {
     /**
      * Whether session replay is enabled.
+     * Disabled in Expo Go due to native module requirements.
      */
-    enabled: true,
+    enabled: !isExpoGo,
 
     /**
      * Mask all text input fields (passwords are always masked).

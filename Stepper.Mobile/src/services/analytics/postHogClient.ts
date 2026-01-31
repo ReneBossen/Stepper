@@ -3,16 +3,25 @@
  * Provides a thin wrapper around the PostHog SDK with proper typing.
  */
 
-import PostHog from 'posthog-react-native';
 import type { PostHogEventProperties, JsonType } from '@posthog/core';
 import { analyticsConfig } from '@config/analytics.config';
 import type { FeatureFlagValue } from './analyticsTypes';
 
 /**
+ * PostHog class type for dynamic import.
+ */
+type PostHogType = import('posthog-react-native').default;
+
+/**
  * PostHog client singleton instance.
  * Lazily initialized on first access.
  */
-let postHogInstance: PostHog | null = null;
+let postHogInstance: PostHogType | null = null;
+
+/**
+ * Cached PostHog class for creating instances.
+ */
+let PostHogClass: typeof import('posthog-react-native').default | null = null;
 
 /**
  * Whether the client has been initialized.
@@ -78,7 +87,7 @@ export interface PostHogClientOptions {
  * Get the PostHog client instance.
  * Returns null if not initialized.
  */
-export function getPostHogClient(): PostHog | null {
+export function getPostHogClient(): PostHogType | null {
   return postHogInstance;
 }
 
@@ -92,13 +101,14 @@ export function isPostHogInitialized(): boolean {
 /**
  * Initialize the PostHog client.
  * Uses configuration from analytics.config.ts by default.
+ * Uses dynamic import to gracefully handle missing native modules.
  *
  * @param options - Optional custom configuration
  * @returns The initialized PostHog client
  */
 export async function initializePostHog(
   options?: Partial<PostHogClientOptions>
-): Promise<PostHog | null> {
+): Promise<PostHogType | null> {
   // Skip if already initialized
   if (isInitialized && postHogInstance) {
     return postHogInstance;
@@ -115,7 +125,13 @@ export async function initializePostHog(
   }
 
   try {
-    postHogInstance = new PostHog(apiKey, {
+    // Dynamic import to catch native module errors gracefully
+    if (!PostHogClass) {
+      const postHogModule = await import('posthog-react-native');
+      PostHogClass = postHogModule.default;
+    }
+
+    postHogInstance = new PostHogClass(apiKey, {
       host,
       // Feature flag timeout
       featureFlagsRequestTimeoutMs:
@@ -196,6 +212,9 @@ export function captureEvent(
     return;
   }
 
+  if (__DEV__) {
+    console.debug(`[PostHog] Event: ${event}`, properties ?? '');
+  }
   postHogInstance.capture(event, toEventProperties(properties));
 }
 

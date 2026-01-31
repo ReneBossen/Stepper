@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
 
@@ -22,7 +23,7 @@ internal class ActivityItemEntity : BaseModel
     public string Message { get; set; } = string.Empty;
 
     [Column("metadata")]
-    public string? Metadata { get; set; }
+    public JsonElement? Metadata { get; set; }
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; }
@@ -45,11 +46,21 @@ internal class ActivityItemEntity : BaseModel
             UserId = UserId,
             Type = Type,
             Message = Message,
-            Metadata = Metadata,
+            Metadata = ConvertMetadataToObject(Metadata),
             CreatedAt = CreatedAt,
             RelatedUserId = RelatedUserId,
             RelatedGroupId = RelatedGroupId
         };
+    }
+
+    private static object? ConvertMetadataToObject(JsonElement? metadata)
+    {
+        if (!metadata.HasValue || metadata.Value.ValueKind == JsonValueKind.Null)
+        {
+            return null;
+        }
+
+        return metadata.Value;
     }
 
     /// <summary>
@@ -65,10 +76,26 @@ internal class ActivityItemEntity : BaseModel
             UserId = activityItem.UserId,
             Type = activityItem.Type,
             Message = activityItem.Message,
-            Metadata = activityItem.Metadata,
+            Metadata = ConvertObjectToJsonElement(activityItem.Metadata),
             CreatedAt = activityItem.CreatedAt,
             RelatedUserId = activityItem.RelatedUserId,
             RelatedGroupId = activityItem.RelatedGroupId
         };
+    }
+
+    private static JsonElement? ConvertObjectToJsonElement(object? metadata)
+    {
+        if (metadata == null)
+        {
+            return null;
+        }
+
+        if (metadata is JsonElement jsonElement)
+        {
+            return jsonElement;
+        }
+
+        var json = JsonSerializer.Serialize(metadata);
+        return JsonSerializer.Deserialize<JsonElement>(json);
     }
 }

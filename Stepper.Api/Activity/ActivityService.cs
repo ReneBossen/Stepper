@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Stepper.Api.Activity.DTOs;
 using Stepper.Api.Friends;
 using Stepper.Api.Users;
@@ -103,7 +102,7 @@ public class ActivityService : IActivityService
             UserAvatarUrl: userProfile?.AvatarUrl,
             Type: activity.Type,
             Message: activity.Message,
-            Metadata: ParseMetadata(activity.Metadata),
+            Metadata: activity.Metadata,
             CreatedAt: activity.CreatedAt,
             RelatedUserId: activity.RelatedUserId,
             RelatedGroupId: activity.RelatedGroupId
@@ -162,23 +161,6 @@ public class ActivityService : IActivityService
     {
         var userProfile = userProfiles.GetValueOrDefault(activity.UserId);
         return MapToActivityItemResponse(activity, userProfile);
-    }
-
-    private static object? ParseMetadata(string? metadataJson)
-    {
-        if (string.IsNullOrWhiteSpace(metadataJson))
-        {
-            return null;
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize<object>(metadataJson);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
     }
 
     private static bool CalculateHasMore(int offset, int limit, int totalCount)
