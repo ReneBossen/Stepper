@@ -8,6 +8,8 @@ import {
 import { unifiedStepTrackingService } from '@services/stepTracking/unifiedStepTrackingService';
 import { useStepsStore } from '@store/stepsStore';
 import { getErrorMessage } from '@utils/errorUtils';
+import { track, setUserProperties } from '@services/analytics';
+import type { HealthProvider } from '@services/analytics/analyticsTypes';
 
 /**
  * Result type for the useStepTracking hook.
@@ -112,6 +114,16 @@ export function useStepTracking(): UseStepTrackingResult {
     setIsSyncing(true);
     setError(null);
 
+    // Determine the provider type for analytics
+    const provider: HealthProvider = healthSource === 'healthkit'
+      ? 'healthkit'
+      : healthSource === 'googlefit'
+        ? 'googlefit'
+        : 'none';
+
+    // Track permission requested event
+    track('health_permission_requested', { provider });
+
     try {
       const result = await unifiedStepTrackingService.enableHealthTracking();
 
@@ -124,14 +136,44 @@ export function useStepTracking(): UseStepTrackingResult {
         if (refreshAfterSync) {
           await refreshAfterSync();
         }
-      } else if (result.message) {
-        setError(result.message);
+
+        // Track permission granted and sync completed events
+        track('health_permission_granted', { provider });
+        track('health_sync_completed', {
+          provider,
+          steps_count: undefined, // Could be enhanced to include actual count
+          days_synced: undefined,
+        });
+
+        // Update user property for health provider
+        setUserProperties({ health_provider: provider });
+      } else {
+        // Track permission denied or sync failed
+        if (result.status === 'denied') {
+          track('health_permission_denied', { provider });
+        } else if (result.status === 'authorized' && result.message) {
+          // Authorization succeeded but sync failed
+          track('health_sync_failed', {
+            provider,
+            error_message: result.message,
+          });
+        }
+
+        if (result.message) {
+          setError(result.message);
+        }
       }
 
       return result;
     } catch (err) {
       const errorMessage = getErrorMessage(err);
       setError(errorMessage);
+
+      // Track sync error
+      track('health_sync_error', {
+        error_message: errorMessage,
+      });
+
       return {
         success: false,
         status: 'not_available',
@@ -140,7 +182,7 @@ export function useStepTracking(): UseStepTrackingResult {
     } finally {
       setIsSyncing(false);
     }
-  }, [refreshAfterSync]);
+  }, [refreshAfterSync, healthSource]);
 
   /**
    * Disables health tracking.
@@ -159,6 +201,9 @@ export function useStepTracking(): UseStepTrackingResult {
       if (refreshAfterSync) {
         await refreshAfterSync();
       }
+
+      // Update user property for health provider to none
+      setUserProperties({ health_provider: 'none' });
     } catch (err) {
       setError(getErrorMessage(err));
       throw err;
@@ -174,6 +219,13 @@ export function useStepTracking(): UseStepTrackingResult {
     setIsSyncing(true);
     setError(null);
 
+    // Determine the provider type for analytics
+    const provider: HealthProvider = healthSource === 'healthkit'
+      ? 'healthkit'
+      : healthSource === 'googlefit'
+        ? 'googlefit'
+        : 'none';
+
     try {
       const result = await unifiedStepTrackingService.syncNow();
 
@@ -186,14 +238,33 @@ export function useStepTracking(): UseStepTrackingResult {
         if (refreshAfterSync) {
           await refreshAfterSync();
         }
+
+        // Track sync completed event
+        track('health_sync_completed', {
+          provider,
+          steps_count: undefined, // Could be enhanced
+          days_synced: result.entriesSynced,
+        });
       } else if (result.errors && result.errors.length > 0) {
         setError(result.errors.join(', '));
+
+        // Track sync failed event
+        track('health_sync_failed', {
+          provider,
+          error_message: result.errors.join(', '),
+        });
       }
 
       return result;
     } catch (err) {
       const errorMessage = getErrorMessage(err);
       setError(errorMessage);
+
+      // Track sync error
+      track('health_sync_error', {
+        error_message: errorMessage,
+      });
+
       return {
         success: false,
         entriesSynced: 0,
@@ -202,7 +273,7 @@ export function useStepTracking(): UseStepTrackingResult {
     } finally {
       setIsSyncing(false);
     }
-  }, [refreshAfterSync]);
+  }, [refreshAfterSync, healthSource]);
 
   // Initialize service and load state on mount
   useEffect(() => {

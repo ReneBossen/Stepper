@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { IconButton, Text, useTheme, ActivityIndicator } from 'react-native-paper';
@@ -9,6 +9,7 @@ import type { FriendsStackParamList } from '@navigation/types';
 import { friendsApi } from '@services/api/friendsApi';
 import { useFriendsStore } from '@store/friendsStore';
 import { getErrorMessage } from '@utils/errorUtils';
+import { track } from '@services/analytics';
 
 type NavigationProp = NativeStackNavigationProp<FriendsStackParamList, 'QRScanner'>;
 
@@ -23,8 +24,17 @@ export default function QRScannerScreen() {
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [scanned, setScanned] = useState(false);
+  const hasTrackedOpen = useRef(false);
 
   const { sendRequest } = useFriendsStore();
+
+  // Track QR scanner opened event
+  useEffect(() => {
+    if (!hasTrackedOpen.current) {
+      track('qr_scanner_used', {});
+      hasTrackedOpen.current = true;
+    }
+  }, []);
 
   useEffect(() => {
     if (!permission?.granted && permission?.canAskAgain) {

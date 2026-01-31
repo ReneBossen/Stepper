@@ -1,6 +1,53 @@
 import { create } from 'zustand';
 import { groupsApi } from '@services/api/groupsApi';
 import { getErrorMessage } from '@utils/errorUtils';
+import { track, setUserProperties } from '@services/analytics';
+import { evaluate, MilestoneContext } from '@services/milestones';
+import { useAuthStore } from './authStore';
+
+/**
+ * Helper function to handle analytics tracking and milestone evaluation
+ * when group count changes (create, join, join by code).
+ *
+ * @param previousCount - The previous number of groups the user was in
+ * @param newGroups - The updated list of groups after the action
+ * @param groupId - The ID of the group that was created/joined
+ * @param eventName - The analytics event name to track
+ * @param groupDetails - Additional group details for the event
+ */
+async function handleGroupCountChange(
+  previousCount: number,
+  newGroups: GroupWithLeaderboard[],
+  groupId: string,
+  eventName: 'group_created' | 'group_joined',
+  groupDetails: {
+    name?: string;
+    is_public?: boolean;
+    member_count?: number;
+  }
+): Promise<void> {
+  // Track the event
+  track(eventName, {
+    group_id: groupId,
+    group_name: groupDetails.name,
+    is_public: groupDetails.is_public,
+    member_count: groupDetails.member_count,
+  });
+
+  // Update user properties with new group count
+  setUserProperties({ group_count: newGroups.length });
+
+  // Evaluate milestones for group count changes
+  const currentUser = useAuthStore.getState().user;
+  if (currentUser) {
+    const context: MilestoneContext = {
+      currentMetrics: { group_count: newGroups.length },
+      previousMetrics: { group_count: previousCount },
+      userId: currentUser.id,
+    };
+    await evaluate(context);
+  }
+}
 
 /**
  * Base group information.
@@ -267,10 +314,26 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   createGroup: async (data) => {
     set({ isLoading: true, error: null });
     try {
+      const previousGroupCount = get().myGroups.length;
+
       const group = await groupsApi.createGroup(data);
       // Refresh my groups list
       const myGroups = await groupsApi.getMyGroups();
       set({ myGroups, isLoading: false });
+
+      // Track analytics and evaluate milestones
+      await handleGroupCountChange(
+        previousGroupCount,
+        myGroups,
+        group.id,
+        'group_created',
+        {
+          name: group.name,
+          is_public: !data.is_private,
+          member_count: 1,
+        }
+      );
+
       return group;
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
@@ -284,10 +347,28 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   joinGroup: async (groupId) => {
     set({ isLoading: true, error: null });
     try {
+      const previousGroupCount = get().myGroups.length;
+
       await groupsApi.joinGroup(groupId);
       // Refresh my groups list
       const myGroups = await groupsApi.getMyGroups();
       set({ myGroups, isLoading: false });
+
+      // Find the joined group to get its details
+      const joinedGroup = myGroups.find(g => g.id === groupId);
+
+      // Track analytics and evaluate milestones
+      await handleGroupCountChange(
+        previousGroupCount,
+        myGroups,
+        groupId,
+        'group_joined',
+        {
+          name: joinedGroup?.name,
+          is_public: joinedGroup ? !joinedGroup.is_private : undefined,
+          member_count: joinedGroup?.member_count,
+        }
+      );
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
       throw error;
@@ -300,10 +381,29 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   joinGroupByCode: async (code) => {
     set({ isLoading: true, error: null });
     try {
+      const previousGroupCount = get().myGroups.length;
+
       const groupId = await groupsApi.joinGroupByCode(code);
       // Refresh my groups list
       const myGroups = await groupsApi.getMyGroups();
       set({ myGroups, isLoading: false });
+
+      // Find the joined group to get its details
+      const joinedGroup = myGroups.find(g => g.id === groupId);
+
+      // Track analytics and evaluate milestones
+      await handleGroupCountChange(
+        previousGroupCount,
+        myGroups,
+        groupId,
+        'group_joined',
+        {
+          name: joinedGroup?.name,
+          is_public: joinedGroup ? !joinedGroup.is_private : undefined,
+          member_count: joinedGroup?.member_count,
+        }
+      );
+
       return groupId;
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
@@ -317,10 +417,22 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
   leaveGroup: async (groupId) => {
     set({ isLoading: true, error: null });
     try {
+      // Get the group name before leaving
+      const leavingGroup = get().myGroups.find(g => g.id === groupId);
+
       await groupsApi.leaveGroup(groupId);
       // Refresh my groups list
       const myGroups = await groupsApi.getMyGroups();
       set({ myGroups, isLoading: false });
+
+      // Track group left event
+      track('group_left', {
+        group_id: groupId,
+        group_name: leavingGroup?.name,
+      });
+
+      // Update user properties with new group count
+      setUserProperties({ group_count: myGroups.length });
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
       throw error;
@@ -546,6 +658,15 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     set({ isLoadingManagement: true, managementError: null });
     try {
       await groupsApi.inviteFriends(groupId, friendIds);
+
+      // Track invite sent events for each friend invited
+      for (const friendId of friendIds) {
+        track('invite_sent', {
+          invite_type: 'group',
+          method: 'in_app',
+        });
+      }
+
       set({ isLoadingManagement: false });
     } catch (error: unknown) {
       set({ managementError: getErrorMessage(error), isLoadingManagement: false });

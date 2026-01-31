@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { HomeStackScreenProps } from '@navigation/types';
 import { LoadingSpinner } from '@components/common/LoadingSpinner';
 import { ErrorMessage } from '@components/common/ErrorMessage';
+import { track } from '@services/analytics';
 import {
   GreetingHeader,
   StepCounterCard,
@@ -57,6 +58,9 @@ export default function HomeScreen() {
   }, [navigation]);
 
   const handleActivityPress = useCallback((item: ActivityItem) => {
+    // Track activity feed item clicked
+    track('activity_feed_item_clicked', { item_type: item.type });
+
     if (item.type === 'friend_achievement' && item.userId) {
       // Navigate to friend's profile
       navigation.getParent()?.getParent()?.navigate('Tabs', {
@@ -74,6 +78,8 @@ export default function HomeScreen() {
   }, [navigation]);
 
   const handleAddStepsPress = useCallback(() => {
+    // Track manual entry modal opened
+    track('manual_entry_modal_opened', {});
     setShowManualEntry(true);
   }, []);
 
@@ -83,6 +89,12 @@ export default function HomeScreen() {
 
   const handleManualEntrySuccess = useCallback(() => {
     // Refresh the home data after successful entry
+    refresh();
+  }, [refresh]);
+
+  const handleRefresh = useCallback(() => {
+    // Track pull to refresh event
+    track('pull_to_refresh', { screen: 'home' });
     refresh();
   }, [refresh]);
 
@@ -129,7 +141,7 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
-            onRefresh={refresh}
+            onRefresh={handleRefresh}
             colors={[theme.colors.primary]}
             tintColor={theme.colors.primary}
           />

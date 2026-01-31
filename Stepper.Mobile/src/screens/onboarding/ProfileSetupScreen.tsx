@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
 import { Text, Button, TextInput, Avatar } from 'react-native-paper';
 import { OnboardingStackScreenProps } from '@navigation/types';
 import { useAppTheme } from '@hooks/useAppTheme';
 import { useUserStore } from '@store/userStore';
 import { getErrorMessage } from '@utils/errorUtils';
+import { track } from '@services/analytics';
 import OnboardingLayout from './components/OnboardingLayout';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -15,12 +16,21 @@ export default function ProfileSetupScreen({ navigation }: Props) {
   const updateProfile = useUserStore((state) => state.updateProfile);
   const uploadAvatar = useUserStore((state) => state.uploadAvatar);
   const currentUser = useUserStore((state) => state.currentUser);
+  const hasTrackedStep = useRef(false);
 
   const [displayName, setDisplayName] = useState(currentUser?.display_name || '');
   const [bio, setBio] = useState('');
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Track profile setup step on mount (step 4 in onboarding flow)
+  useEffect(() => {
+    if (!hasTrackedStep.current) {
+      track('onboarding_step_completed', { step_number: 4, step_name: 'profile' });
+      hasTrackedStep.current = true;
+    }
+  }, []);
 
   const handlePickImage = async () => {
     try {

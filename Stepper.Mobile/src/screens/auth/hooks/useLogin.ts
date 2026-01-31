@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuthStore } from '@store/authStore';
 import { getErrorMessage } from '@utils/errorUtils';
+import { track } from '@services/analytics';
 
 export const useLogin = () => {
   const [email, setEmail] = useState('');
@@ -25,23 +26,31 @@ export const useLogin = () => {
 
     // Validate email
     if (!email.trim()) {
-      setError('Email is required');
+      const errorMsg = 'Email is required';
+      setError(errorMsg);
+      track('validation_error', { field: 'email', error_message: errorMsg });
       return;
     }
 
     if (!validateEmail(email)) {
-      setError('Please enter a valid email address');
+      const errorMsg = 'Please enter a valid email address';
+      setError(errorMsg);
+      track('validation_error', { field: 'email', error_message: errorMsg });
       return;
     }
 
     // Validate password
     if (!password) {
-      setError('Password is required');
+      const errorMsg = 'Password is required';
+      setError(errorMsg);
+      track('validation_error', { field: 'password', error_message: errorMsg });
       return;
     }
 
     if (!validatePassword(password)) {
-      setError('Password must be at least 6 characters');
+      const errorMsg = 'Password must be at least 6 characters';
+      setError(errorMsg);
+      track('validation_error', { field: 'password', error_message: errorMsg });
       return;
     }
 

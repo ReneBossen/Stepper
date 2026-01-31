@@ -19,6 +19,7 @@ export type AuthStackParamList = {
 // Onboarding Stack
 export type OnboardingStackParamList = {
   WelcomeCarousel: undefined;
+  AnalyticsConsent: undefined;
   Permissions: undefined;
   ProfileSetup: undefined;
   PreferencesSetup: undefined;

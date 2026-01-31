@@ -7,6 +7,7 @@ import { signInWithGoogleOAuth, supabase } from '@services/supabase';
 import { tokenStorage } from '@services/tokenStorage';
 import { useAuthStore } from '@store/authStore';
 import { getErrorMessage } from '@utils/errorUtils';
+import { track, identify } from '@services/analytics';
 import * as WebBrowser from 'expo-web-browser';
 import AuthLayout from './components/AuthLayout';
 import AuthErrorMessage from './components/AuthErrorMessage';
@@ -116,6 +117,12 @@ export default function LoginScreen({ navigation }: Props) {
 
               // Store user info for session restore (OAuth tokens can't refresh to get user info)
               await tokenStorage.setUserInfo(userInfo);
+
+              // Identify user in analytics
+              identify(userInfo.id, {});
+
+              // Track Google login event
+              track('login_completed', { method: 'google' });
 
               // Update auth store with user info
               setUser(userInfo);

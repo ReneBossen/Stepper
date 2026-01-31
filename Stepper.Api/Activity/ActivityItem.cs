@@ -26,9 +26,9 @@ public class ActivityItem
     public string Message { get; set; } = string.Empty;
 
     /// <summary>
-    /// Additional metadata for the activity as a JSON string.
+    /// Additional metadata for the activity as a deserialized object.
     /// </summary>
-    public string? Metadata { get; set; }
+    public object? Metadata { get; set; }
 
     /// <summary>
     /// When the activity was created.

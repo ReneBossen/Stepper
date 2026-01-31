@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@store/authStore';
 import { getErrorMessage } from '@utils/errorUtils';
+import { track } from '@services/analytics';
 
 export const useRegister = () => {
   const [displayName, setDisplayName] = useState('');
@@ -12,9 +13,18 @@ export const useRegister = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const hasTrackedStart = useRef(false);
 
   const signUp = useAuthStore((state) => state.signUp);
   const isLoading = useAuthStore((state) => state.isLoading);
+
+  // Track registration_started when the user first interacts with the form
+  useEffect(() => {
+    if (!hasTrackedStart.current && (displayName || email || password)) {
+      track('registration_started', {});
+      hasTrackedStart.current = true;
+    }
+  }, [displayName, email, password]);
 
   const validateDisplayName = (name: string): boolean => {
     const trimmedName = name.trim();
@@ -47,46 +57,62 @@ export const useRegister = () => {
 
     // Validate display name
     if (!displayName.trim()) {
-      setError('Display name is required');
+      const errorMsg = 'Display name is required';
+      setError(errorMsg);
+      track('validation_error', { field: 'display_name', error_message: errorMsg });
       return;
     }
 
     if (!validateDisplayName(displayName)) {
-      setError('Display name must be 2-50 characters and contain only letters, numbers, spaces, hyphens, or apostrophes');
+      const errorMsg = 'Display name must be 2-50 characters and contain only letters, numbers, spaces, hyphens, or apostrophes';
+      setError(errorMsg);
+      track('validation_error', { field: 'display_name', error_message: errorMsg });
       return;
     }
 
     // Validate email
     if (!email.trim()) {
-      setError('Email is required');
+      const errorMsg = 'Email is required';
+      setError(errorMsg);
+      track('validation_error', { field: 'email', error_message: errorMsg });
       return;
     }
 
     if (!validateEmail(email)) {
-      setError('Please enter a valid email address');
+      const errorMsg = 'Please enter a valid email address';
+      setError(errorMsg);
+      track('validation_error', { field: 'email', error_message: errorMsg });
       return;
     }
 
     // Validate password
     if (!password) {
-      setError('Password is required');
+      const errorMsg = 'Password is required';
+      setError(errorMsg);
+      track('validation_error', { field: 'password', error_message: errorMsg });
       return;
     }
 
     if (!validatePassword(password)) {
-      setError('Password must be at least 8 characters and contain both letters and numbers');
+      const errorMsg = 'Password must be at least 8 characters and contain both letters and numbers';
+      setError(errorMsg);
+      track('validation_error', { field: 'password', error_message: errorMsg });
       return;
     }
 
     // Validate confirm password
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      const errorMsg = 'Passwords do not match';
+      setError(errorMsg);
+      track('validation_error', { field: 'confirm_password', error_message: errorMsg });
       return;
     }
 
     // Validate terms agreement
     if (!agreedToTerms) {
-      setError('You must agree to the Terms of Service and Privacy Policy');
+      const errorMsg = 'You must agree to the Terms of Service and Privacy Policy';
+      setError(errorMsg);
+      track('validation_error', { field: 'terms', error_message: errorMsg });
       return;
     }
 

@@ -10,6 +10,7 @@ import {
 } from '@services/api/usersApi';
 import { userPreferencesApi, UserPreferences, UserPreferencesUpdate, DEFAULT_PREFERENCES } from '@services/api/userPreferencesApi';
 import { getErrorMessage } from '@utils/errorUtils';
+import { track, setUserProperties } from '@services/analytics';
 
 // Re-export types for consumers
 export type { UserPreferences, UserPreferencesUpdate } from '@services/api/userPreferencesApi';
@@ -126,7 +127,52 @@ export const useUserStore = create<UserState>((set, get) => ({
       const current = get().currentUser;
       if (!current) throw new Error('No user loaded');
 
+      const previousPrefs = current.preferences;
       const updated = await userPreferencesApi.updatePreferences(prefs);
+
+      // Track preference changes
+      if (prefs.daily_step_goal !== undefined && prefs.daily_step_goal !== previousPrefs?.daily_step_goal) {
+        track('goal_changed', {
+          previous_goal: previousPrefs?.daily_step_goal ?? 10000,
+          new_goal: prefs.daily_step_goal,
+        });
+        setUserProperties({ daily_step_goal: prefs.daily_step_goal });
+      }
+
+      // Track privacy setting changes
+      if (prefs.privacy_find_me !== undefined && prefs.privacy_find_me !== previousPrefs?.privacy_find_me) {
+        track('privacy_setting_changed', { setting_name: 'privacy_find_me', new_value: prefs.privacy_find_me });
+      }
+      if (prefs.privacy_show_steps !== undefined && prefs.privacy_show_steps !== previousPrefs?.privacy_show_steps) {
+        track('privacy_setting_changed', { setting_name: 'privacy_show_steps', new_value: prefs.privacy_show_steps });
+      }
+
+      // Track notification setting changes
+      if (prefs.notifications_enabled !== undefined && prefs.notifications_enabled !== previousPrefs?.notifications_enabled) {
+        track('notification_setting_changed', {
+          setting_name: 'notifications_enabled',
+          enabled: prefs.notifications_enabled,
+        });
+      }
+      if (prefs.notify_goal_achieved !== undefined && prefs.notify_goal_achieved !== previousPrefs?.notify_goal_achieved) {
+        track('notification_setting_changed', {
+          setting_name: 'notify_goal_achieved',
+          enabled: prefs.notify_goal_achieved,
+        });
+      }
+      if (prefs.notify_friend_milestones !== undefined && prefs.notify_friend_milestones !== previousPrefs?.notify_friend_milestones) {
+        track('notification_setting_changed', {
+          setting_name: 'notify_friend_milestones',
+          enabled: prefs.notify_friend_milestones,
+        });
+      }
+
+      // Track units/preference changes
+      if (prefs.units !== undefined && prefs.units !== previousPrefs?.units) {
+        track('preference_changed', { preference_name: 'units', new_value: prefs.units });
+        setUserProperties({ units: prefs.units });
+      }
+
       set({
         currentUser: { ...current, preferences: updated },
         isLoading: false,
@@ -138,6 +184,12 @@ export const useUserStore = create<UserState>((set, get) => ({
   },
 
   setThemePreference: (theme) => {
+    const previous = get().themePreference;
+    if (theme !== previous) {
+      // Track theme changed event
+      track('theme_changed', { theme });
+      setUserProperties({ theme_preference: theme });
+    }
     set({ themePreference: theme });
   },
 
@@ -183,6 +235,9 @@ export const useUserStore = create<UserState>((set, get) => ({
   fetchUserProfile: async (userId: string) => {
     set({ isLoadingViewedUser: true, error: null });
     try {
+      // Track friend profile viewed event
+      track('friend_profile_viewed', { friend_id: userId });
+
       // Fetch all data in parallel
       const [profile, stats, weeklyActivity, achievements, mutualGroups] = await Promise.all([
         usersApi.getUserProfile(userId),

@@ -6,6 +6,12 @@ export { useFriendsStore } from './friendsStore';
 export { useGroupsStore } from './groupsStore';
 export { useNotificationsStore } from './notificationsStore';
 export { useActivityStore } from './activityStore';
+export {
+  useAnalyticsStore,
+  selectConsentStatus,
+  selectHasConsent,
+  selectNeedsConsentPrompt,
+} from './analyticsStore';
 
 // Re-export types
 export type { UserProfile, UserPreferences } from './userStore';
