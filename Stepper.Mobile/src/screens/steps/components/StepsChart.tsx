@@ -1,8 +1,11 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { StyleSheet, Dimensions, View, Pressable } from 'react-native';
+import { StyleSheet, Dimensions, View, Pressable, LayoutChangeEvent } from 'react-native';
 import { Card, Text, useTheme } from 'react-native-paper';
 import { BarChart } from 'react-native-gifted-charts';
 import type { AggregatedChartData } from '../hooks';
+
+const TOOLTIP_ESTIMATED_WIDTH = 120; // Estimated tooltip width for edge clamping
+const CHART_TOP_PADDING = 10; // Space from top of chart wrapper
 
 interface StepsChartProps {
   chartData: AggregatedChartData[];
@@ -52,6 +55,11 @@ export function StepsChart({
   const theme = useTheme();
   const screenWidth = Dimensions.get('window').width;
   const [selectedBar, setSelectedBar] = useState<SelectedBarInfo | null>(null);
+  const [chartWrapperWidth, setChartWrapperWidth] = useState(0);
+
+  const handleChartWrapperLayout = useCallback((event: LayoutChangeEvent) => {
+    setChartWrapperWidth(event.nativeEvent.layout.width);
+  }, []);
 
   const handleBarPress = useCallback((item: AggregatedChartData, index: number) => {
     setSelectedBar((prev) => {
@@ -115,6 +123,28 @@ export function StepsChart({
   const chartWidth = screenWidth - 64; // Account for padding
   const barWidth = viewMode === 'monthly' ? 16 : viewMode === 'weekly' ? 24 : 28;
   const spacing = viewMode === 'monthly' ? 8 : viewMode === 'weekly' ? 12 : 16;
+  const initialSpacing = 12;
+  const yAxisWidth = 35; // Approximate width of y-axis labels
+
+  /**
+   * Calculate the horizontal position for the tooltip based on the selected bar index.
+   * Centers the tooltip over the bar and clamps to prevent overflow at edges.
+   */
+  const getTooltipXPosition = useCallback(
+    (index: number): number => {
+      // Calculate bar center position relative to chart wrapper
+      const barCenterX =
+        yAxisWidth + initialSpacing + index * (barWidth + spacing) + barWidth / 2;
+
+      // Clamp position to keep tooltip within bounds
+      const halfTooltipWidth = TOOLTIP_ESTIMATED_WIDTH / 2;
+      const minX = halfTooltipWidth;
+      const maxX = chartWrapperWidth - halfTooltipWidth;
+
+      return Math.max(minX, Math.min(barCenterX, maxX));
+    },
+    [barWidth, spacing, chartWrapperWidth]
+  );
 
   // Calculate Y-axis max value based on actual data with proper rounding
   const maxDataValue = Math.max(...chartData.map((d) => d.value), 0);
@@ -165,61 +195,69 @@ export function StepsChart({
       accessibilityRole="image"
     >
       <Card.Content style={styles.content}>
-        {selectedBar && (
-          <Pressable
-            style={[styles.tooltip, { backgroundColor: theme.colors.inverseSurface }]}
-            onPress={clearSelection}
-            accessibilityLabel={`${selectedBar.label}: ${formatStepCount(selectedBar.value)} steps. Tap to dismiss.`}
-            accessibilityRole="button"
-          >
-            <Text
-              variant="labelMedium"
-              style={[styles.tooltipLabel, { color: theme.colors.inverseOnSurface }]}
+        <View style={styles.chartWrapper} onLayout={handleChartWrapperLayout}>
+          {selectedBar && (
+            <Pressable
+              style={[
+                styles.tooltip,
+                {
+                  backgroundColor: theme.colors.inverseSurface + 'E6', // 90% opacity
+                  left: getTooltipXPosition(selectedBar.index),
+                },
+              ]}
+              onPress={clearSelection}
+              accessibilityLabel={`${selectedBar.label}: ${formatStepCount(selectedBar.value)} steps. Tap to dismiss.`}
+              accessibilityRole="button"
             >
-              {selectedBar.subLabel ?? selectedBar.label}
-            </Text>
-            <Text
-              variant="titleMedium"
-              style={[styles.tooltipValue, { color: theme.colors.inverseOnSurface }]}
-            >
-              {formatStepCount(selectedBar.value)} steps
-            </Text>
-          </Pressable>
-        )}
-        <BarChart
-          data={barData}
-          width={chartWidth}
-          height={180}
-          barWidth={barWidth}
-          spacing={spacing}
-          initialSpacing={12}
-          endSpacing={12}
-          noOfSections={noOfSections}
-          maxValue={yAxisMaxValue}
-          stepValue={stepValue}
-          yAxisThickness={0}
-          xAxisThickness={1}
-          xAxisColor={theme.colors.outline}
-          yAxisTextStyle={{
-            color: theme.colors.onSurfaceVariant,
-            fontSize: 10,
-          }}
-          xAxisLabelTextStyle={{
-            color: theme.colors.onSurfaceVariant,
-            fontSize: labelFontSize,
-          }}
-          formatYLabel={formatYAxisLabel}
-          barBorderRadius={4}
-          disableScroll={viewMode !== 'monthly'}
-          showScrollIndicator={false}
-          rulesColor={theme.colors.outlineVariant}
-          rulesType="solid"
-          dashGap={0}
-          dashWidth={0}
-          hideRules={false}
-          isAnimated
-          animationDuration={500}
-        />
+              <Text
+                variant="labelMedium"
+                style={[styles.tooltipLabel, { color: theme.colors.inverseOnSurface }]}
+              >
+                {selectedBar.subLabel ?? selectedBar.label}
+              </Text>
+              <Text
+                variant="titleMedium"
+                style={[styles.tooltipValue, { color: theme.colors.inverseOnSurface }]}
+              >
+                {formatStepCount(selectedBar.value)} steps
+              </Text>
+            </Pressable>
+          )}
+          <BarChart
+            data={barData}
+            width={chartWidth}
+            height={180}
+            barWidth={barWidth}
+            spacing={spacing}
+            initialSpacing={initialSpacing}
+            endSpacing={12}
+            noOfSections={noOfSections}
+            maxValue={yAxisMaxValue}
+            stepValue={stepValue}
+            yAxisThickness={0}
+            xAxisThickness={1}
+            xAxisColor={theme.colors.outline}
+            yAxisTextStyle={{
+              color: theme.colors.onSurfaceVariant,
+              fontSize: 10,
+            }}
+            xAxisLabelTextStyle={{
+              color: theme.colors.onSurfaceVariant,
+              fontSize: labelFontSize,
+            }}
+            formatYLabel={formatYAxisLabel}
+            barBorderRadius={4}
+            disableScroll={viewMode !== 'monthly'}
+            showScrollIndicator={false}
+            rulesColor={theme.colors.outlineVariant}
+            rulesType="solid"
+            dashGap={0}
+            dashWidth={0}
+            hideRules={false}
+            isAnimated
+            animationDuration={500}
+          />
+        </View>
       </Card.Content>
     </Card>
   );
@@ -238,12 +276,24 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     alignItems: 'center',
   },
+  chartWrapper: {
+    position: 'relative',
+  },
   tooltip: {
-    paddingHorizontal: 16,
+    position: 'absolute',
+    top: CHART_TOP_PADDING,
+    transform: [{ translateX: -TOOLTIP_ESTIMATED_WIDTH / 2 }],
+    zIndex: 10,
+    minWidth: TOOLTIP_ESTIMATED_WIDTH,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    marginBottom: 12,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   tooltipLabel: {
     fontWeight: '500',
