@@ -52,6 +52,25 @@ public class AuthService : IAuthService
                     }
                 });
 
+            // When email confirmation is required, we get a user but no access token
+            // This is NOT an error - it means registration succeeded but email needs verification
+            if (session?.User != null && session.AccessToken == null)
+            {
+                _logger.LogInformation("Registration successful for email: {Email}, awaiting email confirmation", request.Email);
+
+                return new AuthResponse(
+                    AccessToken: string.Empty,
+                    RefreshToken: string.Empty,
+                    ExpiresIn: 0,
+                    User: new AuthUserInfo(
+                        Id: Guid.Parse(session.User.Id!),
+                        Email: session.User.Email!,
+                        DisplayName: request.DisplayName
+                    ),
+                    RequiresEmailConfirmation: true
+                );
+            }
+
             EnsureSessionValid(session);
 
             return MapToAuthResponse(session!);

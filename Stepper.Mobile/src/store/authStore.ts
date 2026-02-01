@@ -64,6 +64,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const response = await authApi.register({ email, password, displayName });
 
+      // If email confirmation is required, don't store tokens (they're empty)
+      // Let the caller handle showing the confirmation screen
+      if (response.requiresEmailConfirmation) {
+        // Track registration events - user registered but needs email confirmation
+        track('registration_pending_confirmation', { method: 'email' });
+
+        set({ isLoading: false });
+        return;
+      }
+
       // Store tokens securely
       await tokenStorage.setTokens(
         response.accessToken,

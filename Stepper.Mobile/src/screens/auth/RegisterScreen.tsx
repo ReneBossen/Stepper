@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { TextInput, Button, Text, Checkbox, Surface } from 'react-native-paper';
+import { TextInput, Button, Text, Surface } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { AuthStackScreenProps } from '@navigation/types';
 import { useAppTheme } from '@hooks/useAppTheme';
@@ -195,13 +196,23 @@ export default function RegisterScreen({ navigation }: Props) {
             fieldErrors.terms && { borderColor: paperTheme.colors.error },
           ]}
         >
-          <Checkbox
-            status={agreedToTerms ? 'checked' : 'unchecked'}
+          <TouchableOpacity
             onPress={handleTermsToggle}
             disabled={isLoading}
-            uncheckedColor={paperTheme.colors.outline}
-            color={paperTheme.colors.primary}
-          />
+            style={[
+              styles.customCheckbox,
+              { borderColor: fieldErrors.terms ? paperTheme.colors.error : paperTheme.colors.outline },
+              agreedToTerms && { backgroundColor: paperTheme.colors.primary, borderColor: paperTheme.colors.primary },
+            ]}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: agreedToTerms }}
+            accessibilityLabel="Agree to terms and privacy policy"
+            testID="terms-checkbox"
+          >
+            {agreedToTerms && (
+              <MaterialCommunityIcons name="check" size={18} color={paperTheme.colors.onPrimary} />
+            )}
+          </TouchableOpacity>
           <Text variant="bodyMedium" style={styles.checkboxText}>
             I agree to the{' '}
             <Text
@@ -283,6 +294,14 @@ const styles = StyleSheet.create({
   },
   checkboxContainerError: {
     borderWidth: 1,
+  },
+  customCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   checkboxText: {
     flex: 1,

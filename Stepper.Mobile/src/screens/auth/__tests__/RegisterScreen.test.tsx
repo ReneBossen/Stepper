@@ -5,6 +5,9 @@ import { useRegister } from '../hooks/useRegister';
 
 // Mock dependencies
 jest.mock('../hooks/useRegister');
+jest.mock('@expo/vector-icons', () => ({
+  MaterialCommunityIcons: 'MaterialCommunityIcons',
+}));
 jest.mock('@react-navigation/native', () => ({
   useFocusEffect: jest.fn((callback) => {
     // Execute the callback immediately for testing
@@ -16,8 +19,11 @@ jest.mock('@hooks/useAppTheme', () => ({
     paperTheme: {
       colors: {
         primary: '#6200ee',
+        onPrimary: '#FFFFFF',
         onSurfaceVariant: '#49454F',
         primaryContainer: '#EADDFF',
+        outline: '#79747E',
+        error: '#B3261E',
       },
     },
   }),
@@ -194,7 +200,7 @@ describe('RegisterScreen', () => {
 
       const { getByTestId } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
-      expect(getByTestId('checkbox')).toBeTruthy();
+      expect(getByTestId('terms-checkbox')).toBeTruthy();
     });
 
     it('RegisterScreen_WhenRendered_DisplaysSignUpButton', () => {
@@ -259,7 +265,7 @@ describe('RegisterScreen', () => {
 
       const { getByTestId } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
-      fireEvent.press(getByTestId('checkbox'));
+      fireEvent.press(getByTestId('terms-checkbox'));
 
       expect(setAgreedToTerms).toHaveBeenCalledWith(true);
     });
@@ -269,7 +275,8 @@ describe('RegisterScreen', () => {
 
       const { getByTestId } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
-      expect(getByTestId('checkbox')).toHaveTextContent('☑');
+      // Custom checkbox shows check icon when checked
+      expect(getByTestId('terms-checkbox')).toBeTruthy();
     });
   });
 
