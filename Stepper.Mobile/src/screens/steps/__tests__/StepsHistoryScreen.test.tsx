@@ -9,14 +9,34 @@ import type { DailyStepEntry } from '@store/stepsStore';
 jest.mock('@store/stepsStore');
 jest.mock('@store/userStore');
 
-// Mock components
-jest.mock('@components/common/LoadingSpinner', () => ({
-  LoadingSpinner: () => {
-    const RN = require('react-native');
-    return <RN.View testID="loading-spinner" />;
+// Mock @react-native-community/datetimepicker
+jest.mock('@react-native-community/datetimepicker', () => {
+  const RN = require('react-native');
+  return {
+    __esModule: true,
+    default: ({ value, onChange, testID }: any) => (
+      <RN.View testID={testID || 'date-time-picker'}>
+        <RN.Text>{value?.toISOString()}</RN.Text>
+      </RN.View>
+    ),
+  };
+});
+
+// Mock @react-native-async-storage/async-storage
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  getItem: jest.fn(() => Promise.resolve(null)),
+  setItem: jest.fn(() => Promise.resolve()),
+}));
+
+// Mock steps API
+jest.mock('@services/api/stepsApi', () => ({
+  stepsApi: {
+    getDailyHistory: jest.fn(() => Promise.resolve([])),
+    addStepEntry: jest.fn(() => Promise.resolve({ id: 'test-id' })),
   },
 }));
 
+// Mock components
 jest.mock('@components/common/ErrorMessage', () => ({
   ErrorMessage: ({ message, onRetry }: any) => {
     const RN = require('react-native');
@@ -31,7 +51,82 @@ jest.mock('@components/common/ErrorMessage', () => ({
   },
 }));
 
+// Mock ManualStepEntryModal
+jest.mock('@components/steps', () => ({
+  ManualStepEntryModal: ({ visible, onDismiss, onSuccess }: any) => {
+    const RN = require('react-native');
+    if (!visible) return null;
+    return (
+      <RN.View testID="manual-entry-modal">
+        <RN.TouchableOpacity testID="manual-entry-dismiss" onPress={onDismiss}>
+          <RN.Text>Cancel</RN.Text>
+        </RN.TouchableOpacity>
+        <RN.TouchableOpacity testID="manual-entry-save" onPress={onSuccess}>
+          <RN.Text>Save</RN.Text>
+        </RN.TouchableOpacity>
+      </RN.View>
+    );
+  },
+}));
+
+// Mock the useChartData hook
+jest.mock('../hooks', () => ({
+  useChartData: jest.fn(() => ({
+    chartData: [
+      { label: 'Mon', value: 8000 },
+      { label: 'Tue', value: 8500 },
+      { label: 'Wed', value: 9000 },
+      { label: 'Thu', value: 7500 },
+      { label: 'Fri', value: 10000 },
+      { label: 'Sat', value: 11000 },
+      { label: 'Sun', value: 9500 },
+    ],
+    stats: { total: 63500, average: 9071, distanceMeters: 50000 },
+    periodLabel: 'Jan 9 - Jan 15, 2024',
+    isLoading: false,
+    error: null,
+  })),
+}));
+
+// Mock the step components
 jest.mock('../components', () => ({
+  ChartNavigation: ({ viewMode, onViewModeChange, onPrevious, onNext, canGoNext, periodLabel, testID }: any) => {
+    const RN = require('react-native');
+    return (
+      <RN.View testID={testID}>
+        <RN.View testID="segmented-buttons">
+          <RN.TouchableOpacity
+            testID="segment-daily"
+            onPress={() => onViewModeChange('daily')}
+            accessibilityState={{ selected: viewMode === 'daily' }}
+          >
+            <RN.Text>Daily</RN.Text>
+          </RN.TouchableOpacity>
+          <RN.TouchableOpacity
+            testID="segment-weekly"
+            onPress={() => onViewModeChange('weekly')}
+            accessibilityState={{ selected: viewMode === 'weekly' }}
+          >
+            <RN.Text>Weekly</RN.Text>
+          </RN.TouchableOpacity>
+          <RN.TouchableOpacity
+            testID="segment-monthly"
+            onPress={() => onViewModeChange('monthly')}
+            accessibilityState={{ selected: viewMode === 'monthly' }}
+          >
+            <RN.Text>Monthly</RN.Text>
+          </RN.TouchableOpacity>
+        </RN.View>
+        <RN.TouchableOpacity testID="nav-previous" onPress={onPrevious}>
+          <RN.Text>Prev</RN.Text>
+        </RN.TouchableOpacity>
+        <RN.Text testID="period-label">{periodLabel}</RN.Text>
+        <RN.TouchableOpacity testID="nav-next" onPress={onNext} disabled={!canGoNext}>
+          <RN.Text>Next</RN.Text>
+        </RN.TouchableOpacity>
+      </RN.View>
+    );
+  },
   DateRangePicker: ({ visible, testID, onDismiss, onConfirm }: any) => {
     const RN = require('react-native');
     if (!visible) return null;
@@ -57,15 +152,21 @@ jest.mock('../components', () => ({
       </RN.View>
     );
   },
-  StatsSummary: ({ testID }: any) => {
-    const RN = require('react-native');
-    return <RN.View testID={testID} />;
-  },
-  StepsChart: ({ entries, testID }: any) => {
+  StatsSummary: ({ stats, periodLabel, testID }: any) => {
     const RN = require('react-native');
     return (
       <RN.View testID={testID}>
-        <RN.Text>{entries.length} entries</RN.Text>
+        <RN.Text>Total: {stats?.total}</RN.Text>
+        <RN.Text>Average: {stats?.average}</RN.Text>
+        <RN.Text>Period: {periodLabel}</RN.Text>
+      </RN.View>
+    );
+  },
+  StepsChart: ({ chartData, testID }: any) => {
+    const RN = require('react-native');
+    return (
+      <RN.View testID={testID}>
+        <RN.Text>{chartData?.length || 0} data points</RN.Text>
       </RN.View>
     );
   },
@@ -93,24 +194,8 @@ jest.mock('react-native-paper', () => {
     ),
   };
 
-  const SegmentedButtons = ({ value, onValueChange, buttons }: any) => (
-    <RN.View testID="segmented-buttons">
-      {buttons.map((btn: any) => (
-        <RN.TouchableOpacity
-          key={btn.value}
-          testID={`segment-${btn.value}`}
-          onPress={() => onValueChange(btn.value)}
-          accessibilityState={{ selected: value === btn.value }}
-        >
-          <RN.Text>{btn.label}</RN.Text>
-        </RN.TouchableOpacity>
-      ))}
-    </RN.View>
-  );
-
   return {
     Appbar,
-    SegmentedButtons,
     Text: ({ children, style, variant, ...props }: any) => (
       <RN.Text {...props} style={style}>{children}</RN.Text>
     ),
@@ -131,7 +216,8 @@ const mockUseStepsStore = useStepsStore as jest.MockedFunction<typeof useStepsSt
 const mockUseUserStore = useUserStore as jest.MockedFunction<typeof useUserStore>;
 
 describe('StepsHistoryScreen', () => {
-  const mockFetchDailyHistory = jest.fn();
+  const mockLoadMoreHistory = jest.fn().mockResolvedValue(undefined);
+  const mockResetPaginatedHistory = jest.fn();
 
   const createMockEntry = (overrides: Partial<DailyStepEntry> = {}): DailyStepEntry => ({
     date: '2024-01-15',
@@ -149,10 +235,12 @@ describe('StepsHistoryScreen', () => {
   };
 
   const defaultStepsState = {
-    dailyHistory: createMockEntries(7),
-    isHistoryLoading: false,
-    historyError: null,
-    fetchDailyHistory: mockFetchDailyHistory,
+    paginatedHistory: createMockEntries(7),
+    hasMoreHistory: true,
+    isPaginatedHistoryLoading: false,
+    loadMoreHistory: mockLoadMoreHistory,
+    resetPaginatedHistory: mockResetPaginatedHistory,
+    fetchDailyHistory: jest.fn(),
   };
 
   const defaultUserState = {
@@ -206,8 +294,9 @@ describe('StepsHistoryScreen', () => {
       expect(getByTestId('appbar-title')).toHaveTextContent('Steps History');
     });
 
-    it('should render segmented buttons', () => {
+    it('should render chart navigation with segmented buttons', () => {
       const { getByTestId } = render(<StepsHistoryScreen />);
+      expect(getByTestId('chart-navigation')).toBeTruthy();
       expect(getByTestId('segmented-buttons')).toBeTruthy();
     });
 
@@ -218,139 +307,40 @@ describe('StepsHistoryScreen', () => {
       expect(getByTestId('segment-monthly')).toBeTruthy();
     });
 
-    it('should render chart component in list header', () => {
-      // Note: FlatList ListHeaderComponent may not render in test environment
-      // Testing that the component renders without errors is sufficient
-      const { queryByTestId } = render(<StepsHistoryScreen />);
-      // The chart is in ListHeaderComponent which FlatList may not render in tests
-      // We verify the screen renders correctly with the FlatList
-      expect(queryByTestId('appbar-header')).toBeTruthy();
-    });
-
-    it('should render stats summary component in list header', () => {
-      // Note: FlatList ListHeaderComponent may not render in test environment
-      const { queryByTestId } = render(<StepsHistoryScreen />);
-      expect(queryByTestId('appbar-header')).toBeTruthy();
-    });
-
     it('should render FlatList for history items', () => {
       const { getByTestId } = render(<StepsHistoryScreen />);
       expect(getByTestId('history-item-2024-01-15')).toBeTruthy();
     });
+
+    it('should render add steps action button', () => {
+      const { getByTestId } = render(<StepsHistoryScreen />);
+      expect(getByTestId('appbar-action-plus')).toBeTruthy();
+    });
+
+    it('should render calendar action button', () => {
+      const { getByTestId } = render(<StepsHistoryScreen />);
+      expect(getByTestId('appbar-action-calendar')).toBeTruthy();
+    });
   });
 
   describe('loading state', () => {
-    it('should show loading spinner when loading with no data', () => {
-      mockUseStepsStore.mockImplementation((selector?: any) => {
-        const state = {
-          ...defaultStepsState,
-          dailyHistory: [],
-          isHistoryLoading: true,
-        };
-        return selector ? selector(state) : state;
-      });
-
-      const { getByTestId } = render(<StepsHistoryScreen />);
-      expect(getByTestId('loading-spinner')).toBeTruthy();
+    it('should call loadMoreHistory on mount', () => {
+      render(<StepsHistoryScreen />);
+      expect(mockLoadMoreHistory).toHaveBeenCalled();
     });
 
-    it('should not show loading spinner when loading with existing data', () => {
-      mockUseStepsStore.mockImplementation((selector?: any) => {
-        const state = {
-          ...defaultStepsState,
-          isHistoryLoading: true,
-        };
-        return selector ? selector(state) : state;
-      });
-
-      const { queryByTestId } = render(<StepsHistoryScreen />);
-      expect(queryByTestId('loading-spinner')).toBeNull();
-    });
-  });
-
-  describe('error state', () => {
-    it('should show error message when there is an error and no data', () => {
-      mockUseStepsStore.mockImplementation((selector?: any) => {
-        const state = {
-          ...defaultStepsState,
-          dailyHistory: [],
-          historyError: 'Failed to load history',
-        };
-        return selector ? selector(state) : state;
-      });
-
-      const { getByTestId } = render(<StepsHistoryScreen />);
-      expect(getByTestId('error-message')).toBeTruthy();
-    });
-
-    it('should display error text', () => {
-      mockUseStepsStore.mockImplementation((selector?: any) => {
-        const state = {
-          ...defaultStepsState,
-          dailyHistory: [],
-          historyError: 'Network error',
-        };
-        return selector ? selector(state) : state;
-      });
-
-      const { getByTestId } = render(<StepsHistoryScreen />);
-      expect(getByTestId('error-text')).toHaveTextContent('Network error');
-    });
-
-    it('should call fetchDailyHistory when retry is pressed', async () => {
-      mockUseStepsStore.mockImplementation((selector?: any) => {
-        const state = {
-          ...defaultStepsState,
-          dailyHistory: [],
-          historyError: 'Failed to load',
-        };
-        return selector ? selector(state) : state;
-      });
-
-      const { getByTestId } = render(<StepsHistoryScreen />);
-
-      fireEvent.press(getByTestId('retry-button'));
-
-      await waitFor(() => {
-        expect(mockFetchDailyHistory).toHaveBeenCalled();
-      });
-    });
-
-    it('should not show error when data exists despite error', () => {
-      mockUseStepsStore.mockImplementation((selector?: any) => {
-        const state = {
-          ...defaultStepsState,
-          historyError: 'Some error',
-        };
-        return selector ? selector(state) : state;
-      });
-
-      const { queryByTestId } = render(<StepsHistoryScreen />);
-      expect(queryByTestId('error-message')).toBeNull();
+    it('should call resetPaginatedHistory on mount', () => {
+      render(<StepsHistoryScreen />);
+      expect(mockResetPaginatedHistory).toHaveBeenCalled();
     });
   });
 
   describe('empty state', () => {
-    it('should show empty state message when no history entries', () => {
-      mockUseStepsStore.mockImplementation((selector?: any) => {
-        const state = {
-          ...defaultStepsState,
-          dailyHistory: [],
-        };
-        return selector ? selector(state) : state;
-      });
-
-      const { queryByTestId, queryByText } = render(<StepsHistoryScreen />);
-      // FlatList ListEmptyComponent renders when there's no data
-      // The exact text might be in empty component which may not render in test
-      expect(queryByTestId('history-item-2024-01-15')).toBeNull();
-    });
-
     it('should not render history items when empty', () => {
       mockUseStepsStore.mockImplementation((selector?: any) => {
         const state = {
           ...defaultStepsState,
-          dailyHistory: [],
+          paginatedHistory: [],
         };
         return selector ? selector(state) : state;
       });
@@ -372,7 +362,7 @@ describe('StepsHistoryScreen', () => {
       fireEvent.press(getByTestId('segment-weekly'));
 
       await waitFor(() => {
-        expect(mockFetchDailyHistory).toHaveBeenCalled();
+        expect(getByTestId('segment-weekly').props.accessibilityState.selected).toBe(true);
       });
     });
 
@@ -382,38 +372,8 @@ describe('StepsHistoryScreen', () => {
       fireEvent.press(getByTestId('segment-monthly'));
 
       await waitFor(() => {
-        expect(mockFetchDailyHistory).toHaveBeenCalled();
+        expect(getByTestId('segment-monthly').props.accessibilityState.selected).toBe(true);
       });
-    });
-
-    it('should fetch data when view mode changes', async () => {
-      const { getByTestId } = render(<StepsHistoryScreen />);
-
-      // Initial fetch on mount
-      expect(mockFetchDailyHistory).toHaveBeenCalled();
-
-      // Clear and switch view
-      mockFetchDailyHistory.mockClear();
-      fireEvent.press(getByTestId('segment-weekly'));
-
-      await waitFor(() => {
-        expect(mockFetchDailyHistory).toHaveBeenCalled();
-      });
-    });
-  });
-
-  describe('data fetching', () => {
-    it('should fetch data on mount', () => {
-      render(<StepsHistoryScreen />);
-      expect(mockFetchDailyHistory).toHaveBeenCalled();
-    });
-
-    it('should call fetchDailyHistory with date range', () => {
-      render(<StepsHistoryScreen />);
-      expect(mockFetchDailyHistory).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String)
-      );
     });
   });
 
@@ -461,6 +421,76 @@ describe('StepsHistoryScreen', () => {
     });
   });
 
+  describe('date range picker', () => {
+    it('should open date picker when calendar action is pressed', async () => {
+      const { getByTestId, queryByTestId } = render(<StepsHistoryScreen />);
+
+      // Date picker should not be visible initially
+      expect(queryByTestId('date-range-picker')).toBeNull();
+
+      // Press calendar action
+      fireEvent.press(getByTestId('appbar-action-calendar'));
+
+      // Date picker should now be visible
+      await waitFor(() => {
+        expect(getByTestId('date-range-picker')).toBeTruthy();
+      });
+    });
+
+    it('should close date picker when dismissed', async () => {
+      const { getByTestId, queryByTestId } = render(<StepsHistoryScreen />);
+
+      // Open date picker
+      fireEvent.press(getByTestId('appbar-action-calendar'));
+
+      await waitFor(() => {
+        expect(getByTestId('date-range-picker')).toBeTruthy();
+      });
+
+      // Dismiss date picker
+      fireEvent.press(getByTestId('date-range-picker-dismiss'));
+
+      await waitFor(() => {
+        expect(queryByTestId('date-range-picker')).toBeNull();
+      });
+    });
+  });
+
+  describe('manual entry modal', () => {
+    it('should open manual entry modal when plus action is pressed', async () => {
+      const { getByTestId, queryByTestId } = render(<StepsHistoryScreen />);
+
+      // Modal should not be visible initially
+      expect(queryByTestId('manual-entry-modal')).toBeNull();
+
+      // Press plus action
+      fireEvent.press(getByTestId('appbar-action-plus'));
+
+      // Modal should now be visible
+      await waitFor(() => {
+        expect(getByTestId('manual-entry-modal')).toBeTruthy();
+      });
+    });
+
+    it('should close manual entry modal when dismissed', async () => {
+      const { getByTestId, queryByTestId } = render(<StepsHistoryScreen />);
+
+      // Open modal
+      fireEvent.press(getByTestId('appbar-action-plus'));
+
+      await waitFor(() => {
+        expect(getByTestId('manual-entry-modal')).toBeTruthy();
+      });
+
+      // Dismiss modal
+      fireEvent.press(getByTestId('manual-entry-dismiss'));
+
+      await waitFor(() => {
+        expect(queryByTestId('manual-entry-modal')).toBeNull();
+      });
+    });
+  });
+
   describe('chart integration', () => {
     it('should render all history items from store', () => {
       const { getByTestId } = render(<StepsHistoryScreen />);
@@ -474,7 +504,7 @@ describe('StepsHistoryScreen', () => {
       mockUseStepsStore.mockImplementation((selector?: any) => {
         const state = {
           ...defaultStepsState,
-          dailyHistory: entries,
+          paginatedHistory: entries,
         };
         return selector ? selector(state) : state;
       });
@@ -484,6 +514,19 @@ describe('StepsHistoryScreen', () => {
       expect(getByTestId('history-item-2024-01-13')).toBeTruthy();
       // Entry 3 should not exist since we only have 3 entries (0, 1, 2)
       expect(queryByTestId('history-item-2024-01-12')).toBeNull();
+    });
+  });
+
+  describe('chart navigation', () => {
+    it('should render navigation controls', () => {
+      const { getByTestId } = render(<StepsHistoryScreen />);
+      expect(getByTestId('nav-previous')).toBeTruthy();
+      expect(getByTestId('nav-next')).toBeTruthy();
+    });
+
+    it('should display period label', () => {
+      const { getByTestId } = render(<StepsHistoryScreen />);
+      expect(getByTestId('period-label')).toBeTruthy();
     });
   });
 });
