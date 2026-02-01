@@ -1,80 +1,118 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, FlatList, StyleSheet, RefreshControl } from 'react-native';
+import { View, FlatList, StyleSheet, RefreshControl, ActivityIndicator } from 'react-native';
 import {
   Appbar,
-  SegmentedButtons,
   Text,
   Divider,
   useTheme,
 } from 'react-native-paper';
-import { LoadingSpinner } from '@components/common/LoadingSpinner';
 import { ErrorMessage } from '@components/common/ErrorMessage';
 import { ManualStepEntryModal } from '@components/steps';
-import { DateRangePicker, StepHistoryItem, StatsSummary, StepsChart } from './components';
+import {
+  ChartNavigation,
+  DateRangePicker,
+  StepHistoryItem,
+  StatsSummary,
+  StepsChart,
+} from './components';
+import type { ChartStats } from './components';
+import { useChartData } from './hooks';
+import type { ChartViewMode } from './hooks';
 import { useStepsStore } from '@store/stepsStore';
 import { useUserStore } from '@store/userStore';
 import type { DailyStepEntry } from '@store/stepsStore';
-
-type ViewMode = 'daily' | 'weekly' | 'monthly' | 'custom';
-
-/**
- * Calculates the date range based on the selected view mode.
- * - Daily: Today only
- * - Weekly: Current week (Monday to Sunday)
- * - Monthly: Current month (1st to last day)
- */
-function getDateRange(viewMode: ViewMode): { start: Date; end: Date } {
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-
-  switch (viewMode) {
-    case 'daily':
-      // Today only - no change to start date
-      break;
-    case 'weekly':
-      // Current week (Monday as start of week)
-      const dayOfWeek = start.getDay();
-      // getDay() returns 0 for Sunday, 1 for Monday, etc.
-      // We want Monday = 0, so adjust: (dayOfWeek + 6) % 7
-      const daysFromMonday = (dayOfWeek + 6) % 7;
-      start.setDate(start.getDate() - daysFromMonday);
-      break;
-    case 'monthly':
-      // Current month (1st of the month)
-      start.setDate(1);
-      break;
-  }
-
-  return { start, end };
-}
+import { stepsApi } from '@services/api/stepsApi';
+import { getErrorMessage } from '@utils/errorUtils';
 
 /**
  * Formats a Date to YYYY-MM-DD string format.
  */
 function formatDateForApi(date: Date): string {
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 /**
+ * Formats a date for display (e.g., "Jan 1").
+ */
+function formatDateForDisplay(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+/**
+ * Formats a full date with year (e.g., "Jan 1, 2026").
+ */
+function formatDateWithYear(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+/** Initial number of history items to load */
+const INITIAL_PAGE_SIZE = 7;
+
+/** Number of items to load on subsequent pages */
+const LOAD_MORE_PAGE_SIZE = 15;
+
+/**
  * Steps History screen displaying detailed walking activity over time.
- * Shows charts, statistics, and a list of daily entries.
+ *
+ * Architecture:
+ * - Chart section: Uses useChartData hook with viewMode and chartOffset
+ * - History section: Uses paginated history from store with infinite scroll
+ *
+ * These two sections have independent state and data fetching.
  */
 export default function StepsHistoryScreen() {
   const theme = useTheme();
-  const [viewMode, setViewMode] = useState<ViewMode>('daily');
-  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // ===============================
+  // Chart Navigation State
+  // ===============================
+  const [viewMode, setViewMode] = useState<ChartViewMode>('daily');
+  const [chartOffset, setChartOffset] = useState(0); // 0 = current period
+
+  // ===============================
+  // Date Picker State
+  // ===============================
   const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
   const [customDateRange, setCustomDateRange] = useState<{ start: Date; end: Date } | null>(null);
+
+  // ===============================
+  // Custom Date Range Chart State
+  // ===============================
+  const [customChartData, setCustomChartData] = useState<
+    { chartData: typeof chartData; stats: ChartStats; periodLabel: string } | null
+  >(null);
+  const [isCustomLoading, setIsCustomLoading] = useState(false);
+  const [customError, setCustomError] = useState<string | null>(null);
+
+  // ===============================
+  // Manual Entry Modal State
+  // ===============================
   const [showManualEntry, setShowManualEntry] = useState(false);
 
+  // ===============================
+  // Refresh State
+  // ===============================
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // ===============================
+  // Store State (Paginated History)
+  // ===============================
   const {
-    dailyHistory,
-    isHistoryLoading,
-    historyError,
-    fetchDailyHistory,
+    paginatedHistory,
+    hasMoreHistory,
+    isPaginatedHistoryLoading,
+    loadMoreHistory,
+    resetPaginatedHistory,
   } = useStepsStore();
 
   const { currentUser } = useUserStore();
@@ -82,36 +120,123 @@ export default function StepsHistoryScreen() {
   const dailyGoal = currentUser?.preferences.daily_step_goal ?? 10000;
   const units = currentUser?.preferences.units ?? 'metric';
 
-  // Calculate date range based on view mode or use custom range
-  const dateRange = useMemo(() => {
-    if (viewMode === 'custom' && customDateRange) {
-      return customDateRange;
-    }
-    return getDateRange(viewMode);
-  }, [viewMode, customDateRange]);
+  // ===============================
+  // Chart Data Hook (for non-custom ranges)
+  // ===============================
+  const {
+    chartData,
+    stats,
+    periodLabel,
+    isLoading: isChartLoading,
+    error: chartError,
+  } = useChartData(viewMode, chartOffset);
 
-  // Fetch data when view mode changes
+  // ===============================
+  // Initial History Load
+  // ===============================
   useEffect(() => {
-    const startStr = formatDateForApi(dateRange.start);
-    const endStr = formatDateForApi(dateRange.end);
-    fetchDailyHistory(startStr, endStr);
-  }, [dateRange, fetchDailyHistory]);
+    resetPaginatedHistory();
+    loadMoreHistory(INITIAL_PAGE_SIZE);
+  }, []);
 
-  const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    const startStr = formatDateForApi(dateRange.start);
-    const endStr = formatDateForApi(dateRange.end);
-    await fetchDailyHistory(startStr, endStr);
-    setIsRefreshing(false);
-  }, [dateRange, fetchDailyHistory]);
+  // ===============================
+  // Custom Date Range Fetching
+  // ===============================
+  const fetchCustomDateRangeData = useCallback(async (start: Date, end: Date) => {
+    setIsCustomLoading(true);
+    setCustomError(null);
 
-  const handleViewModeChange = useCallback((value: string) => {
-    setViewMode(value as ViewMode);
-    // Reset custom date range when switching to preset modes
-    if (value !== 'custom') {
-      setCustomDateRange(null);
+    try {
+      const startStr = formatDateForApi(start);
+      const endStr = formatDateForApi(end);
+
+      const dailySummaries = await stepsApi.getDailyHistory({
+        startDate: startStr,
+        endDate: endStr,
+      });
+
+      // Transform to entries
+      const entries: DailyStepEntry[] = dailySummaries.map((summary) => ({
+        date: summary.date,
+        steps: summary.totalSteps,
+        distanceMeters: summary.totalDistanceMeters,
+      }));
+
+      // Sort by date ascending for chart display
+      entries.sort((a, b) => a.date.localeCompare(b.date));
+
+      // Aggregate as daily view
+      const aggregatedData = entries.map((entry) => {
+        const dateObj = new Date(entry.date + 'T00:00:00');
+        return {
+          label: dateObj.toLocaleDateString('en-US', { weekday: 'short' }),
+          value: entry.steps,
+          subLabel: formatDateForDisplay(dateObj),
+        };
+      });
+
+      // Calculate stats
+      const total = entries.reduce((sum, e) => sum + e.steps, 0);
+      const distanceMeters = entries.reduce((sum, e) => sum + e.distanceMeters, 0);
+      const average = entries.length > 0 ? Math.round(total / entries.length) : 0;
+
+      // Generate period label
+      const startYear = start.getFullYear();
+      const endYear = end.getFullYear();
+      let customPeriodLabel: string;
+      if (startYear === endYear) {
+        customPeriodLabel = `${formatDateForDisplay(start)} - ${formatDateWithYear(end)}`;
+      } else {
+        customPeriodLabel = `${formatDateWithYear(start)} - ${formatDateWithYear(end)}`;
+      }
+
+      setCustomChartData({
+        chartData: aggregatedData,
+        stats: { total, average, distanceMeters },
+        periodLabel: customPeriodLabel,
+      });
+    } catch (error) {
+      setCustomError(getErrorMessage(error));
+      setCustomChartData(null);
+    } finally {
+      setIsCustomLoading(false);
     }
   }, []);
+
+  // Fetch custom data when custom range is set
+  useEffect(() => {
+    if (customDateRange) {
+      fetchCustomDateRangeData(customDateRange.start, customDateRange.end);
+    }
+  }, [customDateRange, fetchCustomDateRangeData]);
+
+  // ===============================
+  // Handlers
+  // ===============================
+  const handleViewModeChange = useCallback((mode: ChartViewMode) => {
+    setViewMode(mode);
+    setChartOffset(0); // Reset to current period when changing view
+    setCustomDateRange(null); // Clear custom range
+    setCustomChartData(null);
+  }, []);
+
+  const handlePrevious = useCallback(() => {
+    setChartOffset((o) => o - 1);
+    // Clear custom range when navigating
+    if (customDateRange) {
+      setCustomDateRange(null);
+      setCustomChartData(null);
+    }
+  }, [customDateRange]);
+
+  const handleNext = useCallback(() => {
+    setChartOffset((o) => o + 1);
+    // Clear custom range when navigating
+    if (customDateRange) {
+      setCustomDateRange(null);
+      setCustomChartData(null);
+    }
+  }, [customDateRange]);
 
   const handleOpenDatePicker = useCallback(() => {
     setIsDatePickerVisible(true);
@@ -123,7 +248,6 @@ export default function StepsHistoryScreen() {
 
   const handleDateRangeConfirm = useCallback((start: Date, end: Date) => {
     setCustomDateRange({ start, end });
-    setViewMode('custom');
     setIsDatePickerVisible(false);
   }, []);
 
@@ -136,10 +260,48 @@ export default function StepsHistoryScreen() {
   }, []);
 
   const handleManualEntrySuccess = useCallback(() => {
-    // Refresh the history data after successful entry
+    // Refresh both chart and history data after successful entry
     handleRefresh();
-  }, [handleRefresh]);
+  }, []);
 
+  const handleLoadMore = useCallback(() => {
+    if (!isPaginatedHistoryLoading && hasMoreHistory) {
+      loadMoreHistory(LOAD_MORE_PAGE_SIZE);
+    }
+  }, [isPaginatedHistoryLoading, hasMoreHistory, loadMoreHistory]);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+
+    // Reset chart to current period
+    setChartOffset(0);
+    setCustomDateRange(null);
+    setCustomChartData(null);
+
+    // Reset and reload paginated history
+    resetPaginatedHistory();
+    await loadMoreHistory(INITIAL_PAGE_SIZE);
+
+    setIsRefreshing(false);
+  }, [resetPaginatedHistory, loadMoreHistory]);
+
+  // ===============================
+  // Computed Values
+  // ===============================
+
+  // Determine which chart data to display
+  const displayChartData = customDateRange && customChartData ? customChartData.chartData : chartData;
+  const displayStats = customDateRange && customChartData ? customChartData.stats : stats;
+  const displayPeriodLabel = customDateRange && customChartData ? customChartData.periodLabel : periodLabel;
+  const displayIsLoading = customDateRange ? isCustomLoading : isChartLoading;
+  const displayError = customDateRange ? customError : chartError;
+
+  // Can only go forward if we're in the past (and not in custom mode)
+  const canGoNext = !customDateRange && chartOffset < 0;
+
+  // ===============================
+  // Render Helpers
+  // ===============================
   const renderHistoryItem = useCallback(
     ({ item }: { item: DailyStepEntry }) => (
       <StepHistoryItem
@@ -154,28 +316,45 @@ export default function StepsHistoryScreen() {
 
   const keyExtractor = useCallback((item: DailyStepEntry) => item.date, []);
 
-  // Map viewMode for chart display (custom uses monthly-style chart)
-  const chartViewMode = viewMode === 'custom' ? 'monthly' : viewMode;
-
   const ListHeaderComponent = useMemo(
     () => (
       <>
-        <StepsChart
-          entries={dailyHistory}
-          viewMode={chartViewMode}
-          dailyGoal={dailyGoal}
-          testID="steps-chart"
-        />
+        {/* Chart Section */}
+        {displayError ? (
+          <View style={styles.chartErrorContainer}>
+            <ErrorMessage
+              message={displayError}
+              onRetry={() => {
+                if (customDateRange) {
+                  fetchCustomDateRangeData(customDateRange.start, customDateRange.end);
+                }
+              }}
+            />
+          </View>
+        ) : displayIsLoading ? (
+          <View style={styles.chartLoadingContainer}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+          </View>
+        ) : (
+          <StepsChart
+            chartData={displayChartData}
+            viewMode={customDateRange ? 'daily' : viewMode}
+            dailyGoal={dailyGoal}
+            testID="steps-chart"
+          />
+        )}
 
+        {/* Stats Summary */}
         <View style={styles.summaryContainer}>
           <StatsSummary
-            entries={dailyHistory}
-            dateRange={dateRange}
+            stats={displayStats}
+            periodLabel={displayPeriodLabel}
             units={units}
             testID="stats-summary"
           />
         </View>
 
+        {/* History Header */}
         <View style={styles.historyHeader}>
           <Text
             variant="titleMedium"
@@ -187,7 +366,19 @@ export default function StepsHistoryScreen() {
         </View>
       </>
     ),
-    [dailyHistory, chartViewMode, dailyGoal, dateRange, units, theme.colors]
+    [
+      displayChartData,
+      displayStats,
+      displayPeriodLabel,
+      displayError,
+      displayIsLoading,
+      customDateRange,
+      viewMode,
+      dailyGoal,
+      units,
+      theme.colors,
+      fetchCustomDateRangeData,
+    ]
   );
 
   const ListEmptyComponent = useMemo(
@@ -197,7 +388,7 @@ export default function StepsHistoryScreen() {
           variant="bodyMedium"
           style={{ color: theme.colors.onSurfaceVariant }}
         >
-          No step data recorded for this period.
+          No step data recorded yet.
         </Text>
         <Text
           variant="bodySmall"
@@ -210,78 +401,28 @@ export default function StepsHistoryScreen() {
     [theme.colors]
   );
 
-  // Show loading spinner only on initial load
-  if (isHistoryLoading && dailyHistory.length === 0 && !isRefreshing) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <Appbar.Header elevated>
-          <Appbar.Content title="Steps History" />
-          <Appbar.Action
-            icon="plus"
-            onPress={handleAddStepsPress}
-            accessibilityLabel="Add steps manually"
-          />
-          <Appbar.Action
-            icon="calendar"
-            onPress={handleOpenDatePicker}
-            accessibilityLabel="Select custom date range"
-          />
-        </Appbar.Header>
-        <LoadingSpinner />
-        <DateRangePicker
-          visible={isDatePickerVisible}
-          startDate={dateRange.start}
-          endDate={dateRange.end}
-          onDismiss={handleCloseDatePicker}
-          onConfirm={handleDateRangeConfirm}
-          testID="date-range-picker"
-        />
-        <ManualStepEntryModal
-          visible={showManualEntry}
-          onDismiss={handleManualEntryDismiss}
-          onSuccess={handleManualEntrySuccess}
-        />
-      </View>
-    );
-  }
+  const ListFooterComponent = useMemo(
+    () =>
+      isPaginatedHistoryLoading ? (
+        <View style={styles.footerLoader}>
+          <ActivityIndicator size="small" color={theme.colors.primary} />
+        </View>
+      ) : null,
+    [isPaginatedHistoryLoading, theme.colors]
+  );
 
-  // Show error state
-  if (historyError && !isRefreshing && dailyHistory.length === 0) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <Appbar.Header elevated>
-          <Appbar.Content title="Steps History" />
-          <Appbar.Action
-            icon="plus"
-            onPress={handleAddStepsPress}
-            accessibilityLabel="Add steps manually"
-          />
-          <Appbar.Action
-            icon="calendar"
-            onPress={handleOpenDatePicker}
-            accessibilityLabel="Select custom date range"
-          />
-        </Appbar.Header>
-        <ErrorMessage message={historyError} onRetry={handleRefresh} />
-        <DateRangePicker
-          visible={isDatePickerVisible}
-          startDate={dateRange.start}
-          endDate={dateRange.end}
-          onDismiss={handleCloseDatePicker}
-          onConfirm={handleDateRangeConfirm}
-          testID="date-range-picker"
-        />
-        <ManualStepEntryModal
-          visible={showManualEntry}
-          onDismiss={handleManualEntryDismiss}
-          onSuccess={handleManualEntrySuccess}
-        />
-      </View>
-    );
-  }
+  // Default date range for date picker
+  const defaultDateRangeStart = useMemo(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 6);
+    return date;
+  }, []);
+
+  const defaultDateRangeEnd = useMemo(() => new Date(), []);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* App Bar */}
       <Appbar.Header elevated>
         <Appbar.Content title="Steps History" />
         <Appbar.Action
@@ -296,27 +437,28 @@ export default function StepsHistoryScreen() {
         />
       </Appbar.Header>
 
-      <View style={styles.segmentContainer}>
-        <SegmentedButtons
-          value={viewMode}
-          onValueChange={handleViewModeChange}
-          buttons={[
-            { value: 'daily', label: 'Daily' },
-            { value: 'weekly', label: 'Weekly' },
-            { value: 'monthly', label: 'Monthly' },
-            ...(viewMode === 'custom' ? [{ value: 'custom', label: 'Custom' }] : []),
-          ]}
-          style={styles.segmentedButtons}
-        />
-      </View>
+      {/* Chart Navigation */}
+      <ChartNavigation
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
+        onPrevious={handlePrevious}
+        onNext={handleNext}
+        canGoNext={canGoNext}
+        periodLabel={displayPeriodLabel}
+        testID="chart-navigation"
+      />
 
+      {/* History List with Chart Header */}
       <FlatList
-        data={dailyHistory}
+        data={paginatedHistory}
         renderItem={renderHistoryItem}
         keyExtractor={keyExtractor}
         ListHeaderComponent={ListHeaderComponent}
-        ListEmptyComponent={ListEmptyComponent}
+        ListEmptyComponent={!isPaginatedHistoryLoading ? ListEmptyComponent : null}
+        ListFooterComponent={ListFooterComponent}
         contentContainerStyle={styles.listContent}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -328,15 +470,17 @@ export default function StepsHistoryScreen() {
         showsVerticalScrollIndicator={false}
       />
 
+      {/* Date Range Picker Modal */}
       <DateRangePicker
         visible={isDatePickerVisible}
-        startDate={dateRange.start}
-        endDate={dateRange.end}
+        startDate={customDateRange?.start ?? defaultDateRangeStart}
+        endDate={customDateRange?.end ?? defaultDateRangeEnd}
         onDismiss={handleCloseDatePicker}
         onConfirm={handleDateRangeConfirm}
         testID="date-range-picker"
       />
 
+      {/* Manual Step Entry Modal */}
       <ManualStepEntryModal
         visible={showManualEntry}
         onDismiss={handleManualEntryDismiss}
@@ -350,15 +494,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  segmentContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  segmentedButtons: {
-    // SegmentedButtons handles its own styling
-  },
   listContent: {
     paddingBottom: 24,
+  },
+  chartLoadingContainer: {
+    height: 220,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 16,
+  },
+  chartErrorContainer: {
+    marginHorizontal: 16,
+    marginVertical: 8,
   },
   summaryContainer: {
     marginTop: 16,
@@ -379,5 +526,9 @@ const styles = StyleSheet.create({
   },
   emptySubtext: {
     marginTop: 4,
+  },
+  footerLoader: {
+    paddingVertical: 16,
+    alignItems: 'center',
   },
 });
