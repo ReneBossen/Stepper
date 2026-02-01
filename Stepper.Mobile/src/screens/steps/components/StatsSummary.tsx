@@ -1,11 +1,16 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Card, Text, useTheme } from 'react-native-paper';
-import type { DailyStepEntry } from '@store/stepsStore';
+
+export interface ChartStats {
+  total: number;           // Total steps
+  average: number;         // Average steps per day/week/month
+  distanceMeters: number;  // Total distance in meters
+}
 
 interface StatsSummaryProps {
-  entries: DailyStepEntry[];
-  dateRange: { start: Date; end: Date };
+  stats: ChartStats;
+  periodLabel: string;     // e.g., "Jan 1 - Jan 7, 2026"
   units: 'metric' | 'imperial';
   testID?: string;
 }
@@ -15,45 +20,24 @@ interface StatsSummaryProps {
  * Shows total steps, average steps per day, and total distance.
  */
 export function StatsSummary({
-  entries,
-  dateRange,
+  stats,
+  periodLabel,
   units,
   testID,
 }: StatsSummaryProps) {
   const theme = useTheme();
 
-  // Calculate totals
-  const totalSteps = entries.reduce((sum, entry) => sum + entry.steps, 0);
-  const totalDistanceMeters = entries.reduce(
-    (sum, entry) => sum + entry.distanceMeters,
-    0
-  );
-
-  // Calculate average steps per day (based on entries with data)
-  const averageSteps =
-    entries.length > 0 ? Math.round(totalSteps / entries.length) : 0;
-
-  // Format date range
-  const formattedStart = dateRange.start.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  });
-  const formattedEnd = dateRange.end.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  });
-
   // Format distance
   const formattedDistance =
     units === 'metric'
-      ? `${(totalDistanceMeters / 1000).toFixed(1)} km`
-      : `${(totalDistanceMeters / 1609.344).toFixed(1)} mi`;
+      ? `${(stats.distanceMeters / 1000).toFixed(1)} km`
+      : `${(stats.distanceMeters / 1609.344).toFixed(1)} mi`;
 
   return (
     <Card
       style={[styles.card, { backgroundColor: theme.colors.surface }]}
       testID={testID}
-      accessibilityLabel={`Period: ${formattedStart} to ${formattedEnd}. Total: ${totalSteps.toLocaleString()} steps. Average: ${averageSteps.toLocaleString()} steps per day. Distance: ${formattedDistance}`}
+      accessibilityLabel={`Period: ${periodLabel}. Total: ${stats.total.toLocaleString()} steps. Average: ${stats.average.toLocaleString()} steps per day. Distance: ${formattedDistance}`}
       accessibilityRole="text"
     >
       <Card.Content>
@@ -61,7 +45,7 @@ export function StatsSummary({
           variant="labelMedium"
           style={[styles.dateRange, { color: theme.colors.onSurfaceVariant }]}
         >
-          {formattedStart} - {formattedEnd}
+          {periodLabel}
         </Text>
 
         <View style={styles.statsGrid}>
@@ -70,7 +54,7 @@ export function StatsSummary({
               variant="headlineSmall"
               style={[styles.statValue, { color: theme.colors.primary }]}
             >
-              {totalSteps.toLocaleString()}
+              {stats.total.toLocaleString()}
             </Text>
             <Text
               variant="bodySmall"
@@ -85,7 +69,7 @@ export function StatsSummary({
               variant="headlineSmall"
               style={[styles.statValue, { color: theme.colors.onSurface }]}
             >
-              {averageSteps.toLocaleString()}
+              {stats.average.toLocaleString()}
             </Text>
             <Text
               variant="bodySmall"

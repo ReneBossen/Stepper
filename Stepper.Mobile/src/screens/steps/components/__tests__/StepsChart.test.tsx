@@ -1,7 +1,7 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import { StepsChart } from '../StepsChart';
-import type { DailyStepEntry } from '@store/stepsStore';
+import type { AggregatedChartData } from '../../hooks';
 
 // Mock react-native-gifted-charts
 jest.mock('react-native-gifted-charts', () => ({
@@ -49,11 +49,14 @@ jest.mock('react-native-paper', () => {
       colors: {
         primary: '#4CAF50',
         primaryContainer: '#C8E6C9',
+        tertiary: '#7C5800',
         surface: '#FFFFFF',
         onSurface: '#000000',
         onSurfaceVariant: '#666666',
         outline: '#79747E',
         outlineVariant: '#CAC4D0',
+        inverseSurface: '#313033',
+        inverseOnSurface: '#F4EFF4',
       },
     }),
   };
@@ -71,25 +74,22 @@ jest.mock('react-native', () => {
 });
 
 describe('StepsChart', () => {
-  const createMockEntry = (overrides: Partial<DailyStepEntry> = {}): DailyStepEntry => ({
-    id: 'entry-1',
-    date: '2024-01-15',
-    steps: 8500,
-    distanceMeters: 6800,
+  const createMockChartData = (overrides: Partial<AggregatedChartData> = {}): AggregatedChartData => ({
+    label: 'Mon',
+    value: 8500,
     ...overrides,
   });
 
-  const createMockEntries = (count: number, stepsBase: number = 8000): DailyStepEntry[] => {
+  const createMockChartDataArray = (count: number, stepsBase: number = 8000): AggregatedChartData[] => {
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     return Array.from({ length: count }, (_, index) => ({
-      id: `entry-${index}`,
-      date: `2024-01-${String(15 - index).padStart(2, '0')}`,
-      steps: stepsBase + index * 500,
-      distanceMeters: (stepsBase + index * 500) * 0.8,
+      label: dayLabels[index % 7],
+      value: stepsBase + index * 500,
     }));
   };
 
   const defaultProps = {
-    entries: createMockEntries(7),
+    chartData: createMockChartDataArray(7),
     viewMode: 'daily' as const,
     dailyGoal: 10000,
   };
@@ -101,9 +101,9 @@ describe('StepsChart', () => {
     });
 
     it('should render bar chart with correct number of bars', () => {
-      const entries = createMockEntries(5);
+      const chartData = createMockChartDataArray(5);
       const { getByTestId } = render(
-        <StepsChart {...defaultProps} entries={entries} />
+        <StepsChart {...defaultProps} chartData={chartData} />
       );
       const chart = getByTestId('bar-chart');
       expect(chart.props['data-bar-count']).toBe(5);
@@ -118,16 +118,16 @@ describe('StepsChart', () => {
   });
 
   describe('empty state', () => {
-    it('should show empty message when no entries', () => {
+    it('should show empty message when no chartData', () => {
       const { getByText } = render(
-        <StepsChart {...defaultProps} entries={[]} />
+        <StepsChart {...defaultProps} chartData={[]} />
       );
       expect(getByText('No data available for this period')).toBeTruthy();
     });
 
-    it('should not render bar chart when no entries', () => {
+    it('should not render bar chart when no chartData', () => {
       const { queryByTestId } = render(
-        <StepsChart {...defaultProps} entries={[]} />
+        <StepsChart {...defaultProps} chartData={[]} />
       );
       expect(queryByTestId('bar-chart')).toBeNull();
     });
@@ -149,38 +149,42 @@ describe('StepsChart', () => {
     });
 
     it('should render in monthly view mode', () => {
-      const entries = createMockEntries(30);
+      const chartData: AggregatedChartData[] = [
+        { label: 'Jan', value: 250000 },
+        { label: 'Feb', value: 230000 },
+        { label: 'Mar', value: 280000 },
+      ];
       const { getByTestId } = render(
-        <StepsChart {...defaultProps} entries={entries} viewMode="monthly" />
+        <StepsChart {...defaultProps} chartData={chartData} viewMode="monthly" />
       );
       expect(getByTestId('bar-chart')).toBeTruthy();
     });
   });
 
-  describe('data sorting', () => {
-    it('should sort entries by date ascending for display', () => {
-      // Entries created with descending dates (newest first)
-      const entries: DailyStepEntry[] = [
-        createMockEntry({ id: '3', date: '2024-01-17', steps: 7000 }),
-        createMockEntry({ id: '1', date: '2024-01-15', steps: 5000 }),
-        createMockEntry({ id: '2', date: '2024-01-16', steps: 6000 }),
+  describe('pre-aggregated data', () => {
+    it('should render chartData as provided without sorting', () => {
+      // Chart data is already pre-aggregated and ordered by parent
+      const chartData: AggregatedChartData[] = [
+        createMockChartData({ label: 'Mon', value: 5000 }),
+        createMockChartData({ label: 'Tue', value: 6000 }),
+        createMockChartData({ label: 'Wed', value: 7000 }),
       ];
       const { getByTestId } = render(
-        <StepsChart {...defaultProps} entries={entries} />
+        <StepsChart {...defaultProps} chartData={chartData} />
       );
-      // The chart should render with 3 entries
+      // The chart should render with 3 data points
       const chart = getByTestId('bar-chart');
       expect(chart.props['data-bar-count']).toBe(3);
     });
   });
 
   describe('accessibility', () => {
-    it('should have correct accessibility label with entry count', () => {
-      const entries = createMockEntries(5);
+    it('should have correct accessibility label with data point count', () => {
+      const chartData = createMockChartDataArray(5);
       const { getByLabelText } = render(
-        <StepsChart {...defaultProps} entries={entries} />
+        <StepsChart {...defaultProps} chartData={chartData} />
       );
-      expect(getByLabelText(/Step chart showing 5 days of data/)).toBeTruthy();
+      expect(getByLabelText(/Step chart showing 5 data points/)).toBeTruthy();
     });
 
     it('should have image accessibility role on chart card', () => {
@@ -193,82 +197,120 @@ describe('StepsChart', () => {
   });
 
   describe('goal threshold coloring', () => {
-    it('should handle entries meeting goal', () => {
-      const entries = [
-        createMockEntry({ steps: 10000 }),
-        createMockEntry({ steps: 12000, id: 'entry-2' }),
+    it('should handle data points meeting daily goal', () => {
+      const chartData: AggregatedChartData[] = [
+        createMockChartData({ label: 'Mon', value: 10000 }),
+        createMockChartData({ label: 'Tue', value: 12000 }),
       ];
       const { getByTestId } = render(
-        <StepsChart {...defaultProps} entries={entries} dailyGoal={10000} />
+        <StepsChart {...defaultProps} chartData={chartData} dailyGoal={10000} viewMode="daily" />
       );
       expect(getByTestId('bar-chart')).toBeTruthy();
     });
 
-    it('should handle entries below goal', () => {
-      const entries = [
-        createMockEntry({ steps: 5000 }),
-        createMockEntry({ steps: 7000, id: 'entry-2' }),
+    it('should handle data points below daily goal', () => {
+      const chartData: AggregatedChartData[] = [
+        createMockChartData({ label: 'Mon', value: 5000 }),
+        createMockChartData({ label: 'Tue', value: 7000 }),
       ];
       const { getByTestId } = render(
-        <StepsChart {...defaultProps} entries={entries} dailyGoal={10000} />
+        <StepsChart {...defaultProps} chartData={chartData} dailyGoal={10000} viewMode="daily" />
       );
       expect(getByTestId('bar-chart')).toBeTruthy();
     });
 
     it('should handle mixed goal achievement', () => {
-      const entries = [
-        createMockEntry({ steps: 5000 }),
-        createMockEntry({ steps: 15000, id: 'entry-2' }),
+      const chartData: AggregatedChartData[] = [
+        createMockChartData({ label: 'Mon', value: 5000 }),
+        createMockChartData({ label: 'Tue', value: 15000 }),
       ];
       const { getByTestId } = render(
-        <StepsChart {...defaultProps} entries={entries} dailyGoal={10000} />
+        <StepsChart {...defaultProps} chartData={chartData} dailyGoal={10000} viewMode="daily" />
+      );
+      expect(getByTestId('bar-chart')).toBeTruthy();
+    });
+
+    it('should use weekly goal threshold for weekly view', () => {
+      // Weekly goal is dailyGoal * 7 = 70000
+      const chartData: AggregatedChartData[] = [
+        { label: 'Wk 1', value: 70000 }, // Meets goal
+        { label: 'Wk 2', value: 50000 }, // Below goal
+      ];
+      const { getByTestId } = render(
+        <StepsChart {...defaultProps} chartData={chartData} dailyGoal={10000} viewMode="weekly" />
+      );
+      expect(getByTestId('bar-chart')).toBeTruthy();
+    });
+
+    it('should use monthly goal threshold for monthly view', () => {
+      // Monthly goal is dailyGoal * 30 = 300000
+      const chartData: AggregatedChartData[] = [
+        { label: 'Jan', value: 300000 }, // Meets goal
+        { label: 'Feb', value: 250000 }, // Below goal
+      ];
+      const { getByTestId } = render(
+        <StepsChart {...defaultProps} chartData={chartData} dailyGoal={10000} viewMode="monthly" />
       );
       expect(getByTestId('bar-chart')).toBeTruthy();
     });
   });
 
   describe('edge cases', () => {
-    it('should handle single entry', () => {
-      const entries = [createMockEntry()];
+    it('should handle single data point', () => {
+      const chartData = [createMockChartData()];
       const { getByTestId } = render(
-        <StepsChart {...defaultProps} entries={entries} />
+        <StepsChart {...defaultProps} chartData={chartData} />
       );
       expect(getByTestId('bar-chart')).toBeTruthy();
     });
 
-    it('should handle large number of entries', () => {
-      const entries = createMockEntries(31);
+    it('should handle large number of data points', () => {
+      const chartData: AggregatedChartData[] = Array.from({ length: 12 }, (_, i) => ({
+        label: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][i],
+        value: 250000 + i * 10000,
+      }));
       const { getByTestId } = render(
-        <StepsChart {...defaultProps} entries={entries} viewMode="monthly" />
+        <StepsChart {...defaultProps} chartData={chartData} viewMode="monthly" />
       );
       expect(getByTestId('bar-chart')).toBeTruthy();
     });
 
-    it('should handle entries with zero steps', () => {
-      const entries = [
-        createMockEntry({ steps: 0 }),
-        createMockEntry({ steps: 10000, id: 'entry-2' }),
+    it('should handle data points with zero steps', () => {
+      const chartData: AggregatedChartData[] = [
+        createMockChartData({ label: 'Mon', value: 0 }),
+        createMockChartData({ label: 'Tue', value: 10000 }),
       ];
       const { getByTestId } = render(
-        <StepsChart {...defaultProps} entries={entries} />
+        <StepsChart {...defaultProps} chartData={chartData} />
       );
       expect(getByTestId('bar-chart')).toBeTruthy();
     });
 
-    it('should handle entries with very large step counts', () => {
-      const entries = [
-        createMockEntry({ steps: 100000 }),
+    it('should handle data points with very large step counts', () => {
+      const chartData: AggregatedChartData[] = [
+        createMockChartData({ label: 'Mon', value: 100000 }),
       ];
       const { getByTestId } = render(
-        <StepsChart {...defaultProps} entries={entries} />
+        <StepsChart {...defaultProps} chartData={chartData} />
       );
       expect(getByTestId('bar-chart')).toBeTruthy();
     });
 
     it('should handle different daily goal values', () => {
-      const entries = createMockEntries(5);
+      const chartData = createMockChartDataArray(5);
       const { getByTestId } = render(
-        <StepsChart {...defaultProps} entries={entries} dailyGoal={5000} />
+        <StepsChart {...defaultProps} chartData={chartData} dailyGoal={5000} />
+      );
+      expect(getByTestId('bar-chart')).toBeTruthy();
+    });
+
+    it('should handle subLabel in chart data', () => {
+      const chartData: AggregatedChartData[] = [
+        { label: 'Wk 1', value: 70000, subLabel: 'Jan 1-7' },
+        { label: 'Wk 2', value: 65000, subLabel: 'Jan 8-14' },
+      ];
+      const { getByTestId } = render(
+        <StepsChart {...defaultProps} chartData={chartData} viewMode="weekly" />
       );
       expect(getByTestId('bar-chart')).toBeTruthy();
     });

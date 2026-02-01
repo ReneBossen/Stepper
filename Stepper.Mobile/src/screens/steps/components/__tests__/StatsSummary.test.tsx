@@ -1,7 +1,7 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import { StatsSummary } from '../StatsSummary';
-import type { DailyStepEntry } from '@store/stepsStore';
+import type { ChartStats } from '../StatsSummary';
 
 // Mock react-native-paper
 jest.mock('react-native-paper', () => {
@@ -40,29 +40,16 @@ jest.mock('react-native-paper', () => {
 });
 
 describe('StatsSummary', () => {
-  const createMockEntry = (overrides: Partial<DailyStepEntry> = {}): DailyStepEntry => ({
-    id: 'entry-1',
-    date: '2024-01-15',
-    steps: 8500,
-    distanceMeters: 6800,
+  const createMockStats = (overrides?: Partial<ChartStats>): ChartStats => ({
+    total: 50000,
+    average: 7143,
+    distanceMeters: 35000,
     ...overrides,
   });
 
-  const createMockEntries = (count: number, stepsBase: number = 8000): DailyStepEntry[] => {
-    return Array.from({ length: count }, (_, index) => ({
-      id: `entry-${index}`,
-      date: `2024-01-${String(15 - index).padStart(2, '0')}`,
-      steps: stepsBase + index * 500,
-      distanceMeters: (stepsBase + index * 500) * 0.8,
-    }));
-  };
-
   const defaultProps = {
-    entries: createMockEntries(7),
-    dateRange: {
-      start: new Date('2024-01-09'),
-      end: new Date('2024-01-15'),
-    },
+    stats: createMockStats(),
+    periodLabel: 'Jan 9 - Jan 15, 2024',
     units: 'metric' as const,
   };
 
@@ -72,9 +59,9 @@ describe('StatsSummary', () => {
       expect(getByText('Total steps')).toBeTruthy();
     });
 
-    it('should render date range', () => {
+    it('should render period label', () => {
       const { getByText } = render(<StatsSummary {...defaultProps} />);
-      expect(getByText(/Jan 9 - Jan 15/)).toBeTruthy();
+      expect(getByText('Jan 9 - Jan 15, 2024')).toBeTruthy();
     });
 
     it('should render total steps label', () => {
@@ -100,66 +87,36 @@ describe('StatsSummary', () => {
     });
   });
 
-  describe('calculations', () => {
-    it('should calculate total steps correctly', () => {
-      const entries = [
-        createMockEntry({ steps: 5000 }),
-        createMockEntry({ steps: 7000, id: 'entry-2' }),
-        createMockEntry({ steps: 8000, id: 'entry-3' }),
-      ];
+  describe('displaying stats', () => {
+    it('should display total steps correctly', () => {
+      const stats = createMockStats({ total: 20000 });
       const { getByText } = render(
-        <StatsSummary
-          {...defaultProps}
-          entries={entries}
-        />
+        <StatsSummary {...defaultProps} stats={stats} />
       );
-      // 5000 + 7000 + 8000 = 20000
       expect(getByText((20000).toLocaleString())).toBeTruthy();
     });
 
-    it('should calculate daily average correctly', () => {
-      const entries = [
-        createMockEntry({ steps: 6000 }),
-        createMockEntry({ steps: 8000, id: 'entry-2' }),
-        createMockEntry({ steps: 10000, id: 'entry-3' }),
-      ];
+    it('should display daily average correctly', () => {
+      const stats = createMockStats({ average: 8000 });
       const { getByText } = render(
-        <StatsSummary
-          {...defaultProps}
-          entries={entries}
-        />
+        <StatsSummary {...defaultProps} stats={stats} />
       );
-      // (6000 + 8000 + 10000) / 3 = 8000
       expect(getByText((8000).toLocaleString())).toBeTruthy();
     });
 
-    it('should calculate total distance correctly for metric', () => {
-      const entries = [
-        createMockEntry({ distanceMeters: 5000 }),
-        createMockEntry({ distanceMeters: 3000, id: 'entry-2' }),
-      ];
+    it('should display distance correctly for metric units', () => {
+      const stats = createMockStats({ distanceMeters: 8000 });
       const { getByText } = render(
-        <StatsSummary
-          {...defaultProps}
-          entries={entries}
-          units="metric"
-        />
+        <StatsSummary {...defaultProps} stats={stats} units="metric" />
       );
-      // (5000 + 3000) / 1000 = 8.0 km
+      // 8000 / 1000 = 8.0 km
       expect(getByText('8.0 km')).toBeTruthy();
     });
 
-    it('should calculate total distance correctly for imperial', () => {
-      const entries = [
-        createMockEntry({ distanceMeters: 8000 }),
-        createMockEntry({ distanceMeters: 8000, id: 'entry-2' }),
-      ];
+    it('should display distance correctly for imperial units', () => {
+      const stats = createMockStats({ distanceMeters: 16000 });
       const { getByText } = render(
-        <StatsSummary
-          {...defaultProps}
-          entries={entries}
-          units="imperial"
-        />
+        <StatsSummary {...defaultProps} stats={stats} units="imperial" />
       );
       // 16000 / 1609.344 ~= 9.9 mi
       expect(getByText('9.9 mi')).toBeTruthy();
@@ -167,81 +124,83 @@ describe('StatsSummary', () => {
   });
 
   describe('empty state', () => {
-    it('should handle empty entries array', () => {
+    it('should handle zero stats', () => {
+      const stats = createMockStats({ total: 0, average: 0, distanceMeters: 0 });
       const { getAllByText } = render(
-        <StatsSummary
-          {...defaultProps}
-          entries={[]}
-        />
+        <StatsSummary {...defaultProps} stats={stats} />
       );
       // Multiple zeros will be present (total and average)
       expect(getAllByText('0').length).toBeGreaterThanOrEqual(1);
     });
 
-    it('should show zero average for empty entries', () => {
+    it('should show zero average for empty stats', () => {
+      const stats = createMockStats({ total: 0, average: 0, distanceMeters: 0 });
       const { getAllByText } = render(
-        <StatsSummary
-          {...defaultProps}
-          entries={[]}
-        />
+        <StatsSummary {...defaultProps} stats={stats} />
       );
       // Multiple zeros will be present
       expect(getAllByText('0').length).toBeGreaterThanOrEqual(1);
     });
 
-    it('should show zero distance for empty entries', () => {
+    it('should show zero distance for empty stats', () => {
+      const stats = createMockStats({ total: 0, average: 0, distanceMeters: 0 });
       const { getByText } = render(
-        <StatsSummary
-          {...defaultProps}
-          entries={[]}
-          units="metric"
-        />
+        <StatsSummary {...defaultProps} stats={stats} units="metric" />
       );
       expect(getByText('0.0 km')).toBeTruthy();
     });
   });
 
-  describe('date range formatting', () => {
-    it('should format date range with different months', () => {
+  describe('period label formatting', () => {
+    it('should display period label with different months', () => {
       const { getByText } = render(
         <StatsSummary
           {...defaultProps}
-          dateRange={{
-            start: new Date('2024-01-28'),
-            end: new Date('2024-02-03'),
-          }}
+          periodLabel="Jan 28 - Feb 3, 2024"
         />
       );
-      expect(getByText(/Jan 28 - Feb 3/)).toBeTruthy();
+      expect(getByText('Jan 28 - Feb 3, 2024')).toBeTruthy();
     });
 
-    it('should format same month date range', () => {
+    it('should display period label with same month', () => {
       const { getByText } = render(
         <StatsSummary
           {...defaultProps}
-          dateRange={{
-            start: new Date('2024-03-01'),
-            end: new Date('2024-03-15'),
-          }}
+          periodLabel="Mar 1 - Mar 15, 2024"
         />
       );
-      expect(getByText(/Mar 1 - Mar 15/)).toBeTruthy();
+      expect(getByText('Mar 1 - Mar 15, 2024')).toBeTruthy();
+    });
+
+    it('should display period label for weekly view', () => {
+      const { getByText } = render(
+        <StatsSummary
+          {...defaultProps}
+          periodLabel="Week 1, 2024"
+        />
+      );
+      expect(getByText('Week 1, 2024')).toBeTruthy();
+    });
+
+    it('should display period label for monthly view', () => {
+      const { getByText } = render(
+        <StatsSummary
+          {...defaultProps}
+          periodLabel="January 2024"
+        />
+      );
+      expect(getByText('January 2024')).toBeTruthy();
     });
   });
 
   describe('accessibility', () => {
     it('should have correct accessibility label', () => {
-      const entries = [
-        createMockEntry({ steps: 10000, distanceMeters: 8000 }),
-      ];
+      const stats = createMockStats({ total: 10000, average: 10000, distanceMeters: 8000 });
       const { getByLabelText } = render(
         <StatsSummary
           {...defaultProps}
-          entries={entries}
-          dateRange={{
-            start: new Date('2024-01-15'),
-            end: new Date('2024-01-15'),
-          }}
+          stats={stats}
+          periodLabel="Jan 15, 2024"
         />
       );
       expect(
@@ -259,45 +218,48 @@ describe('StatsSummary', () => {
   });
 
   describe('edge cases', () => {
-    it('should handle single entry', () => {
-      const entries = [createMockEntry({ steps: 12000 })];
+    it('should handle same total and average (single day)', () => {
+      const stats = createMockStats({ total: 12000, average: 12000 });
       const { getAllByText } = render(
-        <StatsSummary
-          {...defaultProps}
-          entries={entries}
-        />
+        <StatsSummary {...defaultProps} stats={stats} />
       );
       // Total and average should be the same, so we expect two instances
       expect(getAllByText((12000).toLocaleString()).length).toBe(2);
     });
 
     it('should handle large step counts', () => {
-      const entries = [
-        createMockEntry({ steps: 100000 }),
-        createMockEntry({ steps: 100000, id: 'entry-2' }),
-      ];
+      const stats = createMockStats({ total: 200000 });
       const { getByText } = render(
-        <StatsSummary
-          {...defaultProps}
-          entries={entries}
-        />
+        <StatsSummary {...defaultProps} stats={stats} />
       );
       expect(getByText((200000).toLocaleString())).toBeTruthy();
     });
 
-    it('should handle entries with zero steps', () => {
-      const entries = [
-        createMockEntry({ steps: 0 }),
-        createMockEntry({ steps: 10000, id: 'entry-2' }),
-      ];
+    it('should handle zero total with non-zero average', () => {
+      // This is an edge case that shouldn't happen in practice
+      const stats = createMockStats({ total: 0, average: 5000 });
       const { getByText } = render(
-        <StatsSummary
-          {...defaultProps}
-          entries={entries}
-        />
+        <StatsSummary {...defaultProps} stats={stats} />
       );
-      // Average should be 5000
       expect(getByText((5000).toLocaleString())).toBeTruthy();
+    });
+
+    it('should handle very small distance values', () => {
+      const stats = createMockStats({ distanceMeters: 100 });
+      const { getByText } = render(
+        <StatsSummary {...defaultProps} stats={stats} units="metric" />
+      );
+      // 100 / 1000 = 0.1 km
+      expect(getByText('0.1 km')).toBeTruthy();
+    });
+
+    it('should handle very large distance values', () => {
+      const stats = createMockStats({ distanceMeters: 100000 });
+      const { getByText } = render(
+        <StatsSummary {...defaultProps} stats={stats} units="metric" />
+      );
+      // 100000 / 1000 = 100.0 km
+      expect(getByText('100.0 km')).toBeTruthy();
     });
   });
 });

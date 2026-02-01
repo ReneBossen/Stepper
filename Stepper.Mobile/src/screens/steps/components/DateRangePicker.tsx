@@ -1,13 +1,15 @@
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, StyleSheet } from 'react-native';
 import {
   Portal,
   Modal,
   Button,
   Text,
-  TextInput,
+  Chip,
+  Divider,
   useTheme,
 } from 'react-native-paper';
+import { DatePickerModal } from 'react-native-paper-dates';
 
 interface DateRangePickerProps {
   visible: boolean;
@@ -19,43 +21,85 @@ interface DateRangePickerProps {
 }
 
 /**
- * Formats a Date to YYYY-MM-DD string for input display.
+ * Formats a Date to a user-friendly display string.
  */
-function formatDateForInput(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+function formatDateDisplay(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 /**
- * Parses a YYYY-MM-DD string to a Date object.
- * Returns null if the format is invalid.
+ * Sets time to start of day (00:00:00.000).
  */
-function parseDateString(dateStr: string): Date | null {
-  const regex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!regex.test(dateStr)) {
-    return null;
-  }
-
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-
-  // Validate the date is real (e.g., not Feb 30)
-  if (
-    date.getFullYear() !== year ||
-    date.getMonth() !== month - 1 ||
-    date.getDate() !== day
-  ) {
-    return null;
-  }
-
-  return date;
+function startOfDay(date: Date): Date {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  return result;
 }
+
+/**
+ * Sets time to end of day (23:59:59.999).
+ */
+function endOfDay(date: Date): Date {
+  const result = new Date(date);
+  result.setHours(23, 59, 59, 999);
+  return result;
+}
+
+/**
+ * Gets the start of the current month.
+ */
+function getStartOfMonth(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
+type PresetKey = 'last7' | 'last30' | 'thisMonth';
+
+interface Preset {
+  key: PresetKey;
+  label: string;
+  getRange: () => { startDate: Date; endDate: Date };
+}
+
+const PRESETS: Preset[] = [
+  {
+    key: 'last7',
+    label: 'Last 7 days',
+    getRange: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 6);
+      return { startDate: startOfDay(start), endDate: endOfDay(end) };
+    },
+  },
+  {
+    key: 'last30',
+    label: 'Last 30 days',
+    getRange: () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 29);
+      return { startDate: startOfDay(start), endDate: endOfDay(end) };
+    },
+  },
+  {
+    key: 'thisMonth',
+    label: 'This month',
+    getRange: () => {
+      const end = new Date();
+      const start = getStartOfMonth();
+      return { startDate: startOfDay(start), endDate: endOfDay(end) };
+    },
+  },
+];
 
 /**
  * Modal dialog for selecting a custom date range.
- * Uses text inputs for date entry in YYYY-MM-DD format.
+ * Provides quick preset buttons and a calendar picker for custom ranges.
  */
 export function DateRangePicker({
   visible,
@@ -67,156 +111,187 @@ export function DateRangePicker({
 }: DateRangePickerProps) {
   const theme = useTheme();
 
-  const [startInput, setStartInput] = useState(formatDateForInput(startDate));
-  const [endInput, setEndInput] = useState(formatDateForInput(endDate));
-  const [startError, setStartError] = useState<string | null>(null);
-  const [endError, setEndError] = useState<string | null>(null);
+  // Local state for the selected range (before applying)
+  const [tempStartDate, setTempStartDate] = useState<Date>(startDate);
+  const [tempEndDate, setTempEndDate] = useState<Date>(endDate);
+  const [showCalendar, setShowCalendar] = useState(false);
 
-  // Reset inputs when modal opens
+  // Reset temp dates when modal opens
   React.useEffect(() => {
     if (visible) {
-      setStartInput(formatDateForInput(startDate));
-      setEndInput(formatDateForInput(endDate));
-      setStartError(null);
-      setEndError(null);
+      setTempStartDate(startDate);
+      setTempEndDate(endDate);
+      setShowCalendar(false);
     }
   }, [visible, startDate, endDate]);
 
-  const handleConfirm = useCallback(() => {
-    const parsedStart = parseDateString(startInput);
-    const parsedEnd = parseDateString(endInput);
+  // Formatted display of the current range
+  const rangeDisplay = useMemo(() => {
+    return `${formatDateDisplay(tempStartDate)} - ${formatDateDisplay(tempEndDate)}`;
+  }, [tempStartDate, tempEndDate]);
 
-    let hasError = false;
+  // Handle preset selection - immediately confirms
+  const handlePresetPress = useCallback(
+    (preset: Preset) => {
+      const { startDate: newStart, endDate: newEnd } = preset.getRange();
+      onConfirm(newStart, newEnd);
+    },
+    [onConfirm]
+  );
 
-    if (!parsedStart) {
-      setStartError('Invalid date format (YYYY-MM-DD)');
-      hasError = true;
-    } else {
-      setStartError(null);
-    }
-
-    if (!parsedEnd) {
-      setEndError('Invalid date format (YYYY-MM-DD)');
-      hasError = true;
-    } else {
-      setEndError(null);
-    }
-
-    if (hasError || !parsedStart || !parsedEnd) {
-      return;
-    }
-
-    if (parsedStart > parsedEnd) {
-      setStartError('Start date must be before end date');
-      return;
-    }
-
-    // Set time boundaries
-    parsedStart.setHours(0, 0, 0, 0);
-    parsedEnd.setHours(23, 59, 59, 999);
-
-    onConfirm(parsedStart, parsedEnd);
-  }, [startInput, endInput, onConfirm]);
-
-  const handleStartChange = useCallback((text: string) => {
-    setStartInput(text);
-    setStartError(null);
+  // Open calendar picker
+  const handleOpenCalendar = useCallback(() => {
+    setShowCalendar(true);
   }, []);
 
-  const handleEndChange = useCallback((text: string) => {
-    setEndInput(text);
-    setEndError(null);
+  // Handle calendar dismiss
+  const handleCalendarDismiss = useCallback(() => {
+    setShowCalendar(false);
   }, []);
+
+  // Handle calendar confirm
+  const handleCalendarConfirm = useCallback(
+    ({
+      startDate: newStart,
+      endDate: newEnd,
+    }: {
+      startDate: Date | undefined;
+      endDate: Date | undefined;
+    }) => {
+      setShowCalendar(false);
+      if (newStart && newEnd) {
+        setTempStartDate(newStart);
+        setTempEndDate(newEnd);
+      } else if (newStart) {
+        // If only start date selected, use it as both start and end
+        setTempStartDate(newStart);
+        setTempEndDate(newStart);
+      }
+    },
+    []
+  );
+
+  // Handle apply button
+  const handleApply = useCallback(() => {
+    onConfirm(startOfDay(tempStartDate), endOfDay(tempEndDate));
+  }, [tempStartDate, tempEndDate, onConfirm]);
 
   return (
-    <Portal>
-      <Modal
-        visible={visible}
-        onDismiss={onDismiss}
-        contentContainerStyle={[
-          styles.modal,
-          { backgroundColor: theme.colors.surface },
-        ]}
-        testID={testID}
-      >
-        <Text
-          variant="titleLarge"
-          style={[styles.title, { color: theme.colors.onSurface }]}
+    <>
+      <Portal>
+        <Modal
+          visible={visible && !showCalendar}
+          onDismiss={onDismiss}
+          contentContainerStyle={[
+            styles.modal,
+            { backgroundColor: theme.colors.surface },
+          ]}
+          testID={testID}
         >
-          Select Date Range
-        </Text>
-
-        <View style={styles.inputContainer}>
-          <TextInput
-            label="Start Date"
-            value={startInput}
-            onChangeText={handleStartChange}
-            mode="outlined"
-            placeholder="YYYY-MM-DD"
-            error={!!startError}
-            testID={testID ? `${testID}-start-input` : undefined}
-            keyboardType={Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'default'}
-            autoCapitalize="none"
-            style={styles.input}
-          />
-          {startError && (
-            <Text
-              variant="bodySmall"
-              style={[styles.errorText, { color: theme.colors.error }]}
-            >
-              {startError}
-            </Text>
-          )}
-        </View>
-
-        <View style={styles.inputContainer}>
-          <TextInput
-            label="End Date"
-            value={endInput}
-            onChangeText={handleEndChange}
-            mode="outlined"
-            placeholder="YYYY-MM-DD"
-            error={!!endError}
-            testID={testID ? `${testID}-end-input` : undefined}
-            keyboardType={Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'default'}
-            autoCapitalize="none"
-            style={styles.input}
-          />
-          {endError && (
-            <Text
-              variant="bodySmall"
-              style={[styles.errorText, { color: theme.colors.error }]}
-            >
-              {endError}
-            </Text>
-          )}
-        </View>
-
-        <Text
-          variant="bodySmall"
-          style={[styles.hint, { color: theme.colors.onSurfaceVariant }]}
-        >
-          Enter dates in YYYY-MM-DD format (e.g., 2026-01-15)
-        </Text>
-
-        <View style={styles.buttonRow}>
-          <Button
-            mode="text"
-            onPress={onDismiss}
-            testID={testID ? `${testID}-cancel-button` : undefined}
+          <Text
+            variant="titleLarge"
+            style={[styles.title, { color: theme.colors.onSurface }]}
           >
-            Cancel
-          </Button>
-          <Button
-            mode="contained"
-            onPress={handleConfirm}
-            testID={testID ? `${testID}-confirm-button` : undefined}
+            Select Date Range
+          </Text>
+
+          {/* Quick Presets */}
+          <Text
+            variant="titleSmall"
+            style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}
           >
-            Apply
+            Quick Select
+          </Text>
+          <View style={styles.presetContainer}>
+            {PRESETS.map((preset) => (
+              <Chip
+                key={preset.key}
+                mode="outlined"
+                onPress={() => handlePresetPress(preset)}
+                style={styles.presetChip}
+                testID={testID ? `${testID}-preset-${preset.key}` : undefined}
+                accessibilityLabel={`Select ${preset.label}`}
+              >
+                {preset.label}
+              </Chip>
+            ))}
+          </View>
+
+          <Divider style={styles.divider} />
+
+          {/* Custom Range Section */}
+          <Text
+            variant="titleSmall"
+            style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}
+          >
+            Custom Range
+          </Text>
+
+          {/* Current Range Display */}
+          <View
+            style={[
+              styles.rangeDisplay,
+              { backgroundColor: theme.colors.surfaceVariant },
+            ]}
+          >
+            <Text
+              variant="bodyLarge"
+              style={[styles.rangeText, { color: theme.colors.onSurfaceVariant }]}
+              testID={testID ? `${testID}-range-display` : undefined}
+            >
+              {rangeDisplay}
+            </Text>
+          </View>
+
+          <Button
+            mode="outlined"
+            onPress={handleOpenCalendar}
+            icon="calendar"
+            style={styles.pickDatesButton}
+            testID={testID ? `${testID}-pick-dates-button` : undefined}
+            accessibilityLabel="Open calendar to pick dates"
+          >
+            Pick Dates
           </Button>
-        </View>
-      </Modal>
-    </Portal>
+
+          {/* Action Buttons */}
+          <View style={styles.buttonRow}>
+            <Button
+              mode="text"
+              onPress={onDismiss}
+              testID={testID ? `${testID}-cancel-button` : undefined}
+            >
+              Cancel
+            </Button>
+            <Button
+              mode="contained"
+              onPress={handleApply}
+              testID={testID ? `${testID}-confirm-button` : undefined}
+            >
+              Apply
+            </Button>
+          </View>
+        </Modal>
+      </Portal>
+
+      {/* Calendar Modal (separate from wrapper modal) */}
+      <DatePickerModal
+        locale="en"
+        mode="range"
+        visible={showCalendar}
+        onDismiss={handleCalendarDismiss}
+        startDate={tempStartDate}
+        endDate={tempEndDate}
+        onConfirm={handleCalendarConfirm}
+        saveLabel="Select"
+        label="Select date range"
+        startLabel="From"
+        endLabel="To"
+        validRange={{
+          endDate: new Date(), // Cannot select future dates
+        }}
+      />
+    </>
   );
 }
 
@@ -224,32 +299,45 @@ const styles = StyleSheet.create({
   modal: {
     marginHorizontal: 24,
     padding: 24,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   title: {
     marginBottom: 20,
     textAlign: 'center',
     fontWeight: '600',
   },
-  inputContainer: {
+  sectionLabel: {
+    fontWeight: '600',
     marginBottom: 12,
   },
-  input: {
-    // TextInput handles its own styling
+  presetContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
   },
-  errorText: {
-    marginTop: 4,
-    marginLeft: 4,
+  presetChip: {
+    marginBottom: 4,
   },
-  hint: {
-    textAlign: 'center',
-    marginTop: 4,
+  divider: {
+    marginVertical: 16,
+  },
+  rangeDisplay: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
     marginBottom: 16,
+    alignItems: 'center',
+  },
+  rangeText: {
+    fontWeight: '500',
+  },
+  pickDatesButton: {
+    marginBottom: 20,
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 8,
-    marginTop: 8,
   },
 });

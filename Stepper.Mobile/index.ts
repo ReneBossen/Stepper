@@ -4,6 +4,11 @@ import { registerRootComponent } from 'expo';
 // This is required for background tasks to work correctly.
 import './src/services/stepTracking/backgroundSyncTask';
 
+// Register locale for react-native-paper-dates
+// Must be done before any DatePickerModal is rendered
+import { en, registerTranslation } from 'react-native-paper-dates';
+registerTranslation('en', en);
+
 import App from './App';
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);

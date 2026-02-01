@@ -24,6 +24,14 @@ export interface DailyStepEntry {
   distanceMeters: number;
 }
 
+/**
+ * Result from paginated history fetch for infinite scroll.
+ */
+export interface PaginatedHistoryResult {
+  items: DailyStepEntry[];
+  hasMore: boolean;
+}
+
 interface StepsState {
   todaySteps: number;
   todayDistance: number;
@@ -40,12 +48,24 @@ interface StepsState {
   syncError: string | null;
   lastSyncTimestamp: string | null;
 
+  // Paginated history state (for infinite scroll)
+  paginatedHistory: DailyStepEntry[];
+  paginatedHistoryPage: number;
+  hasMoreHistory: boolean;
+  isPaginatedHistoryLoading: boolean;
+  fullDailyHistory: DailyStepEntry[] | null;
+
   // Actions
   addSteps: (steps: number, distanceMeters: number, source?: string) => Promise<void>;
   fetchTodaySteps: () => Promise<void>;
   fetchStats: () => Promise<void>;
   fetchHistory: (period: 'daily' | 'weekly' | 'monthly') => Promise<void>;
   fetchDailyHistory: (startDate: string, endDate: string) => Promise<void>;
+
+  // Paginated history actions (for infinite scroll)
+  fetchPaginatedHistory: (page: number, pageSize: number) => Promise<PaginatedHistoryResult>;
+  resetPaginatedHistory: () => void;
+  loadMoreHistory: (pageSize: number) => Promise<void>;
 
   // Sync-related actions
   setSyncing: (syncing: boolean) => void;
@@ -89,6 +109,13 @@ export const useStepsStore = create<StepsState>((set, get) => ({
   isSyncing: false,
   syncError: null,
   lastSyncTimestamp: null,
+
+  // Paginated history state
+  paginatedHistory: [],
+  paginatedHistoryPage: 0,
+  hasMoreHistory: true,
+  isPaginatedHistoryLoading: false,
+  fullDailyHistory: null,
 
   addSteps: async (steps, distanceMeters, source) => {
     set({ isLoading: true, error: null });
@@ -171,6 +198,76 @@ export const useStepsStore = create<StepsState>((set, get) => ({
     } catch (error: unknown) {
       set({ historyError: getErrorMessage(error), isHistoryLoading: false });
     }
+  },
+
+  fetchPaginatedHistory: async (page, pageSize) => {
+    set({ isPaginatedHistoryLoading: true, historyError: null });
+    try {
+      let allItems = get().fullDailyHistory;
+
+      // Fetch all data only once (when fullDailyHistory is null)
+      if (allItems === null) {
+        const startDate = '1970-01-01';
+        const endDate = getTodayString();
+        const dailySummaries = await stepsApi.getDailyHistory({ startDate, endDate });
+
+        // Transform to DailyStepEntry format and sort by date descending (most recent first)
+        allItems = dailySummaries
+          .map((summary) => ({
+            date: summary.date,
+            steps: summary.totalSteps,
+            distanceMeters: summary.totalDistanceMeters,
+          }))
+          .sort((a, b) => b.date.localeCompare(a.date));
+
+        // Store the full history in state for subsequent requests
+        set({ fullDailyHistory: allItems });
+      }
+
+      // Calculate pagination slice from cached data
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const items = allItems.slice(startIndex, endIndex);
+      const hasMore = endIndex < allItems.length;
+
+      set({
+        paginatedHistoryPage: page,
+        hasMoreHistory: hasMore,
+        isPaginatedHistoryLoading: false,
+      });
+
+      return { items, hasMore };
+    } catch (error: unknown) {
+      set({ historyError: getErrorMessage(error), isPaginatedHistoryLoading: false });
+      return { items: [], hasMore: false };
+    }
+  },
+
+  resetPaginatedHistory: () => {
+    set({
+      paginatedHistory: [],
+      paginatedHistoryPage: 0,
+      hasMoreHistory: true,
+      isPaginatedHistoryLoading: false,
+      fullDailyHistory: null,
+    });
+  },
+
+  loadMoreHistory: async (pageSize) => {
+    const { paginatedHistoryPage, hasMoreHistory, isPaginatedHistoryLoading, paginatedHistory } = get();
+
+    // Don't load if already loading or no more items
+    if (isPaginatedHistoryLoading || !hasMoreHistory) {
+      return;
+    }
+
+    const nextPage = paginatedHistoryPage + 1;
+    const result = await get().fetchPaginatedHistory(nextPage, pageSize);
+
+    // Append new items to existing paginated history
+    set({
+      paginatedHistory: [...paginatedHistory, ...result.items],
+    });
   },
 
   // Sync-related actions
