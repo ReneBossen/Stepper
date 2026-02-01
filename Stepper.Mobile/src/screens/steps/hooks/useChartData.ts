@@ -257,6 +257,18 @@ function aggregateDailyView(
 }
 
 /**
+ * Gets the ISO week number for a given date.
+ * ISO weeks start on Monday and week 1 is the week containing the first Thursday of the year.
+ */
+function getISOWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+/**
  * Aggregates daily data into weekly view (7 weeks).
  */
 function aggregateWeeklyView(
@@ -268,7 +280,6 @@ function aggregateWeeklyView(
 
   // Start from the first Monday
   const currentMonday = getMonday(startDate);
-  let weekNumber = 1;
 
   while (currentMonday <= endDate) {
     const weekEnd = getSunday(currentMonday);
@@ -288,13 +299,15 @@ function aggregateWeeklyView(
     const sundayDay = weekEnd.getDate();
     const subLabel = `${mondayDisplay}-${sundayDay}`;
 
+    // Use actual ISO week number for label (e.g., "W5", "W6")
+    const isoWeekNum = getISOWeekNumber(currentMonday);
+
     result.push({
-      label: `Wk ${weekNumber}`,
+      label: `W${isoWeekNum}`,
       value: weekTotal,
       subLabel,
     });
 
-    weekNumber++;
     currentMonday.setDate(currentMonday.getDate() + 7);
   }
 

@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, Dimensions } from 'react-native';
+import React, { useMemo, useState, useCallback } from 'react';
+import { StyleSheet, Dimensions, View, Pressable } from 'react-native';
 import { Card, Text, useTheme } from 'react-native-paper';
 import { BarChart } from 'react-native-gifted-charts';
 import type { AggregatedChartData } from '../hooks';
@@ -15,6 +15,27 @@ interface ChartBarItem {
   value: number;
   label: string;
   frontColor: string;
+  onPress?: () => void;
+}
+
+interface SelectedBarInfo {
+  index: number;
+  value: number;
+  label: string;
+  subLabel?: string;
+}
+
+/**
+ * Calculates the Y-axis maximum value with proper rounding intervals.
+ * - Daily view: rounds up to nearest 5,000
+ * - Weekly/Monthly view: rounds up to nearest 10,000
+ */
+function calculateYAxisMax(maxValue: number, viewMode: 'daily' | 'weekly' | 'monthly'): number {
+  if (maxValue <= 0) {
+    return viewMode === 'daily' ? 5000 : 10000;
+  }
+  const interval = viewMode === 'daily' ? 5000 : 10000;
+  return Math.ceil(maxValue / interval) * interval;
 }
 
 /**
@@ -30,6 +51,26 @@ export function StepsChart({
 }: StepsChartProps) {
   const theme = useTheme();
   const screenWidth = Dimensions.get('window').width;
+  const [selectedBar, setSelectedBar] = useState<SelectedBarInfo | null>(null);
+
+  const handleBarPress = useCallback((item: AggregatedChartData, index: number) => {
+    setSelectedBar((prev) => {
+      // Toggle off if pressing the same bar
+      if (prev?.index === index) {
+        return null;
+      }
+      return {
+        index,
+        value: item.value,
+        label: item.label,
+        subLabel: item.subLabel,
+      };
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedBar(null);
+  }, []);
 
   // Calculate goal threshold based on view mode
   const goalThreshold = useMemo(() => {
@@ -47,28 +88,37 @@ export function StepsChart({
 
   // Transform aggregated data into chart bar items with colors
   const barData = useMemo<ChartBarItem[]>(() => {
-    return chartData.map((item) => {
-      const frontColor =
-        item.value >= goalThreshold
-          ? theme.colors.primary
-          : theme.colors.primaryContainer;
+    return chartData.map((item, index) => {
+      const isSelected = selectedBar?.index === index;
+      const meetsGoal = item.value >= goalThreshold;
+
+      // Highlight selected bar with a different shade
+      let frontColor: string;
+      if (isSelected) {
+        frontColor = theme.colors.tertiary;
+      } else if (meetsGoal) {
+        frontColor = theme.colors.primary;
+      } else {
+        frontColor = theme.colors.primaryContainer;
+      }
 
       return {
         value: item.value,
         label: item.label,
         frontColor,
+        onPress: () => handleBarPress(item, index),
       };
     });
-  }, [chartData, goalThreshold, theme.colors]);
+  }, [chartData, goalThreshold, theme.colors, selectedBar, handleBarPress]);
 
   // Calculate chart dimensions based on view mode
   const chartWidth = screenWidth - 64; // Account for padding
   const barWidth = viewMode === 'monthly' ? 16 : viewMode === 'weekly' ? 24 : 28;
   const spacing = viewMode === 'monthly' ? 8 : viewMode === 'weekly' ? 12 : 16;
 
-  // Calculate Y-axis max value
-  const maxSteps = Math.max(...chartData.map((d) => d.value), goalThreshold);
-  const yAxisMaxValue = Math.ceil(maxSteps / 2000) * 2000; // Round up to nearest 2000
+  // Calculate Y-axis max value based on actual data with proper rounding
+  const maxDataValue = Math.max(...chartData.map((d) => d.value), 0);
+  const yAxisMaxValue = calculateYAxisMax(maxDataValue, viewMode);
   const noOfSections = 4;
   const stepValue = yAxisMaxValue / noOfSections;
 
@@ -102,6 +152,11 @@ export function StepsChart({
   // Determine label font size based on view mode
   const labelFontSize = viewMode === 'monthly' ? 8 : viewMode === 'weekly' ? 9 : 10;
 
+  // Format step count for display (e.g., 14500 -> "14,500")
+  const formatStepCount = (value: number): string => {
+    return value.toLocaleString();
+  };
+
   return (
     <Card
       style={[styles.card, { backgroundColor: theme.colors.surface }]}
@@ -110,6 +165,27 @@ export function StepsChart({
       accessibilityRole="image"
     >
       <Card.Content style={styles.content}>
+        {selectedBar && (
+          <Pressable
+            style={[styles.tooltip, { backgroundColor: theme.colors.inverseSurface }]}
+            onPress={clearSelection}
+            accessibilityLabel={`${selectedBar.label}: ${formatStepCount(selectedBar.value)} steps. Tap to dismiss.`}
+            accessibilityRole="button"
+          >
+            <Text
+              variant="labelMedium"
+              style={[styles.tooltipLabel, { color: theme.colors.inverseOnSurface }]}
+            >
+              {selectedBar.subLabel ?? selectedBar.label}
+            </Text>
+            <Text
+              variant="titleMedium"
+              style={[styles.tooltipValue, { color: theme.colors.inverseOnSurface }]}
+            >
+              {formatStepCount(selectedBar.value)} steps
+            </Text>
+          </Pressable>
+        )}
         <BarChart
           data={barData}
           width={chartWidth}
@@ -161,5 +237,18 @@ const styles = StyleSheet.create({
   emptyContent: {
     paddingVertical: 40,
     alignItems: 'center',
+  },
+  tooltip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  tooltipLabel: {
+    fontWeight: '500',
+  },
+  tooltipValue: {
+    fontWeight: '700',
   },
 });

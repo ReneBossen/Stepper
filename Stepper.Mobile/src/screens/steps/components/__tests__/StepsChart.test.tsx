@@ -49,11 +49,14 @@ jest.mock('react-native-paper', () => {
       colors: {
         primary: '#4CAF50',
         primaryContainer: '#C8E6C9',
+        tertiary: '#7C5800',
         surface: '#FFFFFF',
         onSurface: '#000000',
         onSurfaceVariant: '#666666',
         outline: '#79747E',
         outlineVariant: '#CAC4D0',
+        inverseSurface: '#313033',
+        inverseOnSurface: '#F4EFF4',
       },
     }),
   };
