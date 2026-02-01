@@ -77,8 +77,14 @@ public class AuthService : IAuthService
         }
         catch (GotrueException ex)
         {
-            _logger.LogWarning(ex, "Registration failed for email: {Email}", request.Email);
+            _logger.LogWarning(ex, "Registration failed for email: {Email}. Supabase error: {Message}", request.Email, ex.Message);
             throw new InvalidOperationException(GetFriendlyAuthErrorMessage(ex), ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during registration for email: {Email}. Error type: {Type}, Message: {Message}",
+                request.Email, ex.GetType().Name, ex.Message);
+            throw new InvalidOperationException("Registration failed. Please try again.", ex);
         }
     }
 
@@ -457,6 +463,11 @@ public class AuthService : IAuthService
     {
         // Supabase error messages can vary, so we provide friendly alternatives
         var message = ex.Message?.ToLowerInvariant() ?? string.Empty;
+
+        if (message.Contains("rate limit") || message.Contains("over_email_send_rate_limit"))
+        {
+            return "Too many attempts. Please wait a minute and try again.";
+        }
 
         if (message.Contains("already registered") || message.Contains("user already exists"))
         {
