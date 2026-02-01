@@ -367,6 +367,74 @@ public class GroupRepository : IGroupRepository
         return groups;
     }
 
+    /// <inheritdoc />
+    public async Task<List<(Group Group, MemberRole Role, DateTime JoinedAt)>> GetUserGroupMembershipsWithDetailsAsync(Guid userId)
+    {
+        var client = await GetAuthenticatedClientAsync();
+
+        var memberships = await FetchUserMembershipsAsync(client, userId);
+
+        if (memberships.Count == 0)
+        {
+            return [];
+        }
+
+        var groupIds = memberships.Select(m => m.GroupId).ToList();
+        var groupDict = await FetchGroupsDictionaryAsync(client, groupIds);
+
+        return BuildMembershipDetailsResult(memberships, groupDict);
+    }
+
+    private static async Task<List<GroupMembershipEntity>> FetchUserMembershipsAsync(
+        Supabase.Client client,
+        Guid userId)
+    {
+        var response = await client
+            .From<GroupMembershipEntity>()
+            .Where(x => x.UserId == userId)
+            .Get();
+
+        return response.Models;
+    }
+
+    private async Task<Dictionary<Guid, Group>> FetchGroupsDictionaryAsync(
+        Supabase.Client client,
+        List<Guid> groupIds)
+    {
+        var groupsResponse = await client
+            .From<GroupEntity>()
+            .Filter("id", Supabase.Postgrest.Constants.Operator.In, groupIds)
+            .Get();
+
+        var memberCounts = new Dictionary<Guid, int>();
+        foreach (var groupId in groupIds)
+        {
+            memberCounts[groupId] = await GetMemberCountAsync(groupId);
+        }
+
+        return groupsResponse.Models.ToDictionary(
+            g => g.Id,
+            g => g.ToGroup(memberCounts.GetValueOrDefault(g.Id, 0)));
+    }
+
+    private static List<(Group Group, MemberRole Role, DateTime JoinedAt)> BuildMembershipDetailsResult(
+        List<GroupMembershipEntity> memberships,
+        Dictionary<Guid, Group> groupDict)
+    {
+        var result = new List<(Group, MemberRole, DateTime)>();
+
+        foreach (var membership in memberships)
+        {
+            if (groupDict.TryGetValue(membership.GroupId, out var group))
+            {
+                var domainMembership = membership.ToGroupMembership();
+                result.Add((group, domainMembership.Role, domainMembership.JoinedAt));
+            }
+        }
+
+        return result;
+    }
+
     private async Task<Supabase.Client> GetAuthenticatedClientAsync()
     {
         if (_httpContextAccessor.HttpContext?.Items.TryGetValue("SupabaseToken", out var tokenObj) != true)

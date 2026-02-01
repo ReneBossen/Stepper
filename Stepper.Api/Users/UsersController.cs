@@ -196,6 +196,41 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
+    /// Exports all user data for GDPR data portability compliance.
+    /// </summary>
+    /// <remarks>
+    /// Returns a complete export of the authenticated user's data including:
+    /// profile, preferences, step history, friendships, group memberships,
+    /// activity feed, and notifications. This endpoint supports GDPR Article 20
+    /// (Right to Data Portability).
+    /// </remarks>
+    /// <returns>Complete user data export in JSON format.</returns>
+    [HttpGet("me/data-export")]
+    public async Task<ActionResult<ApiResponse<UserDataExportResponse>>> ExportMyData()
+    {
+        var userId = User.GetUserId();
+
+        if (userId == null)
+        {
+            return Unauthorized(ApiResponse<UserDataExportResponse>.ErrorResponse("User is not authenticated."));
+        }
+
+        try
+        {
+            var exportData = await _userService.ExportUserDataAsync(userId.Value);
+            return Ok(ApiResponse<UserDataExportResponse>.SuccessResponse(exportData));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<UserDataExportResponse>.ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<UserDataExportResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
     /// Uploads a new avatar image for the authenticated user.
     /// </summary>
     /// <param name="file">The image file to upload.</param>

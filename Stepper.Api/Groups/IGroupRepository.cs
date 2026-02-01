@@ -122,4 +122,12 @@ public interface IGroupRepository
     /// <param name="limit">Maximum number of results to return.</param>
     /// <returns>List of public groups.</returns>
     Task<List<Group>> GetPublicGroupsAsync(int limit);
+
+    /// <summary>
+    /// Gets all group memberships for a user with full group details.
+    /// Used for data export to include JoinedAt dates.
+    /// </summary>
+    /// <param name="userId">The user ID.</param>
+    /// <returns>List of tuples containing group, role, and join date.</returns>
+    Task<List<(Group Group, MemberRole Role, DateTime JoinedAt)>> GetUserGroupMembershipsWithDetailsAsync(Guid userId);
 }

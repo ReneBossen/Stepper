@@ -25,6 +25,7 @@ import {
   ChangePasswordModal,
   HealthDataModal,
   AnalyticsSettingsModal,
+  DataExportModal,
 } from './components';
 import {
   LegalModal,
@@ -66,6 +67,7 @@ export default function SettingsScreen() {
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showHealthDataModal, setShowHealthDataModal] = useState(false);
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+  const [showDataExportModal, setShowDataExportModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showPrivacyPolicyModal, setShowPrivacyPolicyModal] = useState(false);
 
@@ -243,6 +245,15 @@ export default function SettingsScreen() {
 
   const handleAnalyticsSaved = useCallback(() => {
     showSnackbar('Analytics settings saved');
+  }, [showSnackbar]);
+
+  // Data export modal handlers
+  const handleDataExportPress = useCallback(() => {
+    setShowDataExportModal(true);
+  }, []);
+
+  const handleDataExported = useCallback(() => {
+    showSnackbar('Data exported successfully');
   }, [showSnackbar]);
 
   const handlePrivacySave = useCallback(async (value: PrivacyLevel) => {
@@ -523,6 +534,16 @@ export default function SettingsScreen() {
             accessibilityLabel={`Analytics: ${analyticsConsent ? 'Enabled' : 'Disabled'}`}
             testID="settings-analytics"
           />
+          <List.Item
+            title="Download My Data"
+            description="Export your personal data"
+            left={(props) => <List.Icon {...props} icon="download" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={handleDataExportPress}
+            style={styles.listItem}
+            accessibilityLabel="Download my data"
+            testID="settings-download-data"
+          />
         </View>
 
         <Divider style={styles.divider} />
@@ -635,6 +656,12 @@ export default function SettingsScreen() {
         visible={showAnalyticsModal}
         onDismiss={() => setShowAnalyticsModal(false)}
         onSaved={handleAnalyticsSaved}
+      />
+
+      <DataExportModal
+        visible={showDataExportModal}
+        onDismiss={() => setShowDataExportModal(false)}
+        onExported={handleDataExported}
       />
 
       <LegalModal
