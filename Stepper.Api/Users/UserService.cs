@@ -1,4 +1,9 @@
+using Stepper.Api.Activity;
 using Stepper.Api.Common.Database;
+using Stepper.Api.Friends;
+using Stepper.Api.Groups;
+using Stepper.Api.Notifications;
+using Stepper.Api.Steps;
 using Stepper.Api.Users.DTOs;
 
 namespace Stepper.Api.Users;
@@ -14,6 +19,9 @@ public class UserService : IUserService
     private const int MaxDailyStepGoal = 100000;
     private const long MaxAvatarFileSizeBytes = 5 * 1024 * 1024; // 5MB
     private const string AvatarsBucketName = "avatars";
+    private const string ExportDataFormatVersion = "stepper_export_v1";
+    private const int MaxExportActivityItems = 10000;
+    private const int MaxExportNotifications = 10000;
 
     private static readonly HashSet<string> AllowedImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -41,22 +49,42 @@ public class UserService : IUserService
 
     private readonly IUserRepository _userRepository;
     private readonly IUserPreferencesRepository _preferencesRepository;
+    private readonly IStepRepository _stepRepository;
+    private readonly IFriendRepository _friendRepository;
+    private readonly IGroupRepository _groupRepository;
+    private readonly IActivityRepository _activityRepository;
+    private readonly INotificationRepository _notificationRepository;
     private readonly ISupabaseClientFactory _clientFactory;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public UserService(
         IUserRepository userRepository,
         IUserPreferencesRepository preferencesRepository,
+        IStepRepository stepRepository,
+        IFriendRepository friendRepository,
+        IGroupRepository groupRepository,
+        IActivityRepository activityRepository,
+        INotificationRepository notificationRepository,
         ISupabaseClientFactory clientFactory,
         IHttpContextAccessor httpContextAccessor)
     {
         ArgumentNullException.ThrowIfNull(userRepository);
         ArgumentNullException.ThrowIfNull(preferencesRepository);
+        ArgumentNullException.ThrowIfNull(stepRepository);
+        ArgumentNullException.ThrowIfNull(friendRepository);
+        ArgumentNullException.ThrowIfNull(groupRepository);
+        ArgumentNullException.ThrowIfNull(activityRepository);
+        ArgumentNullException.ThrowIfNull(notificationRepository);
         ArgumentNullException.ThrowIfNull(clientFactory);
         ArgumentNullException.ThrowIfNull(httpContextAccessor);
 
         _userRepository = userRepository;
         _preferencesRepository = preferencesRepository;
+        _stepRepository = stepRepository;
+        _friendRepository = friendRepository;
+        _groupRepository = groupRepository;
+        _activityRepository = activityRepository;
+        _notificationRepository = notificationRepository;
         _clientFactory = clientFactory;
         _httpContextAccessor = httpContextAccessor;
     }
@@ -242,6 +270,228 @@ public class UserService : IUserService
             Name = g.Name
         }).ToList();
     }
+
+    /// <inheritdoc />
+    public async Task<UserDataExportResponse> ExportUserDataAsync(Guid userId)
+    {
+        ValidateUserId(userId);
+
+        var user = await GetUserOrThrowAsync(userId);
+
+        try
+        {
+            var exportData = await FetchAllUserDataAsync(userId, user);
+            return exportData;
+        }
+        catch (Exception ex) when (ex is not KeyNotFoundException and not ArgumentException)
+        {
+            // Wrap unexpected exceptions with more context for debugging
+            throw new InvalidOperationException(
+                $"Failed to export user data. Please try again later. Error: {ex.Message}", ex);
+        }
+    }
+
+    #region Data Export Private Methods
+
+    private async Task<UserDataExportResponse> FetchAllUserDataAsync(Guid userId, User user)
+    {
+        var preferencesTask = _preferencesRepository.GetByUserIdAsync(userId);
+        var stepEntriesTask = FetchAllStepEntriesAsync(userId);
+        var friendshipsTask = FetchAllFriendshipsWithNamesAsync(userId);
+        var groupMembershipsTask = FetchAllGroupMembershipsWithNamesAsync(userId);
+        var activityItemsTask = FetchAllActivityItemsAsync(userId);
+        var notificationsTask = FetchAllNotificationsAsync(userId);
+
+        await Task.WhenAll(
+            preferencesTask,
+            stepEntriesTask,
+            friendshipsTask,
+            groupMembershipsTask,
+            activityItemsTask,
+            notificationsTask);
+
+        var preferences = await preferencesTask;
+        var stepEntries = await stepEntriesTask;
+        var friendships = await friendshipsTask;
+        var groupMemberships = await groupMembershipsTask;
+        var activityItems = await activityItemsTask;
+        var notifications = await notificationsTask;
+
+        return BuildExportResponse(userId, user, preferences, stepEntries, friendships, groupMemberships, activityItems, notifications);
+    }
+
+    private UserDataExportResponse BuildExportResponse(
+        Guid userId,
+        User user,
+        UserPreferencesEntity? preferences,
+        List<ExportedStepEntry> stepEntries,
+        List<ExportedFriendship> friendships,
+        List<ExportedGroupMembership> groupMemberships,
+        List<ExportedActivityItem> activityItems,
+        List<ExportedNotification> notifications)
+    {
+        var metadata = CreateExportMetadata(userId);
+        var profile = CreateExportedProfile(user);
+        var exportedPreferences = CreateExportedPreferences(preferences);
+
+        return new UserDataExportResponse(
+            metadata,
+            profile,
+            exportedPreferences,
+            stepEntries,
+            friendships,
+            groupMemberships,
+            activityItems,
+            notifications);
+    }
+
+    private static ExportMetadata CreateExportMetadata(Guid userId)
+    {
+        return new ExportMetadata(
+            ExportedAt: DateTime.UtcNow,
+            UserId: userId,
+            DataFormat: ExportDataFormatVersion);
+    }
+
+    private static ExportedProfile CreateExportedProfile(User user)
+    {
+        return new ExportedProfile(
+            Id: user.Id,
+            Email: null, // Email is stored in Supabase Auth, not accessible from users table
+            DisplayName: user.DisplayName ?? string.Empty,
+            AvatarUrl: user.AvatarUrl,
+            QrCodeId: user.QrCodeId ?? string.Empty,
+            OnboardingCompleted: user.OnboardingCompleted,
+            CreatedAt: user.CreatedAt);
+    }
+
+    private static ExportedPreferences CreateExportedPreferences(UserPreferencesEntity? preferences)
+    {
+        if (preferences == null)
+        {
+            return CreateDefaultExportedPreferences();
+        }
+
+        return new ExportedPreferences(
+            DailyStepGoal: preferences.DailyStepGoal,
+            Units: preferences.Units ?? "metric",
+            NotificationsEnabled: preferences.NotificationsEnabled,
+            NotifyDailyReminder: preferences.NotifyDailyReminder,
+            NotifyFriendRequests: preferences.NotifyFriendRequests,
+            NotifyGroupInvites: preferences.NotifyGroupInvites,
+            NotifyAchievements: preferences.NotifyAchievements,
+            PrivacyProfileVisibility: preferences.PrivacyProfileVisibility ?? "public",
+            PrivacyFindMe: preferences.PrivacyFindMe ?? "public",
+            PrivacyShowSteps: preferences.PrivacyShowSteps ?? "partial");
+    }
+
+    private static ExportedPreferences CreateDefaultExportedPreferences()
+    {
+        return new ExportedPreferences(
+            DailyStepGoal: 10000,
+            Units: "metric",
+            NotificationsEnabled: true,
+            NotifyDailyReminder: true,
+            NotifyFriendRequests: true,
+            NotifyGroupInvites: true,
+            NotifyAchievements: true,
+            PrivacyProfileVisibility: "public",
+            PrivacyFindMe: "public",
+            PrivacyShowSteps: "partial");
+    }
+
+    private async Task<List<ExportedStepEntry>> FetchAllStepEntriesAsync(Guid userId)
+    {
+        var summaries = await _stepRepository.GetAllDailySummariesAsync(userId);
+
+        return summaries.Select(s => new ExportedStepEntry(
+            Date: s.Date,
+            StepCount: s.TotalSteps,
+            DistanceMeters: s.TotalDistanceMeters,
+            Source: null, // Summaries aggregate sources
+            RecordedAt: s.Date.ToDateTime(TimeOnly.MinValue))).ToList();
+    }
+
+    private async Task<List<ExportedFriendship>> FetchAllFriendshipsWithNamesAsync(Guid userId)
+    {
+        var friendships = await _friendRepository.GetFriendsAsync(userId);
+        var pendingIncoming = await _friendRepository.GetPendingRequestsAsync(userId);
+        var pendingOutgoing = await _friendRepository.GetSentRequestsAsync(userId);
+
+        var allFriendships = friendships.Concat(pendingIncoming).Concat(pendingOutgoing).ToList();
+
+        if (allFriendships.Count == 0)
+        {
+            return [];
+        }
+
+        var friendIds = allFriendships
+            .Select(f => f.RequesterId == userId ? f.AddresseeId : f.RequesterId)
+            .Distinct()
+            .ToList();
+
+        var users = await _userRepository.GetByIdsAsync(friendIds);
+        var userDict = users.ToDictionary(u => u.Id, u => u.DisplayName);
+
+        return allFriendships.Select(f => MapToExportedFriendship(f, userId, userDict)).ToList();
+    }
+
+    private static ExportedFriendship MapToExportedFriendship(
+        Friendship f,
+        Guid userId,
+        Dictionary<Guid, string> userDict)
+    {
+        var friendId = f.RequesterId == userId ? f.AddresseeId : f.RequesterId;
+        var friendName = userDict.GetValueOrDefault(friendId, "Unknown User") ?? "Unknown User";
+        var initiatedByMe = f.RequesterId == userId;
+
+        return new ExportedFriendship(
+            FriendId: friendId,
+            FriendDisplayName: friendName,
+            Status: f.Status.ToString().ToLowerInvariant(),
+            InitiatedByMe: initiatedByMe,
+            CreatedAt: f.CreatedAt);
+    }
+
+    private async Task<List<ExportedGroupMembership>> FetchAllGroupMembershipsWithNamesAsync(Guid userId)
+    {
+        var memberships = await _groupRepository.GetUserGroupMembershipsWithDetailsAsync(userId);
+
+        return memberships.Select(m => new ExportedGroupMembership(
+            GroupId: m.Group.Id,
+            GroupName: m.Group.Name ?? string.Empty,
+            Role: m.Role.ToString().ToLowerInvariant(),
+            JoinedAt: m.JoinedAt)).ToList();
+    }
+
+    private async Task<List<ExportedActivityItem>> FetchAllActivityItemsAsync(Guid userId)
+    {
+        // Fetch activity items for the user only (not friends) by passing an empty friend list.
+        // The GetFeedAsync method filters by user_id, so with an empty friend list,
+        // only activities where user_id equals the provided userId are returned.
+        var activities = await _activityRepository.GetFeedAsync(userId, [], MaxExportActivityItems, 0);
+
+        return activities.Select(a => new ExportedActivityItem(
+            Id: a.Id,
+            Type: a.Type ?? string.Empty,
+            Message: a.Message ?? string.Empty,
+            CreatedAt: a.CreatedAt)).ToList();
+    }
+
+    private async Task<List<ExportedNotification>> FetchAllNotificationsAsync(Guid userId)
+    {
+        var (notifications, _, _) = await _notificationRepository.GetAllAsync(userId, MaxExportNotifications, 0);
+
+        return notifications.Select(n => new ExportedNotification(
+            Id: n.Id,
+            Type: n.Type.ToString().ToLowerInvariant(),
+            Title: n.Title ?? string.Empty,
+            Body: n.Message ?? string.Empty,
+            CreatedAt: n.CreatedAt,
+            ReadAt: n.IsRead ? n.UpdatedAt : null)).ToList();
+    }
+
+    #endregion
 
     #region Private Helper Methods
 

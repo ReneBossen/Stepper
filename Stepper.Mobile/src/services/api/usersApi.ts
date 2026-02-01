@@ -1,5 +1,119 @@
 import { apiClient } from './client';
 
+// =============================================================================
+// User Data Export Types (GDPR Data Portability)
+// =============================================================================
+
+/**
+ * Metadata for the data export.
+ */
+export interface ExportMetadata {
+  exportedAt: string;
+  userId: string;
+  dataFormat: string;
+}
+
+/**
+ * User profile data in export format.
+ */
+export interface ExportedProfile {
+  id: string;
+  email: string | null;
+  displayName: string;
+  avatarUrl: string | null;
+  qrCodeId: string;
+  onboardingCompleted: boolean;
+  createdAt: string;
+}
+
+/**
+ * User preferences in export format.
+ */
+export interface ExportedPreferences {
+  dailyStepGoal: number;
+  units: string;
+  notificationsEnabled: boolean;
+  notifyDailyReminder: boolean;
+  notifyFriendRequests: boolean;
+  notifyGroupInvites: boolean;
+  notifyAchievements: boolean;
+  privacyProfileVisibility: string;
+  privacyFindMe: string;
+  privacyShowSteps: string;
+}
+
+/**
+ * Step entry in export format.
+ */
+export interface ExportedStepEntry {
+  date: string;
+  stepCount: number;
+  distanceMeters: number | null;
+  source: string | null;
+  recordedAt: string;
+}
+
+/**
+ * Friendship data in export format.
+ */
+export interface ExportedFriendship {
+  friendId: string;
+  friendDisplayName: string;
+  status: string;
+  initiatedByMe: boolean;
+  createdAt: string;
+}
+
+/**
+ * Group membership in export format.
+ */
+export interface ExportedGroupMembership {
+  groupId: string;
+  groupName: string;
+  role: string;
+  joinedAt: string;
+}
+
+/**
+ * Activity feed item in export format.
+ */
+export interface ExportedActivityItem {
+  id: string;
+  type: string;
+  message: string;
+  createdAt: string;
+}
+
+/**
+ * Notification in export format.
+ */
+export interface ExportedNotification {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  readAt: string | null;
+}
+
+/**
+ * Complete user data export response for GDPR compliance.
+ */
+export interface UserDataExport {
+  exportMetadata: ExportMetadata;
+  profile: ExportedProfile;
+  preferences: ExportedPreferences;
+  stepHistory: ExportedStepEntry[];
+  friendships: ExportedFriendship[];
+  groupMemberships: ExportedGroupMembership[];
+  activityFeed: ExportedActivityItem[];
+  notifications: ExportedNotification[];
+}
+
+// =============================================================================
+// Existing Types
+// =============================================================================
+
 /**
  * User profile data from the users table.
  * Note: Preferences are now stored in the separate user_preferences table.
@@ -244,6 +358,15 @@ export const usersApi = {
   getMutualGroups: async (otherUserId: string): Promise<MutualGroup[]> => {
     const response = await apiClient.get<BackendMutualGroupResponse[]>(`/users/${otherUserId}/mutual-groups`);
     return response;
+  },
+
+  /**
+   * Downloads all user data for GDPR data portability compliance.
+   * Returns a complete export of all personal data stored about the user.
+   * Uses extended timeout (2 minutes) as data export can take longer for users with lots of data.
+   */
+  downloadMyData: async (): Promise<UserDataExport> => {
+    return apiClient.get<UserDataExport>('/users/me/data-export', { timeout: 120000 });
   },
 
 };

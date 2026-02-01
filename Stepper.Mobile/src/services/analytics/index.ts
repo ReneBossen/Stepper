@@ -90,6 +90,7 @@ export type {
   PrivacySettingChangedProperties,
   NotificationSettingChangedProperties,
   ThemeChangedProperties,
+  DataExportRequestedProperties,
   ErrorEventProperties,
 
   // User property types

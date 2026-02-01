@@ -85,13 +85,14 @@ export type GoalEvent =
   | 'weekly_summary_viewed';
 
 /**
- * Settings events (4)
+ * Settings events (5)
  */
 export type SettingsEvent =
   | 'preference_changed'
   | 'privacy_setting_changed'
   | 'notification_setting_changed'
-  | 'theme_changed';
+  | 'theme_changed'
+  | 'data_export_requested';
 
 /**
  * Error events (4)
@@ -364,6 +365,14 @@ export interface ThemeChangedProperties extends BaseEventProperties {
 }
 
 /**
+ * Properties for data_export_requested event
+ */
+export interface DataExportRequestedProperties extends BaseEventProperties {
+  export_status: 'started' | 'completed' | 'failed';
+  error_message?: string;
+}
+
+/**
  * Properties for error events
  */
 export interface ErrorEventProperties extends BaseEventProperties {
@@ -466,6 +475,7 @@ export interface EventPropertiesMap {
   privacy_setting_changed: PrivacySettingChangedProperties;
   notification_setting_changed: NotificationSettingChangedProperties;
   theme_changed: ThemeChangedProperties;
+  data_export_requested: DataExportRequestedProperties;
 
   // Error events
   api_error: ApiErrorProperties;

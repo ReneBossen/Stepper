@@ -75,4 +75,11 @@ public interface IUserService
     /// <param name="otherUserId">The other user ID to find mutual groups with.</param>
     /// <returns>List of mutual groups.</returns>
     Task<List<MutualGroupResponse>> GetMutualGroupsAsync(Guid currentUserId, Guid otherUserId);
+
+    /// <summary>
+    /// Exports all user data for GDPR data portability compliance.
+    /// </summary>
+    /// <param name="userId">The user ID to export data for.</param>
+    /// <returns>Complete user data export response.</returns>
+    Task<UserDataExportResponse> ExportUserDataAsync(Guid userId);
 }
