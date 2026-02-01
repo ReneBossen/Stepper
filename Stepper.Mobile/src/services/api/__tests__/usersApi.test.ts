@@ -419,4 +419,169 @@ describe('usersApi', () => {
       expect(result[0]).toEqual({ id: 'group-1', name: 'Office Fitness Club' });
     });
   });
+
+  describe('downloadMyData', () => {
+    const mockExportResponse = {
+      exportMetadata: {
+        exportedAt: '2026-02-01T12:00:00Z',
+        userId: '123',
+        dataFormat: 'stepper_export_v1',
+      },
+      profile: {
+        id: '123',
+        email: 'user@example.com',
+        displayName: 'Test User',
+        avatarUrl: 'https://example.com/avatar.jpg',
+        qrCodeId: 'abc123',
+        onboardingCompleted: true,
+        createdAt: '2025-01-01T00:00:00Z',
+      },
+      preferences: {
+        dailyStepGoal: 10000,
+        units: 'metric',
+        notificationsEnabled: true,
+        notifyDailyReminder: true,
+        notifyFriendRequests: true,
+        notifyGroupInvites: true,
+        notifyAchievements: true,
+        privacyProfileVisibility: 'public',
+        privacyFindMe: 'public',
+        privacyShowSteps: 'partial',
+      },
+      stepHistory: [
+        {
+          date: '2026-01-31',
+          stepCount: 8500,
+          distanceMeters: 6800.5,
+          source: 'healthkit',
+          recordedAt: '2026-01-31T23:00:00Z',
+        },
+      ],
+      friendships: [
+        {
+          friendId: 'friend-1',
+          friendDisplayName: 'Jane Smith',
+          status: 'accepted',
+          initiatedByMe: true,
+          createdAt: '2025-06-01T00:00:00Z',
+        },
+      ],
+      groupMemberships: [
+        {
+          groupId: 'group-1',
+          groupName: 'Weekend Warriors',
+          role: 'member',
+          joinedAt: '2025-07-01T00:00:00Z',
+        },
+      ],
+      activityFeed: [
+        {
+          id: 'activity-1',
+          type: 'friend_request_accepted',
+          message: 'Jane Smith accepted your friend request',
+          createdAt: '2025-06-01T00:00:00Z',
+        },
+      ],
+      notifications: [
+        {
+          id: 'notif-1',
+          type: 'daily_reminder',
+          title: 'Daily Reminder',
+          body: 'Don\'t forget to log your steps!',
+          createdAt: '2026-01-31T18:00:00Z',
+          readAt: '2026-01-31T18:05:00Z',
+        },
+      ],
+    };
+
+    it('should call correct endpoint for data export', async () => {
+      mockApiClient.get.mockResolvedValue(mockExportResponse);
+
+      await usersApi.downloadMyData();
+
+      expect(mockApiClient.get).toHaveBeenCalledWith('/users/me/data-export');
+    });
+
+    it('should return complete export data', async () => {
+      mockApiClient.get.mockResolvedValue(mockExportResponse);
+
+      const result = await usersApi.downloadMyData();
+
+      expect(result).toEqual(mockExportResponse);
+    });
+
+    it('should return export metadata', async () => {
+      mockApiClient.get.mockResolvedValue(mockExportResponse);
+
+      const result = await usersApi.downloadMyData();
+
+      expect(result.exportMetadata).toBeDefined();
+      expect(result.exportMetadata.dataFormat).toBe('stepper_export_v1');
+      expect(result.exportMetadata.userId).toBe('123');
+    });
+
+    it('should return profile data', async () => {
+      mockApiClient.get.mockResolvedValue(mockExportResponse);
+
+      const result = await usersApi.downloadMyData();
+
+      expect(result.profile).toBeDefined();
+      expect(result.profile.displayName).toBe('Test User');
+      expect(result.profile.email).toBe('user@example.com');
+    });
+
+    it('should return step history', async () => {
+      mockApiClient.get.mockResolvedValue(mockExportResponse);
+
+      const result = await usersApi.downloadMyData();
+
+      expect(result.stepHistory).toHaveLength(1);
+      expect(result.stepHistory[0].stepCount).toBe(8500);
+    });
+
+    it('should return friendships', async () => {
+      mockApiClient.get.mockResolvedValue(mockExportResponse);
+
+      const result = await usersApi.downloadMyData();
+
+      expect(result.friendships).toHaveLength(1);
+      expect(result.friendships[0].friendDisplayName).toBe('Jane Smith');
+    });
+
+    it('should return group memberships', async () => {
+      mockApiClient.get.mockResolvedValue(mockExportResponse);
+
+      const result = await usersApi.downloadMyData();
+
+      expect(result.groupMemberships).toHaveLength(1);
+      expect(result.groupMemberships[0].groupName).toBe('Weekend Warriors');
+    });
+
+    it('should throw error when API call fails', async () => {
+      const apiError = new Error('Failed to export data');
+      mockApiClient.get.mockRejectedValue(apiError);
+
+      await expect(usersApi.downloadMyData()).rejects.toThrow('Failed to export data');
+    });
+
+    it('should handle empty arrays in export', async () => {
+      const emptyExportResponse = {
+        ...mockExportResponse,
+        stepHistory: [],
+        friendships: [],
+        groupMemberships: [],
+        activityFeed: [],
+        notifications: [],
+      };
+      mockApiClient.get.mockResolvedValue(emptyExportResponse);
+
+      const result = await usersApi.downloadMyData();
+
+      expect(result.stepHistory).toEqual([]);
+      expect(result.friendships).toEqual([]);
+      expect(result.groupMemberships).toEqual([]);
+      expect(result.activityFeed).toEqual([]);
+      expect(result.notifications).toEqual([]);
+    });
+  });
 });

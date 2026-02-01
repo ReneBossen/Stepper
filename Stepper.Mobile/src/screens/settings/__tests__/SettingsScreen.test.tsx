@@ -2,6 +2,12 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert, Linking } from 'react-native';
 
+// Mock expo-application before other imports
+jest.mock('expo-application', () => ({
+  nativeApplicationVersion: '1.0.0',
+  nativeBuildVersion: '1',
+}));
+
 // Mock expo-notifications before importing the component
 jest.mock('expo-notifications', () => ({
   getPermissionsAsync: jest.fn(),
@@ -21,6 +27,29 @@ import { useAuthStore } from '@store/authStore';
 // Mock dependencies
 jest.mock('@store/userStore');
 jest.mock('@store/authStore');
+
+// Mock analyticsStore
+jest.mock('@store/analyticsStore', () => ({
+  useAnalyticsStore: jest.fn(() => true),
+  selectHasConsent: jest.fn((state: any) => true),
+}));
+
+// Mock LegalModal from @screens/legal
+jest.mock('@screens/legal', () => ({
+  LegalModal: ({ visible, onDismiss, title, content }: any) => {
+    const RN = require('react-native');
+    return visible ? (
+      <RN.View testID={`legal-modal-${title.toLowerCase().replace(/\s+/g, '-')}`}>
+        <RN.Text>{title}</RN.Text>
+        <RN.TouchableOpacity testID="legal-modal-dismiss" onPress={onDismiss}>
+          <RN.Text>Dismiss</RN.Text>
+        </RN.TouchableOpacity>
+      </RN.View>
+    ) : null;
+  },
+  TERMS_OF_SERVICE_CONTENT: 'Terms of Service Content',
+  PRIVACY_POLICY_CONTENT: 'Privacy Policy Content',
+}));
 
 // Mock authApi for change password
 const mockChangePassword = jest.fn();
@@ -143,6 +172,39 @@ jest.mock('../components', () => ({
           <RN.Text>Cancel</RN.Text>
         </RN.TouchableOpacity>
         {isSaving && <RN.View testID="change-password-saving" />}
+      </RN.View>
+    ) : null;
+  },
+  HealthDataModal: ({ visible, onDismiss }: any) => {
+    const RN = require('react-native');
+    return visible ? (
+      <RN.View testID="health-data-modal">
+        <RN.TouchableOpacity testID="health-data-modal-dismiss" onPress={onDismiss}>
+          <RN.Text>Dismiss</RN.Text>
+        </RN.TouchableOpacity>
+      </RN.View>
+    ) : null;
+  },
+  AnalyticsSettingsModal: ({ visible, onDismiss, onSaved }: any) => {
+    const RN = require('react-native');
+    return visible ? (
+      <RN.View testID="analytics-settings-modal">
+        <RN.TouchableOpacity testID="analytics-settings-modal-dismiss" onPress={onDismiss}>
+          <RN.Text>Dismiss</RN.Text>
+        </RN.TouchableOpacity>
+      </RN.View>
+    ) : null;
+  },
+  DataExportModal: ({ visible, onDismiss, onExported }: any) => {
+    const RN = require('react-native');
+    return visible ? (
+      <RN.View testID="data-export-modal">
+        <RN.TouchableOpacity testID="data-export-modal-export" onPress={() => { onExported?.(); onDismiss(); }}>
+          <RN.Text>Export</RN.Text>
+        </RN.TouchableOpacity>
+        <RN.TouchableOpacity testID="data-export-modal-dismiss" onPress={onDismiss}>
+          <RN.Text>Dismiss</RN.Text>
+        </RN.TouchableOpacity>
       </RN.View>
     ) : null;
   },
@@ -866,6 +928,25 @@ describe('SettingsScreen', () => {
       await waitFor(() => {
         expect(mockUpdatePreferences).toHaveBeenCalledWith({ privacy_profile_visibility: 'private' });
       });
+    });
+  });
+
+  describe('download my data', () => {
+    it('should display Download My Data option', () => {
+      const { getByTestId } = render(<SettingsScreen />);
+      expect(getByTestId('settings-download-data')).toBeTruthy();
+    });
+
+    it('should display correct description for Download My Data', () => {
+      const { getByTestId } = render(<SettingsScreen />);
+      expect(getByTestId('settings-download-data-description')).toHaveTextContent('Export your personal data');
+    });
+
+    it('should open DataExportModal when Download My Data is pressed', () => {
+      const { getByTestId, queryByTestId } = render(<SettingsScreen />);
+      expect(queryByTestId('data-export-modal')).toBeNull();
+      fireEvent.press(getByTestId('settings-download-data'));
+      expect(getByTestId('data-export-modal')).toBeTruthy();
     });
   });
 });
