@@ -5,6 +5,7 @@ using Stepper.Api.Groups;
 using Stepper.Api.Notifications;
 using Stepper.Api.Steps;
 using Stepper.Api.Users.DTOs;
+using Supabase.Postgrest.Exceptions;
 
 namespace Stepper.Api.Users;
 
@@ -130,22 +131,37 @@ public class UserService : IUserService
     {
         ValidateUserId(userId);
 
+        // First try to get existing user
         var existingUser = await _userRepository.GetByIdAsync(userId);
 
         if (existingUser != null)
         {
-            // Ensure user_preferences row exists
             await EnsureUserPreferencesExistAsync(userId);
             return MapToGetProfileResponse(existingUser);
         }
 
+        // User doesn't exist, create new one
         var newUser = CreateDefaultUser(userId);
-        var createdUser = await _userRepository.CreateAsync(newUser);
 
-        // Create user_preferences row for new user
-        await _preferencesRepository.CreateAsync(userId);
+        try
+        {
+            var createdUser = await _userRepository.CreateAsync(newUser);
+            await _preferencesRepository.CreateAsync(userId);
+            return MapToGetProfileResponse(createdUser);
+        }
+        catch (PostgrestException ex) when (ex.Message.Contains("23505") || ex.Message.Contains("duplicate key"))
+        {
+            // Race condition: user was created between our check and insert
+            // Fetch the existing user
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new InvalidOperationException($"Failed to create or retrieve user profile for user ID: {userId}", ex);
+            }
 
-        return MapToGetProfileResponse(createdUser);
+            await EnsureUserPreferencesExistAsync(userId);
+            return MapToGetProfileResponse(user);
+        }
     }
 
     /// <inheritdoc />
@@ -153,8 +169,8 @@ public class UserService : IUserService
     {
         ValidateUserId(userId);
 
-        // Verify user exists
-        await GetUserOrThrowAsync(userId);
+        // Ensure user profile exists (handles race condition with parallel /users/me call)
+        await EnsureProfileExistsAsync(userId);
 
         var preferences = await _preferencesRepository.GetByUserIdAsync(userId);
 
@@ -529,7 +545,14 @@ public class UserService : IUserService
 
         if (preferences == null)
         {
-            await _preferencesRepository.CreateAsync(userId);
+            try
+            {
+                await _preferencesRepository.CreateAsync(userId);
+            }
+            catch (PostgrestException ex) when (ex.Message.Contains("23505") || ex.Message.Contains("duplicate key"))
+            {
+                // Race condition: preferences were created between our check and insert - that's fine
+            }
         }
     }
 
@@ -543,9 +566,19 @@ public class UserService : IUserService
             DisplayName = defaultName.Length > DefaultDisplayNameMaxLength
                 ? defaultName.Substring(0, DefaultDisplayNameMaxLength)
                 : defaultName,
+            QrCodeId = GenerateQrCodeId(),
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            UpdatedAt = DateTime.UtcNow,
+            OnboardingCompleted = false
         };
+    }
+
+    private static string GenerateQrCodeId()
+    {
+        using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
+        var bytes = new byte[8];
+        rng.GetBytes(bytes);
+        return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
     private static void ValidateDisplayName(string displayName)

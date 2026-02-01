@@ -15,11 +15,14 @@ namespace Stepper.Api.Users;
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly ILogger<UsersController> _logger;
 
-    public UsersController(IUserService userService)
+    public UsersController(IUserService userService, ILogger<UsersController> logger)
     {
         ArgumentNullException.ThrowIfNull(userService);
+        ArgumentNullException.ThrowIfNull(logger);
         _userService = userService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -29,12 +32,16 @@ public class UsersController : ControllerBase
     [HttpGet("me")]
     public async Task<ActionResult<ApiResponse<GetProfileResponse>>> GetMyProfile()
     {
+        _logger.LogInformation("GetMyProfile called");
         var userId = User.GetUserId();
 
         if (userId == null)
         {
+            _logger.LogWarning("GetMyProfile: User ID is null - not authenticated");
             return Unauthorized(ApiResponse<GetProfileResponse>.ErrorResponse("User is not authenticated."));
         }
+
+        _logger.LogInformation("GetMyProfile: Fetching profile for user {UserId}", userId.Value);
 
         try
         {
@@ -42,13 +49,16 @@ public class UsersController : ControllerBase
 
             if (profile == null)
             {
+                _logger.LogWarning("GetMyProfile: Profile is null for user {UserId}", userId.Value);
                 return NotFound(ApiResponse<GetProfileResponse>.ErrorResponse("Profile not found."));
             }
 
+            _logger.LogInformation("GetMyProfile: Successfully returned profile for user {UserId}", userId.Value);
             return Ok(ApiResponse<GetProfileResponse>.SuccessResponse(profile));
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "GetMyProfile: Error for user {UserId}", userId.Value);
             return StatusCode(500, ApiResponse<GetProfileResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
         }
     }
@@ -134,24 +144,31 @@ public class UsersController : ControllerBase
     [HttpGet("me/preferences")]
     public async Task<ActionResult<ApiResponse<UserPreferencesResponse>>> GetMyPreferences()
     {
+        _logger.LogInformation("GetMyPreferences called");
         var userId = User.GetUserId();
 
         if (userId == null)
         {
+            _logger.LogWarning("GetMyPreferences: User ID is null - not authenticated");
             return Unauthorized(ApiResponse<UserPreferencesResponse>.ErrorResponse("User is not authenticated."));
         }
+
+        _logger.LogInformation("GetMyPreferences: Fetching preferences for user {UserId}", userId.Value);
 
         try
         {
             var preferences = await _userService.GetPreferencesAsync(userId.Value);
+            _logger.LogInformation("GetMyPreferences: Successfully returned preferences for user {UserId}", userId.Value);
             return Ok(ApiResponse<UserPreferencesResponse>.SuccessResponse(preferences));
         }
         catch (KeyNotFoundException ex)
         {
+            _logger.LogWarning(ex, "GetMyPreferences: Preferences not found for user {UserId}", userId.Value);
             return NotFound(ApiResponse<UserPreferencesResponse>.ErrorResponse(ex.Message));
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "GetMyPreferences: Error for user {UserId}", userId.Value);
             return StatusCode(500, ApiResponse<UserPreferencesResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
         }
     }

@@ -79,6 +79,40 @@ public class UserRepository : IUserRepository
     }
 
     /// <inheritdoc />
+    public async Task<User> UpsertAsync(User user)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+
+        var client = await GetAuthenticatedClientAsync();
+
+        var entity = UserEntity.FromUser(user);
+
+        // Use Upsert with ignoreDuplicates to insert only if not exists
+        var response = await client
+            .From<UserEntity>()
+            .Upsert(entity, new Supabase.Postgrest.QueryOptions { Upsert = true });
+
+        var result = response.Models.FirstOrDefault();
+        if (result == null)
+        {
+            // If upsert didn't return anything, the row already exists - fetch it
+            var existing = await client
+                .From<UserEntity>()
+                .Where(x => x.Id == user.Id)
+                .Single();
+
+            if (existing == null)
+            {
+                throw new InvalidOperationException("Failed to create or retrieve user profile.");
+            }
+
+            return existing.ToUser();
+        }
+
+        return result.ToUser();
+    }
+
+    /// <inheritdoc />
     public async Task<List<User>> GetByIdsAsync(List<Guid> userIds)
     {
         ArgumentNullException.ThrowIfNull(userIds);

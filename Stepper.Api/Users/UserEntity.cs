@@ -9,7 +9,7 @@ namespace Stepper.Api.Users;
 [Table("users")]
 internal class UserEntity : BaseModel
 {
-    [PrimaryKey("id", false)]
+    [PrimaryKey("id", true)]
     public Guid Id { get; set; }
 
     [Column("display_name")]

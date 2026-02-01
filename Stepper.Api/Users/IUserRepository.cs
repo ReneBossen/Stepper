@@ -34,6 +34,14 @@ public interface IUserRepository
     Task<List<User>> GetByIdsAsync(List<Guid> userIds);
 
     /// <summary>
+    /// Creates a user profile if it doesn't exist, or returns the existing one.
+    /// Uses upsert with onConflict to handle race conditions.
+    /// </summary>
+    /// <param name="user">The user profile to upsert.</param>
+    /// <returns>The created or existing user profile.</returns>
+    Task<User> UpsertAsync(User user);
+
+    /// <summary>
     /// Gets the count of accepted friendships for a user.
     /// </summary>
     /// <param name="userId">The user ID.</param>
