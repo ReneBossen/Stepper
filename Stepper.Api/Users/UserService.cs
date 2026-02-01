@@ -20,6 +20,8 @@ public class UserService : IUserService
     private const long MaxAvatarFileSizeBytes = 5 * 1024 * 1024; // 5MB
     private const string AvatarsBucketName = "avatars";
     private const string ExportDataFormatVersion = "stepper_export_v1";
+    private const int MaxExportActivityItems = 10000;
+    private const int MaxExportNotifications = 10000;
 
     private static readonly HashSet<string> AllowedImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -275,9 +277,18 @@ public class UserService : IUserService
         ValidateUserId(userId);
 
         var user = await GetUserOrThrowAsync(userId);
-        var exportData = await FetchAllUserDataAsync(userId, user);
 
-        return exportData;
+        try
+        {
+            var exportData = await FetchAllUserDataAsync(userId, user);
+            return exportData;
+        }
+        catch (Exception ex) when (ex is not KeyNotFoundException and not ArgumentException)
+        {
+            // Wrap unexpected exceptions with more context for debugging
+            throw new InvalidOperationException(
+                $"Failed to export user data. Please try again later. Error: {ex.Message}", ex);
+        }
     }
 
     #region Data Export Private Methods
@@ -347,9 +358,9 @@ public class UserService : IUserService
         return new ExportedProfile(
             Id: user.Id,
             Email: null, // Email is stored in Supabase Auth, not accessible from users table
-            DisplayName: user.DisplayName,
+            DisplayName: user.DisplayName ?? string.Empty,
             AvatarUrl: user.AvatarUrl,
-            QrCodeId: user.QrCodeId,
+            QrCodeId: user.QrCodeId ?? string.Empty,
             OnboardingCompleted: user.OnboardingCompleted,
             CreatedAt: user.CreatedAt);
     }
@@ -363,15 +374,15 @@ public class UserService : IUserService
 
         return new ExportedPreferences(
             DailyStepGoal: preferences.DailyStepGoal,
-            Units: preferences.Units,
+            Units: preferences.Units ?? "metric",
             NotificationsEnabled: preferences.NotificationsEnabled,
             NotifyDailyReminder: preferences.NotifyDailyReminder,
             NotifyFriendRequests: preferences.NotifyFriendRequests,
             NotifyGroupInvites: preferences.NotifyGroupInvites,
             NotifyAchievements: preferences.NotifyAchievements,
-            PrivacyProfileVisibility: preferences.PrivacyProfileVisibility,
-            PrivacyFindMe: preferences.PrivacyFindMe,
-            PrivacyShowSteps: preferences.PrivacyShowSteps);
+            PrivacyProfileVisibility: preferences.PrivacyProfileVisibility ?? "public",
+            PrivacyFindMe: preferences.PrivacyFindMe ?? "public",
+            PrivacyShowSteps: preferences.PrivacyShowSteps ?? "partial");
     }
 
     private static ExportedPreferences CreateDefaultExportedPreferences()
@@ -431,7 +442,7 @@ public class UserService : IUserService
         Dictionary<Guid, string> userDict)
     {
         var friendId = f.RequesterId == userId ? f.AddresseeId : f.RequesterId;
-        var friendName = userDict.GetValueOrDefault(friendId, "Unknown User");
+        var friendName = userDict.GetValueOrDefault(friendId, "Unknown User") ?? "Unknown User";
         var initiatedByMe = f.RequesterId == userId;
 
         return new ExportedFriendship(
@@ -448,34 +459,34 @@ public class UserService : IUserService
 
         return memberships.Select(m => new ExportedGroupMembership(
             GroupId: m.Group.Id,
-            GroupName: m.Group.Name,
+            GroupName: m.Group.Name ?? string.Empty,
             Role: m.Role.ToString().ToLowerInvariant(),
             JoinedAt: m.JoinedAt)).ToList();
     }
 
     private async Task<List<ExportedActivityItem>> FetchAllActivityItemsAsync(Guid userId)
     {
-        // Fetch activity items for the user only (not friends)
-        const int maxActivityItems = 10000;
-        var activities = await _activityRepository.GetFeedAsync(userId, [], maxActivityItems, 0);
+        // Fetch activity items for the user only (not friends) by passing an empty friend list.
+        // The GetFeedAsync method filters by user_id, so with an empty friend list,
+        // only activities where user_id equals the provided userId are returned.
+        var activities = await _activityRepository.GetFeedAsync(userId, [], MaxExportActivityItems, 0);
 
         return activities.Select(a => new ExportedActivityItem(
             Id: a.Id,
-            Type: a.Type,
-            Message: a.Message,
+            Type: a.Type ?? string.Empty,
+            Message: a.Message ?? string.Empty,
             CreatedAt: a.CreatedAt)).ToList();
     }
 
     private async Task<List<ExportedNotification>> FetchAllNotificationsAsync(Guid userId)
     {
-        const int maxNotifications = 10000;
-        var (notifications, _, _) = await _notificationRepository.GetAllAsync(userId, maxNotifications, 0);
+        var (notifications, _, _) = await _notificationRepository.GetAllAsync(userId, MaxExportNotifications, 0);
 
         return notifications.Select(n => new ExportedNotification(
             Id: n.Id,
             Type: n.Type.ToString().ToLowerInvariant(),
-            Title: n.Title,
-            Body: n.Message,
+            Title: n.Title ?? string.Empty,
+            Body: n.Message ?? string.Empty,
             CreatedAt: n.CreatedAt,
             ReadAt: n.IsRead ? n.UpdatedAt : null)).ToList();
     }

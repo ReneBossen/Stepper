@@ -363,9 +363,10 @@ export const usersApi = {
   /**
    * Downloads all user data for GDPR data portability compliance.
    * Returns a complete export of all personal data stored about the user.
+   * Uses extended timeout (2 minutes) as data export can take longer for users with lots of data.
    */
   downloadMyData: async (): Promise<UserDataExport> => {
-    return apiClient.get<UserDataExport>('/users/me/data-export');
+    return apiClient.get<UserDataExport>('/users/me/data-export', { timeout: 120000 });
   },
 
 };
