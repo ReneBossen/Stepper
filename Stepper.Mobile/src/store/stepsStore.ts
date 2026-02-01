@@ -7,6 +7,8 @@ import {
   RecordStepsRequest,
 } from '@services/api/stepsApi';
 import { getErrorMessage } from '@utils/errorUtils';
+import { track, setUserProperties } from '@services/analytics';
+import type { HealthProvider } from '@services/analytics/analyticsTypes';
 
 // Re-export types for consumers
 export type { StepEntry, StepStats, DailyStepsResponse, RecordStepsRequest };
@@ -99,6 +101,15 @@ export const useStepsStore = create<StepsState>((set, get) => ({
       };
       await stepsApi.addSteps(request);
       const today = await stepsApi.getTodaySteps();
+
+      // Track step entry added event
+      const entrySource = (source === 'healthkit' || source === 'googlefit') ? source : 'manual';
+      track('step_entry_added', {
+        source: entrySource as 'healthkit' | 'googlefit' | 'manual',
+        steps,
+        distance_km: distanceMeters ? distanceMeters / 1000 : undefined,
+      });
+
       set({
         todaySteps: today.totalSteps,
         todayDistance: today.totalDistanceMeters,

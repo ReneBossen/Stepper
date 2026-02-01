@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { authApi } from '@services/api/authApi';
 import { tokenStorage } from '@services/tokenStorage';
 import { getErrorMessage } from '@utils/errorUtils';
+import { track, identify, reset as resetAnalytics, setUserProperties } from '@services/analytics';
 import type { AuthUser } from '../types/auth';
 
 interface AuthState {
@@ -38,6 +39,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         response.expiresIn
       );
 
+      // Identify user in analytics
+      identify(response.user.id, {});
+
+      // Track login event
+      track('login_completed', { method: 'email' });
+
       set({
         user: response.user,
         isAuthenticated: true,
@@ -63,6 +70,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         response.refreshToken,
         response.expiresIn
       );
+
+      // Identify user in analytics
+      identify(response.user.id, {});
+
+      // Track registration events
+      track('registration_completed', {});
+      track('registration_method', { method: 'email' });
 
       set({
         user: response.user,
@@ -90,6 +104,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Clear tokens locally regardless of server response
       await tokenStorage.clearTokens();
 
+      // Track logout event
+      track('logout_completed', {});
+
+      // Reset analytics identity
+      resetAnalytics();
+
       set({
         user: null,
         isAuthenticated: false,
@@ -98,6 +118,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (error: unknown) {
       // Still clear local state even if server logout fails
       await tokenStorage.clearTokens();
+
+      // Track logout event even on error
+      track('logout_completed', {});
+
+      // Reset analytics identity
+      resetAnalytics();
+
       set({
         user: null,
         isAuthenticated: false,

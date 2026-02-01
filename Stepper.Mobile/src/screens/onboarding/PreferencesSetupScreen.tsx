@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Text, Button, SegmentedButtons, TextInput, Menu } from 'react-native-paper';
 import { OnboardingStackScreenProps } from '@navigation/types';
 import { useAppTheme } from '@hooks/useAppTheme';
 import { useUserStore, UserPreferencesUpdate, PrivacyLevel } from '@store/userStore';
 import { getErrorMessage } from '@utils/errorUtils';
+import { track, setUserProperties } from '@services/analytics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 
@@ -15,6 +16,7 @@ export default function PreferencesSetupScreen({ navigation }: Props) {
   const updateProfile = useUserStore((state) => state.updateProfile);
   const updatePreferences = useUserStore((state) => state.updatePreferences);
   const currentUser = useUserStore((state) => state.currentUser);
+  const hasTrackedStep = useRef(false);
 
   const [units, setUnits] = useState<'metric' | 'imperial'>('metric');
   const [dailyStepGoal, setDailyStepGoal] = useState(10000);
@@ -24,6 +26,14 @@ export default function PreferencesSetupScreen({ navigation }: Props) {
   const [showSteps, setShowSteps] = useState<PrivacyLevel>('partial');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Track preferences step on mount (step 5 in onboarding flow)
+  useEffect(() => {
+    if (!hasTrackedStep.current) {
+      track('onboarding_step_completed', { step_number: 5, step_name: 'preferences' });
+      hasTrackedStep.current = true;
+    }
+  }, []);
 
   const privacyOptions: { value: PrivacyLevel; label: string }[] = [
     { value: 'public', label: 'Everyone' },
@@ -48,6 +58,16 @@ export default function PreferencesSetupScreen({ navigation }: Props) {
 
       // Mark onboarding as completed
       await updateProfile({
+        onboarding_completed: true,
+      });
+
+      // Track onboarding completed event
+      track('onboarding_completed', {});
+
+      // Set user properties for preferences
+      setUserProperties({
+        daily_step_goal: dailyStepGoal,
+        units,
         onboarding_completed: true,
       });
 

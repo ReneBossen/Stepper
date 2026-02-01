@@ -6,3 +6,4 @@ export type { PrivacySettingType } from './PrivacyModal';
 export { SignOutDialog } from './SignOutDialog';
 export { ChangePasswordModal } from './ChangePasswordModal';
 export { HealthDataModal } from './HealthDataModal';
+export { AnalyticsSettingsModal } from './AnalyticsSettingsModal';

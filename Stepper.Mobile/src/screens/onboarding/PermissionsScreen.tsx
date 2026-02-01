@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Text, Button, Card, IconButton } from 'react-native-paper';
 import { OnboardingStackScreenProps } from '@navigation/types';
 import { useAppTheme } from '@hooks/useAppTheme';
+import { track } from '@services/analytics';
 import OnboardingLayout from './components/OnboardingLayout';
 import * as Notifications from 'expo-notifications';
 
@@ -14,6 +15,15 @@ export default function PermissionsScreen({ navigation }: Props) {
   const { paperTheme } = useAppTheme();
   const [notificationStatus, setNotificationStatus] = useState<PermissionStatus>('undetermined');
   const [isLoading, setIsLoading] = useState(false);
+  const hasTrackedStep = useRef(false);
+
+  // Track permissions step on mount (step 3 in onboarding flow)
+  useEffect(() => {
+    if (!hasTrackedStep.current) {
+      track('onboarding_step_completed', { step_number: 3, step_name: 'permissions' });
+      hasTrackedStep.current = true;
+    }
+  }, []);
 
   const handleRequestNotifications = async () => {
     try {
@@ -61,7 +71,14 @@ export default function PermissionsScreen({ navigation }: Props) {
       'Some features may not work properly without permissions. You can enable them later in Settings.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Skip Anyway', onPress: handleContinue },
+        {
+          text: 'Skip Anyway',
+          onPress: () => {
+            // Track onboarding skipped event when user skips permissions
+            track('onboarding_skipped', {});
+            handleContinue();
+          },
+        },
       ]
     );
   };

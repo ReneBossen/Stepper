@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { View, FlatList, StyleSheet, RefreshControl, Alert } from 'react-native';
 import {
   Appbar,
@@ -17,6 +17,7 @@ import { LeaderboardItem } from './components';
 import { useGroupsStore, LeaderboardEntry } from '@store/groupsStore';
 import { groupsApi } from '@services/api/groupsApi';
 import { getCompetitionTypeLabelFull, getPeriodLabel } from '@utils/groupUtils';
+import { track } from '@services/analytics';
 import type { GroupsStackScreenProps, GroupsStackParamList } from '@navigation/types';
 
 type Props = GroupsStackScreenProps<'GroupDetail'>;
@@ -44,6 +45,7 @@ export default function GroupDetailScreen({ route }: Props) {
     leaveGroup,
     clearCurrentGroup,
   } = useGroupsStore();
+  const hasTrackedLeaderboard = useRef(false);
 
   // Fetch group and leaderboard data
   const loadData = useCallback(async () => {
@@ -51,6 +53,15 @@ export default function GroupDetailScreen({ route }: Props) {
       fetchGroup(groupId),
       fetchLeaderboard(groupId),
     ]);
+
+    // Track leaderboard viewed event (only once per screen visit)
+    if (!hasTrackedLeaderboard.current) {
+      track('leaderboard_viewed', {
+        leaderboard_type: 'group',
+        group_id: groupId,
+      });
+      hasTrackedLeaderboard.current = true;
+    }
   }, [groupId, fetchGroup, fetchLeaderboard]);
 
   // Load data on mount

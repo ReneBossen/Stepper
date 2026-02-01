@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, FlatList, Dimensions, TouchableOpacity, ListRenderItem } from 'react-native';
 import { Text, Button } from 'react-native-paper';
 import { OnboardingStackScreenProps } from '@navigation/types';
 import { useAppTheme } from '@hooks/useAppTheme';
+import { track } from '@services/analytics';
 import OnboardingLayout from './components/OnboardingLayout';
 
 type Props = OnboardingStackScreenProps<'WelcomeCarousel'>;
@@ -41,9 +42,18 @@ export default function WelcomeCarouselScreen({ navigation }: Props) {
   const { paperTheme } = useAppTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
+  const trackedSteps = useRef<Set<number>>(new Set());
+
+  // Track the first step on mount
+  useEffect(() => {
+    track('onboarding_step_completed', { step_number: 1, step_name: 'welcome' });
+    trackedSteps.current.add(0);
+  }, []);
 
   const handleSkip = () => {
-    navigation.navigate('Permissions');
+    // Track onboarding skipped event
+    track('onboarding_skipped', {});
+    navigation.navigate('AnalyticsConsent');
   };
 
   const handleNext = () => {
@@ -52,7 +62,7 @@ export default function WelcomeCarouselScreen({ navigation }: Props) {
       flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
       setCurrentIndex(nextIndex);
     } else {
-      navigation.navigate('Permissions');
+      navigation.navigate('AnalyticsConsent');
     }
   };
 
@@ -60,6 +70,16 @@ export default function WelcomeCarouselScreen({ navigation }: Props) {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
     const index = Math.round(contentOffsetX / screenWidth);
     setCurrentIndex(index);
+
+    // Track step completion if not already tracked
+    if (!trackedSteps.current.has(index)) {
+      const stepNames = ['welcome', 'insights', 'social'];
+      track('onboarding_step_completed', {
+        step_number: index + 1,
+        step_name: stepNames[index] || 'unknown',
+      });
+      trackedSteps.current.add(index);
+    }
   };
 
   const renderSlide: ListRenderItem<WelcomeSlide> = ({ item }) => (
