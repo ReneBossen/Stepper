@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { TextInput, Button, Text, Checkbox, Surface } from 'react-native-paper';
+import { useFocusEffect } from '@react-navigation/native';
 import { AuthStackScreenProps } from '@navigation/types';
 import { useAppTheme } from '@hooks/useAppTheme';
 import AuthLayout from './components/AuthLayout';
@@ -36,9 +37,49 @@ export default function RegisterScreen({ navigation }: Props) {
     toggleConfirmPasswordVisibility,
     isLoading,
     error,
+    fieldErrors,
+    clearFieldError,
+    resetForm,
     registrationSuccess,
     handleRegister,
   } = useRegister();
+
+  // Reset form state when screen comes into focus to fix keyboard issues
+  useFocusEffect(
+    useCallback(() => {
+      // Screen focused - no action needed on focus
+      return () => {
+        // Cleanup when leaving screen - reset form for clean state on return
+        resetForm();
+      };
+    }, [resetForm])
+  );
+
+  // Handlers that clear field errors when user types
+  const handleDisplayNameChange = useCallback((text: string) => {
+    setDisplayName(text);
+    clearFieldError('displayName');
+  }, [setDisplayName, clearFieldError]);
+
+  const handleEmailChange = useCallback((text: string) => {
+    setEmail(text);
+    clearFieldError('email');
+  }, [setEmail, clearFieldError]);
+
+  const handlePasswordChange = useCallback((text: string) => {
+    setPassword(text);
+    clearFieldError('password');
+  }, [setPassword, clearFieldError]);
+
+  const handleConfirmPasswordChange = useCallback((text: string) => {
+    setConfirmPassword(text);
+    clearFieldError('confirmPassword');
+  }, [setConfirmPassword, clearFieldError]);
+
+  const handleTermsToggle = useCallback(() => {
+    setAgreedToTerms(!agreedToTerms);
+    clearFieldError('terms');
+  }, [agreedToTerms, setAgreedToTerms, clearFieldError]);
 
   if (registrationSuccess) {
     return (
@@ -75,40 +116,46 @@ export default function RegisterScreen({ navigation }: Props) {
         <TextInput
           label="Display Name"
           value={displayName}
-          onChangeText={setDisplayName}
+          onChangeText={handleDisplayNameChange}
           autoCapitalize="words"
           autoComplete="name"
+          textContentType="name"
           autoCorrect={false}
           mode="outlined"
           style={styles.input}
           disabled={isLoading}
+          error={!!fieldErrors.displayName}
           left={<TextInput.Icon icon="account" />}
         />
 
         <TextInput
           label="Email"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={handleEmailChange}
           keyboardType="email-address"
           autoCapitalize="none"
           autoComplete="email"
+          textContentType="emailAddress"
           autoCorrect={false}
           mode="outlined"
           style={styles.input}
           disabled={isLoading}
+          error={!!fieldErrors.email}
           left={<TextInput.Icon icon="email" />}
         />
 
         <TextInput
           label="Password"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={handlePasswordChange}
           secureTextEntry={!showPassword}
           autoCapitalize="none"
           autoComplete="password-new"
+          textContentType="newPassword"
           mode="outlined"
           style={styles.input}
           disabled={isLoading}
+          error={!!fieldErrors.password}
           left={<TextInput.Icon icon="lock" />}
           right={
             <TextInput.Icon
@@ -123,13 +170,15 @@ export default function RegisterScreen({ navigation }: Props) {
         <TextInput
           label="Confirm Password"
           value={confirmPassword}
-          onChangeText={setConfirmPassword}
+          onChangeText={handleConfirmPasswordChange}
           secureTextEntry={!showConfirmPassword}
           autoCapitalize="none"
           autoComplete="password-new"
+          textContentType="newPassword"
           mode="outlined"
           style={styles.input}
           disabled={isLoading}
+          error={!!fieldErrors.confirmPassword}
           left={<TextInput.Icon icon="lock-check" />}
           right={
             <TextInput.Icon
@@ -139,11 +188,19 @@ export default function RegisterScreen({ navigation }: Props) {
           }
         />
 
-        <View style={styles.checkboxContainer}>
+        <View
+          style={[
+            styles.checkboxContainer,
+            fieldErrors.terms && styles.checkboxContainerError,
+            fieldErrors.terms && { borderColor: paperTheme.colors.error },
+          ]}
+        >
           <Checkbox
             status={agreedToTerms ? 'checked' : 'unchecked'}
-            onPress={() => setAgreedToTerms(!agreedToTerms)}
+            onPress={handleTermsToggle}
             disabled={isLoading}
+            uncheckedColor={paperTheme.colors.outline}
+            color={paperTheme.colors.primary}
           />
           <Text variant="bodyMedium" style={styles.checkboxText}>
             I agree to the{' '}
@@ -220,6 +277,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
+    borderRadius: 8,
+    padding: 4,
+    marginHorizontal: -4,
+  },
+  checkboxContainerError: {
+    borderWidth: 1,
   },
   checkboxText: {
     flex: 1,

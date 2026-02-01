@@ -1,7 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '@store/authStore';
 import { getErrorMessage } from '@utils/errorUtils';
 import { track } from '@services/analytics';
+
+export interface FieldErrors {
+  displayName?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+  terms?: boolean;
+}
 
 export const useRegister = () => {
   const [displayName, setDisplayName] = useState('');
@@ -12,6 +20,7 @@ export const useRegister = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const hasTrackedStart = useRef(false);
 
@@ -51,21 +60,51 @@ export const useRegister = () => {
     return hasLetter && hasNumber;
   };
 
+  const clearFieldError = useCallback((field: keyof FieldErrors) => {
+    setFieldErrors((prev) => {
+      if (prev[field] === undefined) return prev;
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  }, []);
+
+  const resetForm = useCallback(() => {
+    setDisplayName('');
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
+    setAgreedToTerms(false);
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+    setError(null);
+    setFieldErrors({});
+    setRegistrationSuccess(false);
+    hasTrackedStart.current = false;
+  }, []);
+
   const handleRegister = async () => {
     setError(null);
+    setFieldErrors({});
     setRegistrationSuccess(false);
+
+    const newFieldErrors: FieldErrors = {};
 
     // Validate display name
     if (!displayName.trim()) {
       const errorMsg = 'Display name is required';
+      newFieldErrors.displayName = errorMsg;
       setError(errorMsg);
+      setFieldErrors(newFieldErrors);
       track('validation_error', { field: 'display_name', error_message: errorMsg });
       return;
     }
 
     if (!validateDisplayName(displayName)) {
       const errorMsg = 'Display name must be 2-50 characters and contain only letters, numbers, spaces, hyphens, or apostrophes';
+      newFieldErrors.displayName = errorMsg;
       setError(errorMsg);
+      setFieldErrors(newFieldErrors);
       track('validation_error', { field: 'display_name', error_message: errorMsg });
       return;
     }
@@ -73,14 +112,18 @@ export const useRegister = () => {
     // Validate email
     if (!email.trim()) {
       const errorMsg = 'Email is required';
+      newFieldErrors.email = errorMsg;
       setError(errorMsg);
+      setFieldErrors(newFieldErrors);
       track('validation_error', { field: 'email', error_message: errorMsg });
       return;
     }
 
     if (!validateEmail(email)) {
       const errorMsg = 'Please enter a valid email address';
+      newFieldErrors.email = errorMsg;
       setError(errorMsg);
+      setFieldErrors(newFieldErrors);
       track('validation_error', { field: 'email', error_message: errorMsg });
       return;
     }
@@ -88,14 +131,18 @@ export const useRegister = () => {
     // Validate password
     if (!password) {
       const errorMsg = 'Password is required';
+      newFieldErrors.password = errorMsg;
       setError(errorMsg);
+      setFieldErrors(newFieldErrors);
       track('validation_error', { field: 'password', error_message: errorMsg });
       return;
     }
 
     if (!validatePassword(password)) {
       const errorMsg = 'Password must be at least 8 characters and contain both letters and numbers';
+      newFieldErrors.password = errorMsg;
       setError(errorMsg);
+      setFieldErrors(newFieldErrors);
       track('validation_error', { field: 'password', error_message: errorMsg });
       return;
     }
@@ -103,7 +150,9 @@ export const useRegister = () => {
     // Validate confirm password
     if (password !== confirmPassword) {
       const errorMsg = 'Passwords do not match';
+      newFieldErrors.confirmPassword = errorMsg;
       setError(errorMsg);
+      setFieldErrors(newFieldErrors);
       track('validation_error', { field: 'confirm_password', error_message: errorMsg });
       return;
     }
@@ -111,7 +160,9 @@ export const useRegister = () => {
     // Validate terms agreement
     if (!agreedToTerms) {
       const errorMsg = 'You must agree to the Terms of Service and Privacy Policy';
+      newFieldErrors.terms = true;
       setError(errorMsg);
+      setFieldErrors(newFieldErrors);
       track('validation_error', { field: 'terms', error_message: errorMsg });
       return;
     }
@@ -149,6 +200,9 @@ export const useRegister = () => {
     toggleConfirmPasswordVisibility,
     isLoading,
     error,
+    fieldErrors,
+    clearFieldError,
+    resetForm,
     registrationSuccess,
     handleRegister,
   };

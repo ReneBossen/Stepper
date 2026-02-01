@@ -5,6 +5,12 @@ import { useRegister } from '../hooks/useRegister';
 
 // Mock dependencies
 jest.mock('../hooks/useRegister');
+jest.mock('@react-navigation/native', () => ({
+  useFocusEffect: jest.fn((callback) => {
+    // Execute the callback immediately for testing
+    callback();
+  }),
+}));
 jest.mock('@hooks/useAppTheme', () => ({
   useAppTheme: () => ({
     paperTheme: {
@@ -43,6 +49,12 @@ jest.mock('../components/PasswordStrengthIndicator', () => ({
     const React = require('react');
     return password ? React.createElement('Text', { testID: 'password-strength' }, `Strength: ${password}`) : null;
   },
+}));
+
+jest.mock('@screens/legal', () => ({
+  LegalModal: () => null,
+  TERMS_OF_SERVICE_CONTENT: 'Terms content',
+  PRIVACY_POLICY_CONTENT: 'Privacy content',
 }));
 
 jest.mock('react-native-paper', () => {
@@ -103,12 +115,52 @@ jest.mock('react-native-paper', () => {
     Surface: ({ children, testID }: any) => {
       return React.createElement('View', { testID: testID || 'surface' }, children);
     },
+    useTheme: () => ({
+      colors: {
+        primary: '#6200ee',
+        background: '#ffffff',
+        surface: '#ffffff',
+        onSurface: '#000000',
+        onSurfaceVariant: '#49454F',
+      },
+    }),
+    Portal: ({ children }: any) => children,
+    Modal: ({ children, visible }: any) => visible ? React.createElement('View', { testID: 'modal' }, children) : null,
+    IconButton: ({ onPress, icon, testID }: any) =>
+      React.createElement('TouchableOpacity', { onPress, testID: testID || `icon-${icon}` }),
+    Divider: () => React.createElement('View', { testID: 'divider' }),
   };
 });
 
 const mockNavigation = {
   navigate: jest.fn(),
 };
+
+// Base mock values for useRegister hook
+const createMockUseRegisterReturn = (overrides = {}) => ({
+  displayName: '',
+  setDisplayName: jest.fn(),
+  email: '',
+  setEmail: jest.fn(),
+  password: '',
+  setPassword: jest.fn(),
+  confirmPassword: '',
+  setConfirmPassword: jest.fn(),
+  agreedToTerms: false,
+  setAgreedToTerms: jest.fn(),
+  showPassword: false,
+  showConfirmPassword: false,
+  togglePasswordVisibility: jest.fn(),
+  toggleConfirmPasswordVisibility: jest.fn(),
+  isLoading: false,
+  error: null,
+  fieldErrors: {},
+  clearFieldError: jest.fn(),
+  resetForm: jest.fn(),
+  registrationSuccess: false,
+  handleRegister: jest.fn(),
+  ...overrides,
+});
 
 describe('RegisterScreen', () => {
   const mockUseRegister = useRegister as jest.MockedFunction<typeof useRegister>;
@@ -119,26 +171,7 @@ describe('RegisterScreen', () => {
 
   describe('RegisterScreen_Rendering_DisplaysAllElements', () => {
     it('RegisterScreen_WhenRendered_DisplaysTitle', () => {
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
-        email: '',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
-        registrationSuccess: false,
-        handleRegister: jest.fn(),
-      });
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn());
 
       const { getByTestId } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -146,26 +179,7 @@ describe('RegisterScreen', () => {
     });
 
     it('RegisterScreen_WhenRendered_DisplaysAllInputs', () => {
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
-        email: '',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
-        registrationSuccess: false,
-        handleRegister: jest.fn(),
-      });
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn());
 
       const { getByPlaceholderText } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -176,26 +190,7 @@ describe('RegisterScreen', () => {
     });
 
     it('RegisterScreen_WhenRendered_DisplaysTermsCheckbox', () => {
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
-        email: '',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
-        registrationSuccess: false,
-        handleRegister: jest.fn(),
-      });
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn());
 
       const { getByTestId } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -203,26 +198,7 @@ describe('RegisterScreen', () => {
     });
 
     it('RegisterScreen_WhenRendered_DisplaysSignUpButton', () => {
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
-        email: '',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
-        registrationSuccess: false,
-        handleRegister: jest.fn(),
-      });
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn());
 
       const { getByText } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -233,26 +209,7 @@ describe('RegisterScreen', () => {
   describe('RegisterScreen_InputHandling_UpdatesState', () => {
     it('RegisterScreen_WhenDisplayNameChanged_CallsSetDisplayName', () => {
       const setDisplayName = jest.fn();
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName,
-        email: '',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
-        registrationSuccess: false,
-        handleRegister: jest.fn(),
-      });
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn({ setDisplayName }));
 
       const { getByPlaceholderText } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -263,26 +220,7 @@ describe('RegisterScreen', () => {
 
     it('RegisterScreen_WhenEmailChanged_CallsSetEmail', () => {
       const setEmail = jest.fn();
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
-        email: '',
-        setEmail,
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
-        registrationSuccess: false,
-        handleRegister: jest.fn(),
-      });
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn({ setEmail }));
 
       const { getByPlaceholderText } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -293,26 +231,7 @@ describe('RegisterScreen', () => {
 
     it('RegisterScreen_WhenPasswordChanged_CallsSetPassword', () => {
       const setPassword = jest.fn();
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
-        email: '',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword,
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
-        registrationSuccess: false,
-        handleRegister: jest.fn(),
-      });
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn({ setPassword }));
 
       const { getByPlaceholderText } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -323,26 +242,7 @@ describe('RegisterScreen', () => {
 
     it('RegisterScreen_WhenConfirmPasswordChanged_CallsSetConfirmPassword', () => {
       const setConfirmPassword = jest.fn();
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
-        email: '',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword,
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
-        registrationSuccess: false,
-        handleRegister: jest.fn(),
-      });
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn({ setConfirmPassword }));
 
       const { getByPlaceholderText } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -355,26 +255,7 @@ describe('RegisterScreen', () => {
   describe('RegisterScreen_TermsCheckbox_TogglesCorrectly', () => {
     it('RegisterScreen_WhenCheckboxPressed_TogglesAgreedToTerms', () => {
       const setAgreedToTerms = jest.fn();
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
-        email: '',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms,
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
-        registrationSuccess: false,
-        handleRegister: jest.fn(),
-      });
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn({ setAgreedToTerms }));
 
       const { getByTestId } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -384,26 +265,7 @@ describe('RegisterScreen', () => {
     });
 
     it('RegisterScreen_WhenAgreedToTermsTrue_DisplaysCheckedCheckbox', () => {
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
-        email: '',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: true,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
-        registrationSuccess: false,
-        handleRegister: jest.fn(),
-      });
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn({ agreedToTerms: true }));
 
       const { getByTestId } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -414,26 +276,14 @@ describe('RegisterScreen', () => {
   describe('RegisterScreen_SignUpButton_HandlesRegistration', () => {
     it('RegisterScreen_WhenSignUpPressed_CallsHandleRegister', () => {
       const handleRegister = jest.fn();
-      mockUseRegister.mockReturnValue({
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn({
         displayName: 'John Doe',
-        setDisplayName: jest.fn(),
         email: 'test@example.com',
-        setEmail: jest.fn(),
         password: 'password123',
-        setPassword: jest.fn(),
         confirmPassword: 'password123',
-        setConfirmPassword: jest.fn(),
         agreedToTerms: true,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
-        registrationSuccess: false,
         handleRegister,
-      });
+      }));
 
       const { getByText } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -444,26 +294,10 @@ describe('RegisterScreen', () => {
 
     it('RegisterScreen_WhenLoading_DisablesSignUpButton', () => {
       const handleRegister = jest.fn();
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
-        email: '',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn({
         isLoading: true,
-        error: null,
-        registrationSuccess: false,
         handleRegister,
-      });
+      }));
 
       const { getByText } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -476,26 +310,7 @@ describe('RegisterScreen', () => {
 
   describe('RegisterScreen_PasswordStrength_DisplaysCorrectly', () => {
     it('RegisterScreen_WhenPasswordEntered_DisplaysPasswordStrength', () => {
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
-        email: '',
-        setEmail: jest.fn(),
-        password: 'password123',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
-        registrationSuccess: false,
-        handleRegister: jest.fn(),
-      });
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn({ password: 'password123' }));
 
       const { getByTestId } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -503,26 +318,7 @@ describe('RegisterScreen', () => {
     });
 
     it('RegisterScreen_WhenNoPassword_DoesNotDisplayPasswordStrength', () => {
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
-        email: '',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
-        registrationSuccess: false,
-        handleRegister: jest.fn(),
-      });
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn());
 
       const { queryByTestId } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -532,26 +328,10 @@ describe('RegisterScreen', () => {
 
   describe('RegisterScreen_SuccessState_DisplaysSuccessScreen', () => {
     it('RegisterScreen_WhenRegistrationSuccess_DisplaysSuccessMessage', () => {
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn({
         email: 'test@example.com',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
         registrationSuccess: true,
-        handleRegister: jest.fn(),
-      });
+      }));
 
       const { getByText } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -560,26 +340,10 @@ describe('RegisterScreen', () => {
     });
 
     it('RegisterScreen_WhenRegistrationSuccess_DisplaysBackToLoginButton', () => {
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn({
         email: 'test@example.com',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
         registrationSuccess: true,
-        handleRegister: jest.fn(),
-      });
+      }));
 
       const { getByText } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -587,26 +351,10 @@ describe('RegisterScreen', () => {
     });
 
     it('RegisterScreen_WhenBackToLoginPressed_NavigatesToLogin', () => {
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn({
         email: 'test@example.com',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
         registrationSuccess: true,
-        handleRegister: jest.fn(),
-      });
+      }));
 
       const { getByText } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -618,26 +366,9 @@ describe('RegisterScreen', () => {
 
   describe('RegisterScreen_ErrorHandling_DisplaysErrors', () => {
     it('RegisterScreen_WhenErrorExists_DisplaysErrorMessage', () => {
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
-        email: '',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn({
         error: 'Email already exists',
-        registrationSuccess: false,
-        handleRegister: jest.fn(),
-      });
+      }));
 
       const { getByTestId } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -647,26 +378,7 @@ describe('RegisterScreen', () => {
 
   describe('RegisterScreen_LoadingState_DisablesInputs', () => {
     it('RegisterScreen_WhenLoading_DisablesAllInputs', () => {
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
-        email: '',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: true,
-        error: null,
-        registrationSuccess: false,
-        handleRegister: jest.fn(),
-      });
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn({ isLoading: true }));
 
       const { getByPlaceholderText } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
@@ -679,32 +391,29 @@ describe('RegisterScreen', () => {
 
   describe('RegisterScreen_Navigation_WorksCorrectly', () => {
     it('RegisterScreen_WhenSignInPressed_NavigatesToLogin', () => {
-      mockUseRegister.mockReturnValue({
-        displayName: '',
-        setDisplayName: jest.fn(),
-        email: '',
-        setEmail: jest.fn(),
-        password: '',
-        setPassword: jest.fn(),
-        confirmPassword: '',
-        setConfirmPassword: jest.fn(),
-        agreedToTerms: false,
-        setAgreedToTerms: jest.fn(),
-        showPassword: false,
-        showConfirmPassword: false,
-        togglePasswordVisibility: jest.fn(),
-        toggleConfirmPasswordVisibility: jest.fn(),
-        isLoading: false,
-        error: null,
-        registrationSuccess: false,
-        handleRegister: jest.fn(),
-      });
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn());
 
       const { getByText } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
 
       fireEvent.press(getByText('Sign In'));
 
       expect(mockNavigation.navigate).toHaveBeenCalledWith('Login');
+    });
+  });
+
+  describe('RegisterScreen_FieldErrors_DisplaysErrorState', () => {
+    it('RegisterScreen_WhenFieldErrorsExist_ClearsOnInput', () => {
+      const clearFieldError = jest.fn();
+      mockUseRegister.mockReturnValue(createMockUseRegisterReturn({
+        fieldErrors: { displayName: 'Display name is required' },
+        clearFieldError,
+      }));
+
+      const { getByPlaceholderText } = render(<RegisterScreen navigation={mockNavigation as any} route={{} as any} />);
+
+      fireEvent.changeText(getByPlaceholderText('Display Name'), 'John');
+
+      expect(clearFieldError).toHaveBeenCalledWith('displayName');
     });
   });
 });
