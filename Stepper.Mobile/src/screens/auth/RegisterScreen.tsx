@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { TextInput, Button, Text, Checkbox, Surface } from 'react-native-paper';
 import { AuthStackScreenProps } from '@navigation/types';
@@ -7,11 +7,18 @@ import AuthLayout from './components/AuthLayout';
 import AuthErrorMessage from './components/AuthErrorMessage';
 import PasswordStrengthIndicator from './components/PasswordStrengthIndicator';
 import { useRegister } from './hooks/useRegister';
+import {
+  LegalModal,
+  TERMS_OF_SERVICE_CONTENT,
+  PRIVACY_POLICY_CONTENT,
+} from '@screens/legal';
 
 type Props = AuthStackScreenProps<'Register'>;
 
 export default function RegisterScreen({ navigation }: Props) {
   const { paperTheme } = useAppTheme();
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const {
     displayName,
     setDisplayName,
@@ -140,9 +147,23 @@ export default function RegisterScreen({ navigation }: Props) {
           />
           <Text variant="bodyMedium" style={styles.checkboxText}>
             I agree to the{' '}
-            <Text style={{ color: paperTheme.colors.primary }}>Terms of Service</Text>
+            <Text
+              style={{ color: paperTheme.colors.primary }}
+              onPress={() => setShowTermsModal(true)}
+              accessibilityRole="link"
+              accessibilityLabel="View Terms of Service"
+            >
+              Terms of Service
+            </Text>
             {' '}and{' '}
-            <Text style={{ color: paperTheme.colors.primary }}>Privacy Policy</Text>
+            <Text
+              style={{ color: paperTheme.colors.primary }}
+              onPress={() => setShowPrivacyModal(true)}
+              accessibilityRole="link"
+              accessibilityLabel="View Privacy Policy"
+            >
+              Privacy Policy
+            </Text>
           </Text>
         </View>
 
@@ -172,6 +193,20 @@ export default function RegisterScreen({ navigation }: Props) {
             </Text>
           </TouchableOpacity>
         </View>
+
+        <LegalModal
+          visible={showTermsModal}
+          onDismiss={() => setShowTermsModal(false)}
+          title="Terms of Service"
+          content={TERMS_OF_SERVICE_CONTENT}
+        />
+
+        <LegalModal
+          visible={showPrivacyModal}
+          onDismiss={() => setShowPrivacyModal(false)}
+          title="Privacy Policy"
+          content={PRIVACY_POLICY_CONTENT}
+        />
       </View>
     </AuthLayout>
   );

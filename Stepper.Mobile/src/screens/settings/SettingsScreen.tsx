@@ -26,6 +26,11 @@ import {
   HealthDataModal,
   AnalyticsSettingsModal,
 } from './components';
+import {
+  LegalModal,
+  TERMS_OF_SERVICE_CONTENT,
+  PRIVACY_POLICY_CONTENT,
+} from '@screens/legal';
 import { useAnalyticsStore, selectHasConsent } from '@store/analyticsStore';
 import { useStepTracking } from '@hooks/useStepTracking';
 import type { PrivacySettingType } from './components';
@@ -34,10 +39,6 @@ import { authApi } from '@services/api/authApi';
 
 // App version from app.json (would use expo-application in production)
 const APP_VERSION = '1.0.0';
-
-// External URLs
-const TERMS_URL = 'https://stepper.com/terms';
-const PRIVACY_URL = 'https://stepper.com/privacy';
 
 type NavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'Settings'>;
 
@@ -65,6 +66,8 @@ export default function SettingsScreen() {
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showHealthDataModal, setShowHealthDataModal] = useState(false);
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPrivacyPolicyModal, setShowPrivacyPolicyModal] = useState(false);
 
   // Health tracking state
   const { isEnabled: isHealthTrackingEnabled } = useStepTracking();
@@ -263,15 +266,11 @@ export default function SettingsScreen() {
 
   // External links handlers
   const handleTermsPress = useCallback(() => {
-    Linking.openURL(TERMS_URL).catch(() => {
-      Alert.alert('Error', 'Unable to open Terms of Service');
-    });
+    setShowTermsModal(true);
   }, []);
 
   const handlePrivacyPolicyPress = useCallback(() => {
-    Linking.openURL(PRIVACY_URL).catch(() => {
-      Alert.alert('Error', 'Unable to open Privacy Policy');
-    });
+    setShowPrivacyPolicyModal(true);
   }, []);
 
   // Sign out handlers
@@ -547,19 +546,19 @@ export default function SettingsScreen() {
           <List.Item
             title="Terms of Service"
             left={(props) => <List.Icon {...props} icon="file-document" />}
-            right={(props) => <List.Icon {...props} icon="open-in-new" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={handleTermsPress}
             style={styles.listItem}
-            accessibilityLabel="Open Terms of Service"
+            accessibilityLabel="View Terms of Service"
             testID="settings-terms"
           />
           <List.Item
             title="Privacy Policy"
             left={(props) => <List.Icon {...props} icon="shield-lock" />}
-            right={(props) => <List.Icon {...props} icon="open-in-new" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={handlePrivacyPolicyPress}
             style={styles.listItem}
-            accessibilityLabel="Open Privacy Policy"
+            accessibilityLabel="View Privacy Policy"
             testID="settings-privacy-policy"
           />
         </View>
@@ -636,6 +635,20 @@ export default function SettingsScreen() {
         visible={showAnalyticsModal}
         onDismiss={() => setShowAnalyticsModal(false)}
         onSaved={handleAnalyticsSaved}
+      />
+
+      <LegalModal
+        visible={showTermsModal}
+        onDismiss={() => setShowTermsModal(false)}
+        title="Terms of Service"
+        content={TERMS_OF_SERVICE_CONTENT}
+      />
+
+      <LegalModal
+        visible={showPrivacyPolicyModal}
+        onDismiss={() => setShowPrivacyPolicyModal(false)}
+        title="Privacy Policy"
+        content={PRIVACY_POLICY_CONTENT}
       />
 
       <Snackbar
