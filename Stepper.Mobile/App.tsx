@@ -24,6 +24,7 @@ function AppContent() {
   const fetchCurrentUser = useUserStore((state) => state.fetchCurrentUser);
   const initializeAnalytics = useAnalyticsStore((state) => state.initialize);
   const trackEvent = useAnalyticsStore((state) => state.track);
+  const flushAnalytics = useAnalyticsStore((state) => state.flush);
   const appState = useRef(AppState.currentState);
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
   const routeNameRef = useRef<string | undefined>(undefined);
@@ -95,6 +96,8 @@ function AppContent() {
       ) {
         // App is going to background
         trackEvent('session_ended', {});
+        // Flush analytics to ensure events are sent
+        flushAnalytics();
       }
       appState.current = nextAppState;
     });
@@ -102,7 +105,7 @@ function AppContent() {
     return () => {
       subscription.remove();
     };
-  }, [trackEvent]);
+  }, [trackEvent, flushAnalytics]);
 
   // Fetch user profile when authentication state changes to authenticated
   useEffect(() => {

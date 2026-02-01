@@ -161,7 +161,10 @@ export async function initializePostHog(
 
     isInitialized = true;
     isOptedOut = false;
-    console.log('[PostHog] Client initialized successfully');
+
+    if (__DEV__) {
+      console.log('[PostHog] Client initialized successfully');
+    }
 
     return postHogInstance;
   } catch (error) {
@@ -402,7 +405,13 @@ export async function flushEvents(): Promise<void> {
     return;
   }
 
-  await postHogInstance.flush();
+  try {
+    await postHogInstance.flush();
+  } catch (error) {
+    if (__DEV__) {
+      console.error('[PostHog] Flush error:', error);
+    }
+  }
 }
 
 /**

@@ -39,13 +39,15 @@ export const analyticsConfig = {
 
   /**
    * Flush interval for batching events in milliseconds.
+   * In development, flush more frequently for testing.
    */
-  flushIntervalMs: 30000,
+  flushIntervalMs: __DEV__ ? 5000 : 30000,
 
   /**
    * Maximum number of events to queue before forcing a flush.
+   * In development, flush after fewer events for testing.
    */
-  flushAt: 20,
+  flushAt: __DEV__ ? 3 : 20,
 
   /**
    * Session replay configuration.
