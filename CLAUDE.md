@@ -30,6 +30,88 @@ I coordinate, review, and orchestrate. Agents write code.
 
 ---
 
+## Dynamic Skill Routing (HIGHEST PRIORITY)
+
+**Before spawning ANY subagent, I MUST inject relevant skills into the prompt.**
+
+Skills contain domain knowledge, patterns, and conventions that agents need. Agents do NOT load skills automatically - I must provide them.
+
+### Skill Routing Process
+
+**EVERY TIME I spawn a subagent:**
+
+1. **Analyze the task** - What does the agent need to accomplish?
+2. **Consult the skill-index** - The `claude-agents:skill-index` skill lists all available skills
+3. **Identify relevant skills** - Which skills will help this specific task?
+4. **Read the skill files** - Access skills via `claude-agents:{skill-name}` namespace
+5. **Inject into prompt** - Prepend skill content to the task description
+
+**Note:** Skills and agents are provided by the `claude-agents` plugin (github:ReneBossen/claude-agents)
+
+### Prompt Structure for Subagents
+
+```
+## Required Knowledge
+
+{Paste full content of relevant skills here}
+
+---
+
+## Your Task
+
+{The actual task description}
+```
+
+### Skill Selection by Task Type
+
+| Task | Required Skills |
+|------|-----------------|
+| API endpoint development | `screaming-architecture`, `solid-principles`, `supabase-patterns` |
+| Database schema/migration | `supabase-patterns` |
+| Architecture decisions | `screaming-architecture`, `solid-principles` |
+| Feature planning | `screaming-architecture`, `solid-principles` |
+| Code review | `screaming-architecture`, `solid-principles`, `forbidden-actions` |
+| Any agent task | `agent-contract`, `self-training` |
+
+### Always Include
+
+For ALL subagent tasks, always include:
+- `agent-contract` - Non-negotiable behavior rules
+- `self-training` - How to propose new skills
+
+### Example
+
+When spawning backend-engineer to build an API endpoint:
+
+```
+## Required Knowledge
+
+[Content of screaming-architecture/SKILL.md]
+
+[Content of solid-principles/SKILL.md]
+
+[Content of supabase-patterns/SKILL.md]
+
+[Content of agent-contract/SKILL.md]
+
+[Content of self-training/SKILL.md]
+
+---
+
+## Your Task
+
+Build the user profile API endpoint with GET, PUT, and DELETE operations...
+```
+
+### Why This Matters
+
+- Agents run in isolated contexts with no inherited knowledge
+- Skills ensure consistent patterns across all work
+- Dynamic routing means I select skills based on the actual task, not static config
+- This is my PRIMARY RESPONSIBILITY as orchestrator
+
+---
+
 ## Starting a New Plan
 
 **ALWAYS follow this sequence:**
@@ -182,28 +264,44 @@ For longer tasks, provide brief updates:
 
 ---
 
-## Agent Locations
+## Agent & Skill Locations
 
-```
-.claude/agents/
-├── architecture-engineer.md  # Design, documentation, diagrams
-├── database-engineer.md      # Supabase schema, RLS, migrations
-├── backend-engineer.md       # .NET API development
-├── frontend-engineer.md      # React Native/Expo development
-├── planner.md               # Feature planning
-├── tester.md                # Test creation
-└── reviewer.md              # Code review
-```
+### Plugin: github:ReneBossen/claude-agents
 
-## Policy Locations
+Install with: `claude plugin install github:ReneBossen/claude-agents`
+
+**Agents** (use with `claude-agents:` prefix or directly by name):
+- `backend-engineer` - .NET API development
+- `frontend-engineer` - React Native/Expo development
+- `database-engineer` - Supabase schema, RLS, migrations
+- `architecture-engineer` - Design, documentation, diagrams
+- `planner` - Feature planning
+- `tester` - Test creation
+- `reviewer` - Code review (read-only)
+
+**Skills** (injected into agents by orchestrator):
+- `skill-index` - Index of all skills (READ THIS FIRST)
+- `screaming-architecture` - Vertical slice architecture patterns
+- `solid-principles` - SOLID with examples
+- `supabase-patterns` - Database patterns for Supabase
+- `agent-contract` - Non-negotiable agent behavior
+- `forbidden-actions` - Prohibited actions
+- `self-training` - How to propose new skills
+
+### Project-Specific Policies
 
 ```
 .claude/policies/
-├── architecture.md      # Screaming Architecture rules
+├── architecture.md      # Screaming Architecture rules (project-specific)
 ├── coding-standards.md  # Code quality standards
 ├── contract.md         # Non-negotiable principles
 └── forbidden.md        # Prohibited actions
 ```
+
+### Note on Skills vs Policies
+
+- **Skills** (from plugin): Reusable knowledge injected into subagent prompts
+- **Policies** (in .claude/): Project-specific rules that agents read directly
 
 ---
 
@@ -283,10 +381,11 @@ npm test
 
 ## Remember
 
-1. **Never write code directly** - Use agents
-2. **Always sync with master first**
-3. **Read plans completely before starting**
-4. **Review all handoffs carefully**
-5. **Ask when in doubt - always**
-6. **Small commits, clear messages**
-7. **Tests must pass**
+1. **Inject skills before spawning agents** - This is the highest priority
+2. **Never write code directly** - Use agents
+3. **Always sync with master first**
+4. **Read plans completely before starting**
+5. **Review all handoffs carefully**
+6. **Ask when in doubt - always**
+7. **Small commits, clear messages**
+8. **Tests must pass**
