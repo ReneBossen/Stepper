@@ -8,11 +8,12 @@
 // =============================================================================
 
 /**
- * Authentication events (8)
+ * Authentication events (9)
  */
 export type AuthenticationEvent =
   | 'registration_started'
   | 'registration_completed'
+  | 'registration_pending_confirmation'
   | 'registration_method'
   | 'login_completed'
   | 'logout_completed'
@@ -414,6 +415,7 @@ export interface EventPropertiesMap {
   // Authentication events
   registration_started: BaseEventProperties;
   registration_completed: BaseEventProperties;
+  registration_pending_confirmation: RegistrationMethodProperties;
   registration_method: RegistrationMethodProperties;
   login_completed: LoginCompletedProperties;
   logout_completed: BaseEventProperties;

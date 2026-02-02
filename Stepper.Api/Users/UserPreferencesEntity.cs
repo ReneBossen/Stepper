@@ -13,7 +13,7 @@ public class UserPreferencesEntity : BaseModel
     /// <summary>
     /// The user ID (references users.id).
     /// </summary>
-    [PrimaryKey("id", false)]
+    [PrimaryKey("id", true)]
     public Guid Id { get; set; }
 
     /// <summary>

@@ -7,11 +7,13 @@ namespace Stepper.Api.Auth.DTOs;
 /// <param name="RefreshToken">The refresh token for obtaining new access tokens.</param>
 /// <param name="ExpiresIn">The number of seconds until the access token expires.</param>
 /// <param name="User">Information about the authenticated user.</param>
+/// <param name="RequiresEmailConfirmation">Whether the user needs to confirm their email before logging in.</param>
 public record AuthResponse(
     string AccessToken,
     string RefreshToken,
     long ExpiresIn,
-    AuthUserInfo User
+    AuthUserInfo User,
+    bool RequiresEmailConfirmation = false
 );
 
 /// <summary>

@@ -52,14 +52,39 @@ public class AuthService : IAuthService
                     }
                 });
 
+            // When email confirmation is required, we get a user but no access token
+            // This is NOT an error - it means registration succeeded but email needs verification
+            if (session?.User != null && session.AccessToken == null)
+            {
+                _logger.LogInformation("Registration successful for email: {Email}, awaiting email confirmation", request.Email);
+
+                return new AuthResponse(
+                    AccessToken: string.Empty,
+                    RefreshToken: string.Empty,
+                    ExpiresIn: 0,
+                    User: new AuthUserInfo(
+                        Id: Guid.Parse(session.User.Id!),
+                        Email: session.User.Email!,
+                        DisplayName: request.DisplayName
+                    ),
+                    RequiresEmailConfirmation: true
+                );
+            }
+
             EnsureSessionValid(session);
 
             return MapToAuthResponse(session!);
         }
         catch (GotrueException ex)
         {
-            _logger.LogWarning(ex, "Registration failed for email: {Email}", request.Email);
+            _logger.LogWarning(ex, "Registration failed for email: {Email}. Supabase error: {Message}", request.Email, ex.Message);
             throw new InvalidOperationException(GetFriendlyAuthErrorMessage(ex), ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during registration for email: {Email}. Error type: {Type}, Message: {Message}",
+                request.Email, ex.GetType().Name, ex.Message);
+            throw new InvalidOperationException("Registration failed. Please try again.", ex);
         }
     }
 
@@ -438,6 +463,11 @@ public class AuthService : IAuthService
     {
         // Supabase error messages can vary, so we provide friendly alternatives
         var message = ex.Message?.ToLowerInvariant() ?? string.Empty;
+
+        if (message.Contains("rate limit") || message.Contains("over_email_send_rate_limit"))
+        {
+            return "Too many attempts. Please wait a minute and try again.";
+        }
 
         if (message.Contains("already registered") || message.Contains("user already exists"))
         {

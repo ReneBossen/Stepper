@@ -15,11 +15,14 @@ namespace Stepper.Api.Users;
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly ILogger<UsersController> _logger;
 
-    public UsersController(IUserService userService)
+    public UsersController(IUserService userService, ILogger<UsersController> logger)
     {
         ArgumentNullException.ThrowIfNull(userService);
+        ArgumentNullException.ThrowIfNull(logger);
         _userService = userService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -29,27 +32,28 @@ public class UsersController : ControllerBase
     [HttpGet("me")]
     public async Task<ActionResult<ApiResponse<GetProfileResponse>>> GetMyProfile()
     {
+        _logger.LogDebug("GetMyProfile called");
         var userId = User.GetUserId();
 
         if (userId == null)
         {
+            _logger.LogWarning("GetMyProfile: User ID is null - not authenticated");
             return Unauthorized(ApiResponse<GetProfileResponse>.ErrorResponse("User is not authenticated."));
         }
+
+        _logger.LogDebug("GetMyProfile: Fetching profile for user {UserId}", userId.Value);
 
         try
         {
             var profile = await _userService.EnsureProfileExistsAsync(userId.Value);
 
-            if (profile == null)
-            {
-                return NotFound(ApiResponse<GetProfileResponse>.ErrorResponse("Profile not found."));
-            }
-
+            _logger.LogInformation("GetMyProfile: Successfully returned profile for user {UserId}", userId.Value);
             return Ok(ApiResponse<GetProfileResponse>.SuccessResponse(profile));
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ApiResponse<GetProfileResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
+            _logger.LogError(ex, "GetMyProfile: Error for user {UserId}", userId.Value);
+            return StatusCode(500, ApiResponse<GetProfileResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
         }
     }
 
@@ -88,7 +92,8 @@ public class UsersController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ApiResponse<GetProfileResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
+            _logger.LogError(ex, "UpdateMyProfile: Error for user {UserId}", userId.Value);
+            return StatusCode(500, ApiResponse<GetProfileResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
         }
     }
 
@@ -123,7 +128,8 @@ public class UsersController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ApiResponse<GetProfileResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
+            _logger.LogError(ex, "GetProfileById: Error for user {Id}", id);
+            return StatusCode(500, ApiResponse<GetProfileResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
         }
     }
 
@@ -134,25 +140,32 @@ public class UsersController : ControllerBase
     [HttpGet("me/preferences")]
     public async Task<ActionResult<ApiResponse<UserPreferencesResponse>>> GetMyPreferences()
     {
+        _logger.LogDebug("GetMyPreferences called");
         var userId = User.GetUserId();
 
         if (userId == null)
         {
+            _logger.LogWarning("GetMyPreferences: User ID is null - not authenticated");
             return Unauthorized(ApiResponse<UserPreferencesResponse>.ErrorResponse("User is not authenticated."));
         }
+
+        _logger.LogDebug("GetMyPreferences: Fetching preferences for user {UserId}", userId.Value);
 
         try
         {
             var preferences = await _userService.GetPreferencesAsync(userId.Value);
+            _logger.LogInformation("GetMyPreferences: Successfully returned preferences for user {UserId}", userId.Value);
             return Ok(ApiResponse<UserPreferencesResponse>.SuccessResponse(preferences));
         }
         catch (KeyNotFoundException ex)
         {
+            _logger.LogWarning(ex, "GetMyPreferences: Preferences not found for user {UserId}", userId.Value);
             return NotFound(ApiResponse<UserPreferencesResponse>.ErrorResponse(ex.Message));
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ApiResponse<UserPreferencesResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
+            _logger.LogError(ex, "GetMyPreferences: Error for user {UserId}", userId.Value);
+            return StatusCode(500, ApiResponse<UserPreferencesResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
         }
     }
 
@@ -191,7 +204,8 @@ public class UsersController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ApiResponse<UserPreferencesResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
+            _logger.LogError(ex, "UpdateMyPreferences: Error for user {UserId}", userId.Value);
+            return StatusCode(500, ApiResponse<UserPreferencesResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
         }
     }
 
@@ -226,7 +240,8 @@ public class UsersController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ApiResponse<UserDataExportResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
+            _logger.LogError(ex, "ExportMyData: Error for user {UserId}", userId.Value);
+            return StatusCode(500, ApiResponse<UserDataExportResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
         }
     }
 
@@ -272,7 +287,8 @@ public class UsersController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ApiResponse<AvatarUploadResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
+            _logger.LogError(ex, "UploadAvatar: Error for user {UserId}", userId.Value);
+            return StatusCode(500, ApiResponse<AvatarUploadResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
         }
     }
 
@@ -312,7 +328,8 @@ public class UsersController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ApiResponse<UserStatsResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
+            _logger.LogError(ex, "GetUserStats: Error for user {Id}", id);
+            return StatusCode(500, ApiResponse<UserStatsResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
         }
     }
 
@@ -352,7 +369,8 @@ public class UsersController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ApiResponse<UserActivityResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
+            _logger.LogError(ex, "GetUserActivity: Error for user {Id}", id);
+            return StatusCode(500, ApiResponse<UserActivityResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
         }
     }
 
@@ -392,7 +410,8 @@ public class UsersController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ApiResponse<List<MutualGroupResponse>>.ErrorResponse($"An error occurred: {ex.Message}"));
+            _logger.LogError(ex, "GetMutualGroups: Error for users {CurrentUserId} and {OtherUserId}", currentUserId.Value, id);
+            return StatusCode(500, ApiResponse<List<MutualGroupResponse>>.ErrorResponse("An unexpected error occurred. Please try again later."));
         }
     }
 }

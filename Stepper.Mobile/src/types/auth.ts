@@ -24,6 +24,8 @@ export interface AuthResponse {
   refreshToken: string;
   expiresIn: number;
   user: AuthUser;
+  /** Whether the user needs to confirm their email before logging in. */
+  requiresEmailConfirmation?: boolean;
 }
 
 /**
