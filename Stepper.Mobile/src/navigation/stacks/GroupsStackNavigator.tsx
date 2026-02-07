@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GroupsStackParamList } from '../types';
+import { GROUPS_ROUTES } from '../routes';
 
 import GroupsListScreen from '@screens/groups/GroupsListScreen';
 import GroupDetailScreen from '@screens/groups/GroupDetailScreen';
@@ -16,37 +17,37 @@ export default function GroupsStackNavigator() {
   return (
     <Stack.Navigator>
       <Stack.Screen
-        name="GroupsList"
+        name={GROUPS_ROUTES.GroupsList}
         component={GroupsListScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="GroupDetail"
+        name={GROUPS_ROUTES.GroupDetail}
         component={GroupDetailScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="GroupManagement"
+        name={GROUPS_ROUTES.GroupManagement}
         component={GroupManagementScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="CreateGroup"
+        name={GROUPS_ROUTES.CreateGroup}
         component={CreateGroupScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="JoinGroup"
+        name={GROUPS_ROUTES.JoinGroup}
         component={JoinGroupScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="ManageMembers"
+        name={GROUPS_ROUTES.ManageMembers}
         component={ManageMembersScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="InviteMembers"
+        name={GROUPS_ROUTES.InviteMembers}
         component={InviteMembersScreen}
         options={{ headerShown: false }}
       />

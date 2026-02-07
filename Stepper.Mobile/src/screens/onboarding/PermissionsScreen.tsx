@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Text, Button, Card, IconButton, Icon } from 'react-native-paper';
 import { OnboardingStackScreenProps } from '@navigation/types';
+import { ONBOARDING_ROUTES } from '@navigation/routes';
 import { useAppTheme } from '@hooks/useAppTheme';
 import { track } from '@services/analytics';
 import OnboardingLayout from './components/OnboardingLayout';
@@ -52,7 +53,6 @@ export default function PermissionsScreen({ navigation }: Props) {
   const registerForPushNotifications = async () => {
     try {
       const token = await Notifications.getExpoPushTokenAsync();
-      console.log('Push token:', token.data);
       // TODO: Send token to backend when endpoint is ready
       // await notificationsApi.registerPushToken(token.data);
     } catch (error) {
@@ -62,7 +62,7 @@ export default function PermissionsScreen({ navigation }: Props) {
 
   const handleContinue = () => {
     // Navigate to profile setup
-    navigation.navigate('ProfileSetup');
+    navigation.navigate(ONBOARDING_ROUTES.ProfileSetup);
   };
 
   const handleSkip = () => {

@@ -19,6 +19,7 @@ import { useUserStore, UserStats, WeeklyActivity, Achievement } from '@store/use
 import { getErrorMessage } from '@utils/errorUtils';
 import { getInitials, formatJoinDate } from '@utils/stringUtils';
 import type { SettingsStackParamList } from '@navigation/types';
+import { SETTINGS_ROUTES } from '@navigation/routes';
 
 type NavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'Profile'>;
 
@@ -91,11 +92,11 @@ export default function ProfileScreen() {
   }, [fetchCurrentUser]);
 
   const handleEditPress = useCallback(() => {
-    navigation.navigate('EditProfile');
+    navigation.navigate(SETTINGS_ROUTES.EditProfile);
   }, [navigation]);
 
   const handleSettingsPress = useCallback(() => {
-    navigation.navigate('Settings');
+    navigation.navigate(SETTINGS_ROUTES.Settings);
   }, [navigation]);
 
   const handleAchievementPress = useCallback((_achievement: Achievement) => {
@@ -207,17 +208,20 @@ export default function ProfileScreen() {
           <View style={styles.statsRow}>
             <StatCard
               value={stats.friends_count}
-              label="Friends"
+              title="Friends"
+              variant="flat"
               testID="stat-friends"
             />
             <StatCard
               value={stats.groups_count}
-              label="Groups"
+              title="Groups"
+              variant="flat"
               testID="stat-groups"
             />
             <StatCard
               value={stats.badges_count}
-              label="Badges"
+              title="Badges"
+              variant="flat"
               testID="stat-badges"
             />
           </View>

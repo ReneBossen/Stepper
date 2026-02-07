@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { Text, Button, Card, IconButton } from 'react-native-paper';
 import { OnboardingStackScreenProps } from '@navigation/types';
+import { ONBOARDING_ROUTES } from '@navigation/routes';
 import { useAppTheme } from '@hooks/useAppTheme';
 import { useAnalyticsStore } from '@store/analyticsStore';
 import { track } from '@services/analytics';
@@ -29,11 +30,11 @@ export default function AnalyticsConsentScreen({ navigation }: Props) {
     setIsLoading(true);
     try {
       await grantConsent();
-      navigation.navigate('Permissions');
+      navigation.navigate(ONBOARDING_ROUTES.Permissions);
     } catch (error) {
       console.error('Error granting consent:', error);
       // Continue anyway - user can change later
-      navigation.navigate('Permissions');
+      navigation.navigate(ONBOARDING_ROUTES.Permissions);
     } finally {
       setIsLoading(false);
     }
@@ -43,11 +44,11 @@ export default function AnalyticsConsentScreen({ navigation }: Props) {
     setIsLoading(true);
     try {
       await revokeConsent();
-      navigation.navigate('Permissions');
+      navigation.navigate(ONBOARDING_ROUTES.Permissions);
     } catch (error) {
       console.error('Error revoking consent:', error);
       // Continue anyway
-      navigation.navigate('Permissions');
+      navigation.navigate(ONBOARDING_ROUTES.Permissions);
     } finally {
       setIsLoading(false);
     }

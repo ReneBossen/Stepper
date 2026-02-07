@@ -16,6 +16,7 @@ import { useAuthStore } from '@store/authStore';
 import { useUserStore, ThemePreference } from '@store/userStore';
 import { getErrorMessage } from '@utils/errorUtils';
 import type { SettingsStackParamList } from '@navigation/types';
+import { SETTINGS_ROUTES } from '@navigation/routes';
 import {
   UnitsModal,
   DailyGoalModal,
@@ -112,11 +113,11 @@ export default function SettingsScreen() {
 
   // Navigation handlers
   const handleProfilePress = useCallback(() => {
-    navigation.navigate('Profile');
+    navigation.navigate(SETTINGS_ROUTES.Profile);
   }, [navigation]);
 
   const handleNotificationSettingsPress = useCallback(() => {
-    navigation.navigate('NotificationSettings');
+    navigation.navigate(SETTINGS_ROUTES.NotificationSettings);
   }, [navigation]);
 
   // Units modal handlers

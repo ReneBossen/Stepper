@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
 import { Text, Button, TextInput, Avatar, Icon } from 'react-native-paper';
 import { OnboardingStackScreenProps } from '@navigation/types';
+import { ONBOARDING_ROUTES } from '@navigation/routes';
 import { useAppTheme } from '@hooks/useAppTheme';
 import { useUserStore } from '@store/userStore';
 import { getErrorMessage } from '@utils/errorUtils';
@@ -137,7 +138,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
       });
 
       // Navigate to preferences setup
-      navigation.navigate('PreferencesSetup');
+      navigation.navigate(ONBOARDING_ROUTES.PreferencesSetup);
     } catch (error: unknown) {
       console.error('Error updating profile:', error);
       setError(getErrorMessage(error, 'Failed to update profile. Please try again.'));
@@ -147,7 +148,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
   };
 
   const handleSkip = () => {
-    navigation.navigate('PreferencesSetup');
+    navigation.navigate(ONBOARDING_ROUTES.PreferencesSetup);
   };
 
   const displayNameLength = displayName.length;

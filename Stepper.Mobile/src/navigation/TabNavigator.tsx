@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { track } from '@services/analytics';
 import { TabParamList } from './types';
+import { TAB_ROUTES } from './routes';
 
 import HomeStackNavigator from './stacks/HomeStackNavigator';
 import StepsStackNavigator from './stacks/StepsStackNavigator';
@@ -51,7 +52,7 @@ export default function TabNavigator() {
       }}
     >
       <Tab.Screen
-        name="HomeTab"
+        name={TAB_ROUTES.HomeTab}
         component={HomeStackNavigator}
         options={{
           title: 'Home',
@@ -61,7 +62,7 @@ export default function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="StepsTab"
+        name={TAB_ROUTES.StepsTab}
         component={StepsStackNavigator}
         options={{
           title: 'Steps',
@@ -71,7 +72,7 @@ export default function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="FriendsTab"
+        name={TAB_ROUTES.FriendsTab}
         component={FriendsStackNavigator}
         options={{
           title: 'Friends',
@@ -81,7 +82,7 @@ export default function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="GroupsTab"
+        name={TAB_ROUTES.GroupsTab}
         component={GroupsStackNavigator}
         options={{
           title: 'Groups',
@@ -91,7 +92,7 @@ export default function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="SettingsTab"
+        name={TAB_ROUTES.SettingsTab}
         component={SettingsStackNavigator}
         options={{
           title: 'Settings',

@@ -16,6 +16,7 @@ import { FriendListItem, FriendRequestsBanner } from './components';
 import { useFriendsStore, Friend } from '@store/friendsStore';
 import { useUserStore } from '@store/userStore';
 import type { FriendsStackParamList } from '@navigation/types';
+import { FRIENDS_ROUTES } from '@navigation/routes';
 
 type NavigationProp = NativeStackNavigationProp<FriendsStackParamList, 'FriendsList'>;
 
@@ -61,16 +62,16 @@ export default function FriendsListScreen() {
   }, []);
 
   const handleAddFriend = useCallback(() => {
-    navigation.navigate('FriendDiscovery');
+    navigation.navigate(FRIENDS_ROUTES.FriendDiscovery);
   }, [navigation]);
 
   const handleFriendRequestsPress = useCallback(() => {
-    navigation.navigate('FriendRequests');
+    navigation.navigate(FRIENDS_ROUTES.FriendRequests);
   }, [navigation]);
 
   const handleFriendPress = useCallback(
     (friend: Friend) => {
-      navigation.navigate('UserProfile', { userId: friend.user_id });
+      navigation.navigate(FRIENDS_ROUTES.UserProfile, { userId: friend.user_id });
     },
     [navigation]
   );

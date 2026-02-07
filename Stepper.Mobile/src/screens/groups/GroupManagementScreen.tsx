@@ -31,6 +31,7 @@ import { getErrorMessage } from '@utils/errorUtils';
 import { getCompetitionTypeLabelFull } from '@utils/groupUtils';
 import { INVITE_CODE } from '@utils/constants';
 import type { GroupsStackScreenProps, GroupsStackParamList } from '@navigation/types';
+import { GROUPS_ROUTES } from '@navigation/routes';
 
 type Props = GroupsStackScreenProps<'GroupManagement'>;
 type NavigationProp = NativeStackNavigationProp<GroupsStackParamList, 'GroupManagement'>;
@@ -214,11 +215,11 @@ export default function GroupManagementScreen({ route }: Props) {
   }, []);
 
   const handleManageMembers = useCallback(() => {
-    navigation.navigate('ManageMembers', { groupId });
+    navigation.navigate(GROUPS_ROUTES.ManageMembers, { groupId });
   }, [groupId, navigation]);
 
   const handleInviteMembers = useCallback(() => {
-    navigation.navigate('InviteMembers', { groupId });
+    navigation.navigate(GROUPS_ROUTES.InviteMembers, { groupId });
   }, [groupId, navigation]);
 
   const handleDeleteGroup = useCallback(() => {

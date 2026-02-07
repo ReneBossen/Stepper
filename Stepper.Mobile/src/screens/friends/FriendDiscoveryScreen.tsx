@@ -24,6 +24,7 @@ import {
   MyQRCodeModal,
 } from './components';
 import type { FriendsStackParamList } from '@navigation/types';
+import { FRIENDS_ROUTES } from '@navigation/routes';
 import {
   friendsApi,
   UserSearchResult as UserSearchResultType,
@@ -146,7 +147,7 @@ export default function FriendDiscoveryScreen() {
 
   // Quick actions
   const handleScanQR = useCallback(() => {
-    navigation.navigate('QRScanner');
+    navigation.navigate(FRIENDS_ROUTES.QRScanner);
   }, [navigation]);
 
   const handleShowMyQR = useCallback(() => {
@@ -194,7 +195,7 @@ export default function FriendDiscoveryScreen() {
   // Navigate to user profile
   const handleUserPress = useCallback(
     (user: UserSearchResultType) => {
-      navigation.navigate('UserProfile', { userId: user.id });
+      navigation.navigate(FRIENDS_ROUTES.UserProfile, { userId: user.id });
     },
     [navigation]
   );

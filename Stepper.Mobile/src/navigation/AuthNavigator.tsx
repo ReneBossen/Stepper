@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthStackParamList } from './types';
+import { AUTH_ROUTES } from './routes';
 
 import LoginScreen from '@screens/auth/LoginScreen';
 import RegisterScreen from '@screens/auth/RegisterScreen';
@@ -16,9 +17,9 @@ export default function AuthNavigator() {
         animation: 'slide_from_right',
       }}
     >
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name={AUTH_ROUTES.Login} component={LoginScreen} />
+      <Stack.Screen name={AUTH_ROUTES.Register} component={RegisterScreen} />
+      <Stack.Screen name={AUTH_ROUTES.ForgotPassword} component={ForgotPasswordScreen} />
     </Stack.Navigator>
   );
 }

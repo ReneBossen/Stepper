@@ -11,6 +11,7 @@ import { getErrorMessage } from '@utils/errorUtils';
 import { isAlphanumeric } from '@utils/stringUtils';
 import { INVITE_CODE } from '@utils/constants';
 import type { GroupsStackParamList } from '@navigation/types';
+import { GROUPS_ROUTES } from '@navigation/routes';
 
 type NavigationProp = NativeStackNavigationProp<GroupsStackParamList, 'GroupsList'>;
 
@@ -49,11 +50,11 @@ export default function GroupsListScreen() {
   }, [fetchMyGroups]);
 
   const handleCreateGroup = useCallback(() => {
-    navigation.navigate('CreateGroup');
+    navigation.navigate(GROUPS_ROUTES.CreateGroup);
   }, [navigation]);
 
   const handleJoinGroup = useCallback(() => {
-    navigation.navigate('JoinGroup', {});
+    navigation.navigate(GROUPS_ROUTES.JoinGroup, {});
   }, [navigation]);
 
   const handleInviteCodeChange = useCallback((code: string) => {
@@ -86,7 +87,7 @@ export default function GroupsListScreen() {
       const groupId = await joinGroupByCode(trimmedCode);
       setShowInviteDialog(false);
       setInviteCode('');
-      navigation.navigate('GroupDetail', { groupId });
+      navigation.navigate(GROUPS_ROUTES.GroupDetail, { groupId });
     } catch (error) {
       setInviteCodeError(getErrorMessage(error));
     } finally {
@@ -96,7 +97,7 @@ export default function GroupsListScreen() {
 
   const handleGroupPress = useCallback(
     (group: GroupWithLeaderboard) => {
-      navigation.navigate('GroupDetail', { groupId: group.id });
+      navigation.navigate(GROUPS_ROUTES.GroupDetail, { groupId: group.id });
     },
     [navigation]
   );
