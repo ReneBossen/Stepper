@@ -1,4 +1,6 @@
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.RateLimiting;
 using Stepper.Api.Common.Authentication;
 using Stepper.Api.Common.Extensions;
 using Stepper.Api.Common.Middleware;
@@ -32,6 +34,32 @@ builder.Services.AddAuthentication(SupabaseAuthDefaults.AuthenticationScheme)
 // Add authorization services
 builder.Services.AddAuthorization();
 
+// Add rate limiting
+builder.Services.AddRateLimiter(options =>
+{
+    // Global rate limit: 100 requests per minute per IP
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 100,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    // Stricter limit for auth endpoints: 10 requests per minute per IP
+    options.AddFixedWindowLimiter("auth", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = 10;
+        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.QueueLimit = 0;
+    });
+
+    // Return 429 Too Many Requests
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
+
 // Add user services
 builder.Services.AddUserServices();
 
@@ -53,6 +81,9 @@ builder.Services.AddActivityServices();
 // Add notification services
 builder.Services.AddNotificationServices();
 
+// Add health checks
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -64,6 +95,8 @@ if (app.Environment.IsDevelopment())
 // Add global exception handling middleware (first in pipeline)
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+app.UseRateLimiter();
+
 app.UseHttpsRedirection();
 
 // Add authentication and authorization middleware
@@ -71,5 +104,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();
+
+// Expose Program for integration tests
+public partial class Program { }
