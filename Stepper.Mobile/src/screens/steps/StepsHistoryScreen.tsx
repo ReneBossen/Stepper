@@ -15,45 +15,11 @@ import {
   StatsSummary,
   StepsChart,
 } from './components';
-import type { ChartStats } from './components';
-import { useChartData } from './hooks';
+import { useChartData, useCustomDateRange, useChartDisplay } from './hooks';
 import type { ChartViewMode } from './hooks';
 import { useStepsStore } from '@store/stepsStore';
 import { useUserStore } from '@store/userStore';
 import type { DailyStepEntry } from '@store/stepsStore';
-import { stepsApi } from '@services/api/stepsApi';
-import { getErrorMessage } from '@utils/errorUtils';
-
-/**
- * Formats a Date to YYYY-MM-DD string format.
- */
-function formatDateForApi(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-/**
- * Formats a date for display (e.g., "Jan 1").
- */
-function formatDateForDisplay(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-/**
- * Formats a full date with year (e.g., "Jan 1, 2026").
- */
-function formatDateWithYear(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
 
 /** Initial number of history items to load */
 const INITIAL_PAGE_SIZE = 7;
@@ -66,9 +32,11 @@ const LOAD_MORE_PAGE_SIZE = 15;
  *
  * Architecture:
  * - Chart section: Uses useChartData hook with viewMode and chartOffset
+ * - Custom date range: Uses useCustomDateRange hook for date picker and custom fetches
+ * - Display logic: Uses useChartDisplay hook to select between regular and custom data
  * - History section: Uses paginated history from store with infinite scroll
  *
- * These two sections have independent state and data fetching.
+ * These sections have independent state and data fetching.
  */
 export default function StepsHistoryScreen() {
   const theme = useTheme();
@@ -78,21 +46,6 @@ export default function StepsHistoryScreen() {
   // ===============================
   const [viewMode, setViewMode] = useState<ChartViewMode>('daily');
   const [chartOffset, setChartOffset] = useState(0); // 0 = current period
-
-  // ===============================
-  // Date Picker State
-  // ===============================
-  const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
-  const [customDateRange, setCustomDateRange] = useState<{ start: Date; end: Date } | null>(null);
-
-  // ===============================
-  // Custom Date Range Chart State
-  // ===============================
-  const [customChartData, setCustomChartData] = useState<
-    { chartData: typeof chartData; stats: ChartStats; periodLabel: string } | null
-  >(null);
-  const [isCustomLoading, setIsCustomLoading] = useState(false);
-  const [customError, setCustomError] = useState<string | null>(null);
 
   // ===============================
   // Manual Entry Modal State
@@ -132,6 +85,48 @@ export default function StepsHistoryScreen() {
   } = useChartData(viewMode, chartOffset);
 
   // ===============================
+  // Custom Date Range Hook
+  // ===============================
+  const {
+    isDatePickerVisible,
+    customDateRange,
+    customChartData,
+    isCustomLoading,
+    customError,
+    defaultDateRangeStart,
+    defaultDateRangeEnd,
+    openDatePicker: handleOpenDatePicker,
+    closeDatePicker: handleCloseDatePicker,
+    confirmDateRange: handleDateRangeConfirm,
+    clearCustomRange,
+    retryCustomFetch,
+  } = useCustomDateRange();
+
+  // ===============================
+  // Chart Display Hook
+  // ===============================
+  const {
+    displayChartData,
+    displayStats,
+    displayPeriodLabel,
+    displayIsLoading,
+    displayError,
+    canGoNext,
+    isCustomMode,
+  } = useChartDisplay({
+    regularChartData: chartData,
+    regularStats: stats,
+    regularPeriodLabel: periodLabel,
+    isRegularLoading: isChartLoading,
+    regularError: chartError,
+    customDateRange,
+    customChartData,
+    isCustomLoading,
+    customError,
+    chartOffset,
+  });
+
+  // ===============================
   // Initial History Load
   // ===============================
   useEffect(() => {
@@ -140,116 +135,29 @@ export default function StepsHistoryScreen() {
   }, []);
 
   // ===============================
-  // Custom Date Range Fetching
-  // ===============================
-  const fetchCustomDateRangeData = useCallback(async (start: Date, end: Date) => {
-    setIsCustomLoading(true);
-    setCustomError(null);
-
-    try {
-      const startStr = formatDateForApi(start);
-      const endStr = formatDateForApi(end);
-
-      const dailySummaries = await stepsApi.getDailyHistory({
-        startDate: startStr,
-        endDate: endStr,
-      });
-
-      // Transform to entries
-      const entries: DailyStepEntry[] = dailySummaries.map((summary) => ({
-        date: summary.date,
-        steps: summary.totalSteps,
-        distanceMeters: summary.totalDistanceMeters,
-      }));
-
-      // Sort by date ascending for chart display
-      entries.sort((a, b) => a.date.localeCompare(b.date));
-
-      // Aggregate as daily view
-      const aggregatedData = entries.map((entry) => {
-        const dateObj = new Date(entry.date + 'T00:00:00');
-        return {
-          label: dateObj.toLocaleDateString('en-US', { weekday: 'short' }),
-          value: entry.steps,
-          subLabel: formatDateForDisplay(dateObj),
-        };
-      });
-
-      // Calculate stats
-      const total = entries.reduce((sum, e) => sum + e.steps, 0);
-      const distanceMeters = entries.reduce((sum, e) => sum + e.distanceMeters, 0);
-      const average = entries.length > 0 ? Math.round(total / entries.length) : 0;
-
-      // Generate period label
-      const startYear = start.getFullYear();
-      const endYear = end.getFullYear();
-      let customPeriodLabel: string;
-      if (startYear === endYear) {
-        customPeriodLabel = `${formatDateForDisplay(start)} - ${formatDateWithYear(end)}`;
-      } else {
-        customPeriodLabel = `${formatDateWithYear(start)} - ${formatDateWithYear(end)}`;
-      }
-
-      setCustomChartData({
-        chartData: aggregatedData,
-        stats: { total, average, distanceMeters },
-        periodLabel: customPeriodLabel,
-      });
-    } catch (error) {
-      setCustomError(getErrorMessage(error));
-      setCustomChartData(null);
-    } finally {
-      setIsCustomLoading(false);
-    }
-  }, []);
-
-  // Fetch custom data when custom range is set
-  useEffect(() => {
-    if (customDateRange) {
-      fetchCustomDateRangeData(customDateRange.start, customDateRange.end);
-    }
-  }, [customDateRange, fetchCustomDateRangeData]);
-
-  // ===============================
   // Handlers
   // ===============================
   const handleViewModeChange = useCallback((mode: ChartViewMode) => {
     setViewMode(mode);
     setChartOffset(0); // Reset to current period when changing view
-    setCustomDateRange(null); // Clear custom range
-    setCustomChartData(null);
-  }, []);
+    clearCustomRange();
+  }, [clearCustomRange]);
 
   const handlePrevious = useCallback(() => {
     setChartOffset((o) => o - 1);
     // Clear custom range when navigating
     if (customDateRange) {
-      setCustomDateRange(null);
-      setCustomChartData(null);
+      clearCustomRange();
     }
-  }, [customDateRange]);
+  }, [customDateRange, clearCustomRange]);
 
   const handleNext = useCallback(() => {
     setChartOffset((o) => o + 1);
     // Clear custom range when navigating
     if (customDateRange) {
-      setCustomDateRange(null);
-      setCustomChartData(null);
+      clearCustomRange();
     }
-  }, [customDateRange]);
-
-  const handleOpenDatePicker = useCallback(() => {
-    setIsDatePickerVisible(true);
-  }, []);
-
-  const handleCloseDatePicker = useCallback(() => {
-    setIsDatePickerVisible(false);
-  }, []);
-
-  const handleDateRangeConfirm = useCallback((start: Date, end: Date) => {
-    setCustomDateRange({ start, end });
-    setIsDatePickerVisible(false);
-  }, []);
+  }, [customDateRange, clearCustomRange]);
 
   const handleAddStepsPress = useCallback(() => {
     setShowManualEntry(true);
@@ -275,29 +183,14 @@ export default function StepsHistoryScreen() {
 
     // Reset chart to current period
     setChartOffset(0);
-    setCustomDateRange(null);
-    setCustomChartData(null);
+    clearCustomRange();
 
     // Reset and reload paginated history
     resetPaginatedHistory();
     await loadMoreHistory(INITIAL_PAGE_SIZE);
 
     setIsRefreshing(false);
-  }, [resetPaginatedHistory, loadMoreHistory]);
-
-  // ===============================
-  // Computed Values
-  // ===============================
-
-  // Determine which chart data to display
-  const displayChartData = customDateRange && customChartData ? customChartData.chartData : chartData;
-  const displayStats = customDateRange && customChartData ? customChartData.stats : stats;
-  const displayPeriodLabel = customDateRange && customChartData ? customChartData.periodLabel : periodLabel;
-  const displayIsLoading = customDateRange ? isCustomLoading : isChartLoading;
-  const displayError = customDateRange ? customError : chartError;
-
-  // Can only go forward if we're in the past (and not in custom mode)
-  const canGoNext = !customDateRange && chartOffset < 0;
+  }, [resetPaginatedHistory, loadMoreHistory, clearCustomRange]);
 
   // ===============================
   // Render Helpers
@@ -326,7 +219,7 @@ export default function StepsHistoryScreen() {
               message={displayError}
               onRetry={() => {
                 if (customDateRange) {
-                  fetchCustomDateRangeData(customDateRange.start, customDateRange.end);
+                  retryCustomFetch();
                 }
               }}
             />
@@ -338,7 +231,7 @@ export default function StepsHistoryScreen() {
         ) : (
           <StepsChart
             chartData={displayChartData}
-            viewMode={customDateRange ? 'daily' : viewMode}
+            viewMode={isCustomMode ? 'daily' : viewMode}
             dailyGoal={dailyGoal}
             testID="steps-chart"
           />
@@ -372,12 +265,13 @@ export default function StepsHistoryScreen() {
       displayPeriodLabel,
       displayError,
       displayIsLoading,
+      isCustomMode,
       customDateRange,
       viewMode,
       dailyGoal,
       units,
       theme.colors,
-      fetchCustomDateRangeData,
+      retryCustomFetch,
     ]
   );
 
@@ -410,15 +304,6 @@ export default function StepsHistoryScreen() {
       ) : null,
     [isPaginatedHistoryLoading, theme.colors]
   );
-
-  // Default date range for date picker
-  const defaultDateRangeStart = useMemo(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 6);
-    return date;
-  }, []);
-
-  const defaultDateRangeEnd = useMemo(() => new Date(), []);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>

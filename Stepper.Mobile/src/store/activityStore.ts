@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { activityApi, ActivityItem, GetFeedParams } from '@services/api/activityApi';
+import { activityApi, ActivityItem, ActivityFeedResponse, GetFeedParams } from '@services/api/activityApi';
 import { getErrorMessage } from '@utils/errorUtils';
+import { createAsyncAction } from './utils';
 
 interface ActivityState {
   feed: ActivityItem[];
@@ -23,20 +24,17 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
   isLoading: false,
   error: null,
 
-  fetchFeed: async (params = {}) => {
-    set({ isLoading: true, error: null });
-    try {
-      const response = await activityApi.getFeed(params);
-      set({
+  fetchFeed: createAsyncAction<ActivityState, [GetFeedParams?], ActivityFeedResponse>(
+    set,
+    (params = {}) => activityApi.getFeed(params),
+    {
+      onSuccess: (response) => ({
         feed: response.items,
         totalCount: response.totalCount,
         hasMore: response.hasMore,
-        isLoading: false,
-      });
-    } catch (error: unknown) {
-      set({ error: getErrorMessage(error), isLoading: false });
+      }),
     }
-  },
+  ),
 
   loadMore: async () => {
     const { feed, hasMore, isLoading } = get();

@@ -69,24 +69,61 @@ jest.mock('@components/steps', () => ({
   },
 }));
 
-// Mock the useChartData hook
-jest.mock('../hooks', () => ({
-  useChartData: jest.fn(() => ({
-    chartData: [
-      { label: 'Mon', value: 8000 },
-      { label: 'Tue', value: 8500 },
-      { label: 'Wed', value: 9000 },
-      { label: 'Thu', value: 7500 },
-      { label: 'Fri', value: 10000 },
-      { label: 'Sat', value: 11000 },
-      { label: 'Sun', value: 9500 },
-    ],
-    stats: { total: 63500, average: 9071, distanceMeters: 50000 },
-    periodLabel: 'Jan 9 - Jan 15, 2024',
-    isLoading: false,
-    error: null,
-  })),
-}));
+// Mock the hooks with stateful useCustomDateRange so date picker tests work
+jest.mock('../hooks', () => {
+  const ReactMock = require('react');
+
+  return {
+    useChartData: jest.fn(() => ({
+      chartData: [
+        { label: 'Mon', value: 8000 },
+        { label: 'Tue', value: 8500 },
+        { label: 'Wed', value: 9000 },
+        { label: 'Thu', value: 7500 },
+        { label: 'Fri', value: 10000 },
+        { label: 'Sat', value: 11000 },
+        { label: 'Sun', value: 9500 },
+      ],
+      stats: { total: 63500, average: 9071, distanceMeters: 50000 },
+      periodLabel: 'Jan 9 - Jan 15, 2024',
+      isLoading: false,
+      error: null,
+    })),
+    useCustomDateRange: jest.fn(() => {
+      const [isDatePickerVisible, setIsDatePickerVisible] = ReactMock.useState(false);
+      const [customDateRange, setCustomDateRange] = ReactMock.useState(null);
+
+      return {
+        isDatePickerVisible,
+        customDateRange,
+        customChartData: null,
+        isCustomLoading: false,
+        customError: null,
+        defaultDateRangeStart: new Date('2024-01-09'),
+        defaultDateRangeEnd: new Date('2024-01-15'),
+        openDatePicker: () => setIsDatePickerVisible(true),
+        closeDatePicker: () => setIsDatePickerVisible(false),
+        confirmDateRange: (start: any, end: any) => {
+          setCustomDateRange({ start, end });
+          setIsDatePickerVisible(false);
+        },
+        clearCustomRange: () => {
+          setCustomDateRange(null);
+        },
+        retryCustomFetch: jest.fn(),
+      };
+    }),
+    useChartDisplay: jest.fn((params: any) => ({
+      displayChartData: params.regularChartData,
+      displayStats: params.regularStats,
+      displayPeriodLabel: params.regularPeriodLabel,
+      displayIsLoading: params.isRegularLoading,
+      displayError: params.regularError,
+      canGoNext: !params.customDateRange && params.chartOffset < 0,
+      isCustomMode: !!params.customDateRange,
+    })),
+  };
+});
 
 // Mock the step components
 jest.mock('../components', () => ({

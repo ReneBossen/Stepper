@@ -3,6 +3,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { notificationsApi } from '@services/api/notificationsApi';
 import { supabase } from '@services/supabase';
 import { getErrorMessage } from '@utils/errorUtils';
+import { createAsyncAction } from './utils';
 
 export interface Notification {
   id: string;
@@ -60,15 +61,13 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
   error: null,
   _channel: null,
 
-  fetchNotifications: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const notifications = await notificationsApi.getNotifications();
-      set({ notifications, isLoading: false });
-    } catch (error: unknown) {
-      set({ error: getErrorMessage(error), isLoading: false });
+  fetchNotifications: createAsyncAction<NotificationsState, [], Notification[]>(
+    set,
+    () => notificationsApi.getNotifications(),
+    {
+      onSuccess: (notifications) => ({ notifications }),
     }
-  },
+  ),
 
   fetchUnreadCount: async () => {
     try {
