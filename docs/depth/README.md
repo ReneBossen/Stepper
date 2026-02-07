@@ -85,6 +85,15 @@ These require immediate attention:
 
 ---
 
+## Audits
+
+| Audit | Date | Model | Findings |
+|-------|------|-------|----------|
+| [Initial Debt Catalog](README.md) | 2026-02-02 | Opus 4.5 | 39 items (Waves 1-5 completed) |
+| [Comprehensive Codebase Audit](codebase-audit-2026-02-07.md) | 2026-02-07 | Opus 4.6 | 41 items (new findings) |
+
+---
+
 ## Related Documents
 
 - [Architecture Overview](../ARCHITECTURE.md)
