@@ -3,10 +3,10 @@ namespace Stepper.Api.Notifications.DTOs;
 /// <summary>
 /// Response DTO for unread notification count.
 /// </summary>
-public class UnreadCountResponse
+public record UnreadCountResponse
 {
     /// <summary>
-    /// Gets or sets the count of unread notifications.
+    /// Gets the count of unread notifications.
     /// </summary>
-    public int Count { get; set; }
+    public int Count { get; init; }
 }

@@ -3,8 +3,8 @@ namespace Stepper.Api.Friends.Discovery.DTOs;
 /// <summary>
 /// Response DTO for user search results.
 /// </summary>
-public class SearchUsersResponse
+public record SearchUsersResponse
 {
-    public List<UserSearchResult> Users { get; set; } = new();
-    public int TotalCount { get; set; }
+    public List<UserSearchResult> Users { get; init; } = new();
+    public int TotalCount { get; init; }
 }

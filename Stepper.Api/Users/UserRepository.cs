@@ -1,6 +1,6 @@
 using Supabase;
-using Stepper.Api.Common.Constants;
 using Stepper.Api.Common.Database;
+using Stepper.Api.Friends;
 
 namespace Stepper.Api.Users;
 

@@ -30,6 +30,9 @@ jest.mock('react-native-paper', () => {
     Text: ({ children, style, variant, ...props }: any) => (
       <RN.Text {...props} style={style}>{children}</RN.Text>
     ),
+    Icon: ({ source, size, color, ...props }: any) => (
+      <RN.View testID={props.testID || `icon-${source}`} />
+    ),
     useTheme: () => ({
       colors: {
         primary: '#4CAF50',
@@ -147,16 +150,16 @@ describe('StepCounterCard', () => {
     expect(getByTestId('circular-progress')).toBeTruthy();
   });
 
-  it('should display ruler emoji for distance', () => {
-    const { getByText } = render(<StepCounterCard {...defaultProps} />);
+  it('should display ruler icon for distance', () => {
+    const { getByTestId } = render(<StepCounterCard {...defaultProps} />);
 
-    expect(getByText('📏')).toBeTruthy();
+    expect(getByTestId('icon-ruler')).toBeTruthy();
   });
 
-  it('should display fire emoji for streak', () => {
-    const { getByText } = render(<StepCounterCard {...defaultProps} />);
+  it('should display fire icon for streak', () => {
+    const { getByTestId } = render(<StepCounterCard {...defaultProps} />);
 
-    expect(getByText('🔥')).toBeTruthy();
+    expect(getByTestId('icon-fire')).toBeTruthy();
   });
 
   it('should handle 50% progress correctly', () => {

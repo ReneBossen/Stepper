@@ -7,6 +7,7 @@ import {
   Divider,
   Menu,
   Button,
+  Icon,
   useTheme,
 } from 'react-native-paper';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -180,7 +181,7 @@ export default function GroupDetailScreen({ route }: Props) {
       return (
         <View style={styles.header}>
           <View style={styles.groupInfo}>
-            <Text style={styles.groupIcon}>{'\u{1F3C6}'}</Text>
+            <Icon source="trophy" size={28} color={theme.colors.primary} />
             <Text
               variant="headlineSmall"
               style={[styles.groupName, { color: theme.colors.onSurface }]}
@@ -377,8 +378,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  groupIcon: {
-    fontSize: 28,
+  groupIconContainer: {
     marginRight: 12,
   },
   groupName: {

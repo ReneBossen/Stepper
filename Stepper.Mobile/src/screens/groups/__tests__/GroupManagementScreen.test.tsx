@@ -149,6 +149,9 @@ jest.mock('react-native-paper', () => {
         </RN.View>
       );
     },
+    Icon: ({ source, size, color, ...props }: any) => (
+      <RN.View testID={props.testID || `icon-${source}`} />
+    ),
     useTheme: () => ({
       colors: {
         primary: '#4CAF50',
@@ -156,6 +159,7 @@ jest.mock('react-native-paper', () => {
         surface: '#FFFFFF',
         surfaceVariant: '#F5F5F5',
         primaryContainer: '#E8F5E9',
+        onPrimaryContainer: '#1B5E20',
         onSurface: '#000000',
         onSurfaceVariant: '#666666',
         error: '#FF0000',

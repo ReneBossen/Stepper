@@ -73,6 +73,10 @@ function Divider(props) {
   return React.createElement('Divider', props);
 }
 
+function Icon({ source, size, color, ...props }) {
+  return React.createElement('Icon', { ...props, source, size, color, testID: props.testID || `icon-${source}` });
+}
+
 function FAB({ onPress, ...props }) {
   return React.createElement('FAB', { ...props, onPress });
 }
@@ -112,5 +116,6 @@ module.exports = {
   Portal,
   Divider,
   FAB,
+  Icon,
   useTheme,
 };

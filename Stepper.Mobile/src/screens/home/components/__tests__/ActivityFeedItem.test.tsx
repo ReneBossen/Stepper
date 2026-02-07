@@ -23,6 +23,9 @@ jest.mock('react-native-paper', () => {
     Text: ({ children, style, variant, ...props }: any) => (
       <RN.Text {...props} style={style}>{children}</RN.Text>
     ),
+    Icon: ({ source, size, color, ...props }: any) => (
+      <RN.View testID={props.testID || `icon-${source}`} />
+    ),
     useTheme: () => ({
       colors: {
         onSurface: '#000',
@@ -68,9 +71,9 @@ describe('ActivityFeedItem', () => {
   });
 
   it('should display correct icon for friend_achievement', () => {
-    const { getByText } = render(<ActivityFeedItem item={mockItem} />);
+    const { getByTestId } = render(<ActivityFeedItem item={mockItem} />);
 
-    expect(getByText('🎉')).toBeTruthy();
+    expect(getByTestId('icon-party-popper')).toBeTruthy();
   });
 
   it('should display correct icon for milestone', () => {
@@ -79,9 +82,9 @@ describe('ActivityFeedItem', () => {
       type: 'milestone',
     };
 
-    const { getByText } = render(<ActivityFeedItem item={milestoneItem} />);
+    const { getByTestId } = render(<ActivityFeedItem item={milestoneItem} />);
 
-    expect(getByText('🎯')).toBeTruthy();
+    expect(getByTestId('icon-target')).toBeTruthy();
   });
 
   it('should display correct icon for group_join', () => {
@@ -90,9 +93,9 @@ describe('ActivityFeedItem', () => {
       type: 'group_join',
     };
 
-    const { getByText } = render(<ActivityFeedItem item={groupItem} />);
+    const { getByTestId } = render(<ActivityFeedItem item={groupItem} />);
 
-    expect(getByText('👥')).toBeTruthy();
+    expect(getByTestId('icon-account-group')).toBeTruthy();
   });
 
   it('should display correct icon for streak', () => {
@@ -101,9 +104,9 @@ describe('ActivityFeedItem', () => {
       type: 'streak',
     };
 
-    const { getByText } = render(<ActivityFeedItem item={streakItem} />);
+    const { getByTestId } = render(<ActivityFeedItem item={streakItem} />);
 
-    expect(getByText('🔥')).toBeTruthy();
+    expect(getByTestId('icon-fire')).toBeTruthy();
   });
 
   it('should show "Just now" for very recent activity', () => {

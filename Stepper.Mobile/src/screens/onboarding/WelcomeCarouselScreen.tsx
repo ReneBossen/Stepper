@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, FlatList, Dimensions, TouchableOpacity, ListRenderItem } from 'react-native';
-import { Text, Button } from 'react-native-paper';
+import { Text, Button, Icon } from 'react-native-paper';
 import { OnboardingStackScreenProps } from '@navigation/types';
 import { useAppTheme } from '@hooks/useAppTheme';
 import { track } from '@services/analytics';
@@ -10,7 +10,7 @@ type Props = OnboardingStackScreenProps<'WelcomeCarousel'>;
 
 interface WelcomeSlide {
   id: string;
-  icon: string;
+  iconSource: string;
   title: string;
   description: string;
 }
@@ -18,19 +18,19 @@ interface WelcomeSlide {
 const SLIDES: WelcomeSlide[] = [
   {
     id: '1',
-    icon: '🚶‍♂️🚶‍♀️',
+    iconSource: 'walk',
     title: 'Track Your Steps',
     description: 'Keep track of your daily walking activity and reach your fitness goals',
   },
   {
     id: '2',
-    icon: '📊',
+    iconSource: 'chart-bar',
     title: 'Daily Insights',
     description: 'View your progress with detailed charts and statistics',
   },
   {
     id: '3',
-    icon: '👥',
+    iconSource: 'account-group',
     title: 'Connect & Compete',
     description: 'Add friends and join groups to compete on leaderboards',
   },
@@ -85,9 +85,7 @@ export default function WelcomeCarouselScreen({ navigation }: Props) {
   const renderSlide: ListRenderItem<WelcomeSlide> = ({ item }) => (
     <View style={[styles.slide, { width: screenWidth - 48 }]}>
       <View style={styles.iconContainer}>
-        <Text variant="displayLarge" style={styles.icon}>
-          {item.icon}
-        </Text>
+        <Icon source={item.iconSource} size={80} color={paperTheme.colors.primary} />
       </View>
       <Text variant="headlineMedium" style={[styles.title, { color: paperTheme.colors.onBackground }]}>
         {item.title}
@@ -186,9 +184,8 @@ const styles = StyleSheet.create({
   iconContainer: {
     marginBottom: 32,
   },
-  icon: {
-    fontSize: 80,
-    textAlign: 'center',
+  iconWrapper: {
+    alignItems: 'center',
   },
   title: {
     fontWeight: '600',

@@ -7,6 +7,7 @@ import type { HomeStackScreenProps } from '@navigation/types';
 import { LoadingSpinner } from '@components/common/LoadingSpinner';
 import { ErrorMessage } from '@components/common/ErrorMessage';
 import { track } from '@services/analytics';
+import { navigateToRootScreen, navigateToTab } from '@utils/navigation';
 import {
   GreetingHeader,
   StepCounterCard,
@@ -46,15 +47,15 @@ export default function HomeScreen() {
   } = useHomeData();
 
   const handleNotificationsPress = useCallback(() => {
-    navigation.getParent()?.navigate('Notifications');
+    navigateToRootScreen(navigation, 'Notifications');
   }, [navigation]);
 
   const handleSettingsPress = useCallback(() => {
-    navigation.getParent()?.getParent()?.navigate('Tabs', { screen: 'SettingsTab' });
+    navigateToTab(navigation, 'SettingsTab');
   }, [navigation]);
 
   const handleStepCardPress = useCallback(() => {
-    navigation.getParent()?.getParent()?.navigate('Tabs', { screen: 'StepsTab' });
+    navigateToTab(navigation, 'StepsTab');
   }, [navigation]);
 
   const handleActivityPress = useCallback((item: ActivityItem) => {
@@ -63,16 +64,13 @@ export default function HomeScreen() {
 
     if (item.type === 'friend_achievement' && item.userId) {
       // Navigate to friend's profile
-      navigation.getParent()?.getParent()?.navigate('Tabs', {
-        screen: 'FriendsTab',
-        params: {
-          screen: 'UserProfile',
-          params: { userId: item.userId },
-        },
+      navigateToTab(navigation, 'FriendsTab', {
+        screen: 'UserProfile',
+        params: { userId: item.userId },
       });
     } else if (item.type === 'group_join' && item.userId) {
       // Navigate to group detail (if we had groupId in the item)
-      navigation.getParent()?.getParent()?.navigate('Tabs', { screen: 'GroupsTab' });
+      navigateToTab(navigation, 'GroupsTab');
     }
     // For personal milestones, we could show a celebration animation
   }, [navigation]);

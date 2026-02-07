@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
-import { Text, Button, TextInput, Avatar } from 'react-native-paper';
+import { Text, Button, TextInput, Avatar, Icon } from 'react-native-paper';
 import { OnboardingStackScreenProps } from '@navigation/types';
 import { useAppTheme } from '@hooks/useAppTheme';
 import { useUserStore } from '@store/userStore';
@@ -177,7 +177,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
                 <Avatar.Icon size={120} icon="account" />
               )}
               <View style={[styles.cameraIcon, { backgroundColor: paperTheme.colors.primary }]}>
-                <Text style={styles.cameraEmoji}>📷</Text>
+                <Icon source="camera" size={20} color={paperTheme.colors.onPrimary} />
               </View>
             </TouchableOpacity>
             <Text variant="bodySmall" style={[styles.avatarText, { color: paperTheme.colors.onSurfaceVariant }]}>
@@ -276,8 +276,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cameraEmoji: {
-    fontSize: 20,
+  cameraIconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatarText: {
     marginTop: 12,

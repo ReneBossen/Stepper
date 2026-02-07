@@ -1,6 +1,5 @@
 using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
-using Stepper.Api.Common.Constants;
 
 namespace Stepper.Api.Friends;
 

@@ -23,6 +23,9 @@ jest.mock('react-native-paper', () => {
     Text: ({ children, style, variant, numberOfLines, ...props }: any) => (
       <RN.Text {...props} style={style} numberOfLines={numberOfLines}>{children}</RN.Text>
     ),
+    Icon: ({ source, size, color, ...props }: any) => (
+      <RN.View {...props} testID={props.testID || `icon-${source}`} />
+    ),
     useTheme: () => ({
       colors: {
         primary: '#4CAF50',
@@ -87,35 +90,30 @@ describe('LeaderboardItem', () => {
   });
 
   describe('medal icons for top 3', () => {
-    it('should display gold medal for rank 1', () => {
+    it('should display gold medal icon for rank 1', () => {
       const entry = createMockEntry({ rank: 1 });
-      const { getByText } = render(<LeaderboardItem entry={entry} />);
-      // Gold medal emoji: \u{1F947}
-      expect(getByText('\u{1F947}')).toBeTruthy();
+      const { getByTestId } = render(<LeaderboardItem entry={entry} />);
+      expect(getByTestId('icon-medal')).toBeTruthy();
     });
 
-    it('should display silver medal for rank 2', () => {
+    it('should display silver medal icon for rank 2', () => {
       const entry = createMockEntry({ rank: 2 });
-      const { getByText } = render(<LeaderboardItem entry={entry} />);
-      // Silver medal emoji: \u{1F948}
-      expect(getByText('\u{1F948}')).toBeTruthy();
+      const { getByTestId } = render(<LeaderboardItem entry={entry} />);
+      expect(getByTestId('icon-medal')).toBeTruthy();
     });
 
-    it('should display bronze medal for rank 3', () => {
+    it('should display bronze medal icon for rank 3', () => {
       const entry = createMockEntry({ rank: 3 });
-      const { getByText } = render(<LeaderboardItem entry={entry} />);
-      // Bronze medal emoji: \u{1F949}
-      expect(getByText('\u{1F949}')).toBeTruthy();
+      const { getByTestId } = render(<LeaderboardItem entry={entry} />);
+      expect(getByTestId('icon-medal')).toBeTruthy();
     });
 
     it('should display rank number for rank 4 and below', () => {
       const entry = createMockEntry({ rank: 4 });
-      const { getByText, queryByText } = render(<LeaderboardItem entry={entry} />);
+      const { getByText, queryByTestId } = render(<LeaderboardItem entry={entry} />);
       expect(getByText('4')).toBeTruthy();
       // Should not have medal icons
-      expect(queryByText('\u{1F947}')).toBeNull();
-      expect(queryByText('\u{1F948}')).toBeNull();
-      expect(queryByText('\u{1F949}')).toBeNull();
+      expect(queryByTestId('icon-medal')).toBeNull();
     });
 
     it('should display rank number for higher ranks', () => {
@@ -308,9 +306,9 @@ describe('LeaderboardItem', () => {
         is_current_user: true,
         steps: 50000,
       });
-      const { getByText } = render(<LeaderboardItem entry={entry} />);
+      const { getByText, getByTestId } = render(<LeaderboardItem entry={entry} />);
       expect(getByText('You (Me)')).toBeTruthy();
-      expect(getByText('\u{1F947}')).toBeTruthy(); // Gold medal
+      expect(getByTestId('icon-medal')).toBeTruthy(); // Gold medal icon
       // Use regex to handle locale-specific formatting
       expect(getByText(/50[,.]?000 steps/)).toBeTruthy();
     });

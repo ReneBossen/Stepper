@@ -74,19 +74,19 @@ public class UserPreferencesEntity : BaseModel
     /// Profile visibility setting ('public', 'friends', 'private').
     /// </summary>
     [Column("privacy_profile_visibility")]
-    public string PrivacyProfileVisibility { get; set; } = "public";
+    public string PrivacyProfileVisibility { get; set; } = PrivacyLevel.Public;
 
     /// <summary>
     /// Who can find the user ('public', 'friends', 'private').
     /// </summary>
     [Column("privacy_find_me")]
-    public string PrivacyFindMe { get; set; } = "public";
+    public string PrivacyFindMe { get; set; } = PrivacyLevel.Public;
 
     /// <summary>
     /// Who can see the user's steps ('public', 'friends', 'partial', 'private').
     /// </summary>
     [Column("privacy_show_steps")]
-    public string PrivacyShowSteps { get; set; } = "partial";
+    public string PrivacyShowSteps { get; set; } = PrivacyLevel.Partial;
 
     /// <summary>
     /// Timestamp when preferences were created.

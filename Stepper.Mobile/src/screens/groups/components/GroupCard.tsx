@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
-import { Card, Text, Chip, useTheme } from 'react-native-paper';
+import { Card, Text, Chip, Icon, useTheme } from 'react-native-paper';
 import type { GroupWithLeaderboard, LeaderboardEntry } from '@store/groupsStore';
 import { getCompetitionTypeLabel } from '@utils/groupUtils';
 
@@ -97,9 +97,9 @@ export function GroupCard({ group, onPress, testID }: GroupCardProps) {
         <Card.Content>
           <View style={styles.header}>
             <View style={styles.titleRow}>
-              <Text variant="titleMedium" style={styles.groupIcon}>
-                {'\u{1F3C6}'}
-              </Text>
+              <View style={styles.groupIconContainer}>
+                <Icon source="trophy" size={20} color={theme.colors.primary} />
+              </View>
               <Text
                 variant="titleMedium"
                 style={[styles.groupName, { color: theme.colors.onSurface }]}
@@ -108,12 +108,7 @@ export function GroupCard({ group, onPress, testID }: GroupCardProps) {
                 {group.name}
               </Text>
             </View>
-            <Text
-              variant="bodySmall"
-              style={{ color: theme.colors.onSurfaceVariant }}
-            >
-              {'\u{279C}'}
-            </Text>
+            <Icon source="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />
           </View>
 
           <View style={styles.metaRow}>
@@ -173,9 +168,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  groupIcon: {
+  groupIconContainer: {
     marginRight: 8,
-    fontSize: 20,
+    justifyContent: 'center',
   },
   groupName: {
     fontWeight: '600',

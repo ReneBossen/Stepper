@@ -8,6 +8,10 @@ jest.mock('react-native-paper', () => ({
     const RN = require('react-native');
     return <RN.Text {...props} style={style}>{children}</RN.Text>;
   },
+  Icon: ({ source, size, color, ...props }: any) => {
+    const RN = require('react-native');
+    return <RN.View testID={props.testID || `icon-${source}`} />;
+  },
   useTheme: () => ({
     colors: {
       tertiaryContainer: '#FFE0B2',
@@ -35,10 +39,10 @@ describe('StreakBadge', () => {
     expect(getByText(/7 days/)).toBeTruthy();
   });
 
-  it('should show fire emoji', () => {
-    const { getByText } = render(<StreakBadge streak={5} />);
+  it('should show fire icon', () => {
+    const { getByTestId } = render(<StreakBadge streak={5} />);
 
-    expect(getByText('🔥')).toBeTruthy();
+    expect(getByTestId('icon-fire')).toBeTruthy();
   });
 
   it('should handle zero streak', () => {
