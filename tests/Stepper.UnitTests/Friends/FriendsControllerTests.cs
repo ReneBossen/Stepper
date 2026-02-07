@@ -82,119 +82,6 @@ public class FriendsControllerTests
         _mockFriendService.Verify(x => x.SendFriendRequestAsync(It.IsAny<Guid>(), It.IsAny<SendFriendRequestRequest>()), Times.Never);
     }
 
-    [Fact]
-    public async Task SendFriendRequest_WithInvalidRequest_ReturnsBadRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var request = new SendFriendRequestRequest { FriendUserId = Guid.Empty };
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.SendFriendRequestAsync(userId, request))
-            .ThrowsAsync(new ArgumentException("Friend user ID cannot be empty."));
-
-        // Act
-        var result = await _sut.SendFriendRequest(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var apiResponse = badRequestResult.Value.Should().BeOfType<ApiResponse<FriendRequestResponse>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain("Friend user ID cannot be empty.");
-    }
-
-    [Fact]
-    public async Task SendFriendRequest_ToSelf_ReturnsBadRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var request = new SendFriendRequestRequest { FriendUserId = userId };
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.SendFriendRequestAsync(userId, request))
-            .ThrowsAsync(new ArgumentException("Cannot send friend request to yourself."));
-
-        // Act
-        var result = await _sut.SendFriendRequest(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var apiResponse = badRequestResult.Value.Should().BeOfType<ApiResponse<FriendRequestResponse>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain("Cannot send friend request to yourself.");
-    }
-
-    [Fact]
-    public async Task SendFriendRequest_WithNonExistentUser_ReturnsNotFound()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var friendUserId = Guid.NewGuid();
-        var request = new SendFriendRequestRequest { FriendUserId = friendUserId };
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.SendFriendRequestAsync(userId, request))
-            .ThrowsAsync(new KeyNotFoundException($"User not found: {friendUserId}"));
-
-        // Act
-        var result = await _sut.SendFriendRequest(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        var apiResponse = notFoundResult.Value.Should().BeOfType<ApiResponse<FriendRequestResponse>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain($"User not found: {friendUserId}");
-    }
-
-    [Fact]
-    public async Task SendFriendRequest_WithDuplicateRequest_ReturnsBadRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var friendUserId = Guid.NewGuid();
-        var request = new SendFriendRequestRequest { FriendUserId = friendUserId };
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.SendFriendRequestAsync(userId, request))
-            .ThrowsAsync(new InvalidOperationException("A friendship or request already exists with status: Pending"));
-
-        // Act
-        var result = await _sut.SendFriendRequest(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var apiResponse = badRequestResult.Value.Should().BeOfType<ApiResponse<FriendRequestResponse>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain("A friendship or request already exists with status: Pending");
-    }
-
-    [Fact]
-    public async Task SendFriendRequest_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var request = new SendFriendRequestRequest { FriendUserId = Guid.NewGuid() };
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.SendFriendRequestAsync(userId, request))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.SendFriendRequest(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var apiResponse = statusCodeResult.Value.Should().BeOfType<ApiResponse<FriendRequestResponse>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain("An error occurred: Database connection failed");
-    }
-
     #endregion
 
     #region GetPendingRequests Tests
@@ -243,28 +130,6 @@ public class FriendsControllerTests
         apiResponse.Success.Should().BeFalse();
         apiResponse.Errors.Should().Contain("User is not authenticated.");
         _mockFriendService.Verify(x => x.GetPendingRequestsAsync(It.IsAny<Guid>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task GetPendingRequests_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.GetPendingRequestsAsync(userId))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.GetPendingRequests();
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var apiResponse = statusCodeResult.Value.Should().BeOfType<ApiResponse<List<FriendRequestResponse>>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain("An error occurred: Database connection failed");
     }
 
     #endregion
@@ -365,72 +230,6 @@ public class FriendsControllerTests
         _mockFriendService.Verify(x => x.AcceptRequestAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
     }
 
-    [Fact]
-    public async Task AcceptRequest_WithNonExistentRequest_ReturnsNotFound()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var requestId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.AcceptRequestAsync(userId, requestId))
-            .ThrowsAsync(new KeyNotFoundException($"Friend request not found: {requestId}"));
-
-        // Act
-        var result = await _sut.AcceptRequest(requestId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        var apiResponse = notFoundResult.Value.Should().BeOfType<ApiResponse<FriendRequestResponse>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain($"Friend request not found: {requestId}");
-    }
-
-    [Fact]
-    public async Task AcceptRequest_WithUnauthorizedUser_ReturnsUnauthorized()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var requestId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.AcceptRequestAsync(userId, requestId))
-            .ThrowsAsync(new UnauthorizedAccessException("Only the addressee can accept this request."));
-
-        // Act
-        var result = await _sut.AcceptRequest(requestId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var unauthorizedResult = result.Result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
-        var apiResponse = unauthorizedResult.Value.Should().BeOfType<ApiResponse<FriendRequestResponse>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain("Only the addressee can accept this request.");
-    }
-
-    [Fact]
-    public async Task AcceptRequest_WithAlreadyAcceptedRequest_ReturnsBadRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var requestId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.AcceptRequestAsync(userId, requestId))
-            .ThrowsAsync(new InvalidOperationException("Cannot accept request with status: accepted"));
-
-        // Act
-        var result = await _sut.AcceptRequest(requestId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var apiResponse = badRequestResult.Value.Should().BeOfType<ApiResponse<FriendRequestResponse>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain("Cannot accept request with status: accepted");
-    }
-
     #endregion
 
     #region RejectRequest Tests
@@ -479,28 +278,6 @@ public class FriendsControllerTests
         _mockFriendService.Verify(x => x.RejectRequestAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
     }
 
-    [Fact]
-    public async Task RejectRequest_WithNonExistentRequest_ReturnsNotFound()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var requestId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.RejectRequestAsync(userId, requestId))
-            .ThrowsAsync(new KeyNotFoundException($"Friend request not found: {requestId}"));
-
-        // Act
-        var result = await _sut.RejectRequest(requestId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        var apiResponse = notFoundResult.Value.Should().BeOfType<ApiResponse<FriendRequestResponse>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain($"Friend request not found: {requestId}");
-    }
-
     #endregion
 
     #region CancelRequest Tests
@@ -542,95 +319,6 @@ public class FriendsControllerTests
         apiResponse.Success.Should().BeFalse();
         apiResponse.Errors.Should().Contain("User is not authenticated.");
         _mockFriendService.Verify(x => x.CancelRequestAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task CancelRequest_WithNonExistentRequest_ReturnsNotFound()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var requestId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.CancelRequestAsync(userId, requestId))
-            .ThrowsAsync(new KeyNotFoundException($"Friend request not found: {requestId}"));
-
-        // Act
-        var result = await _sut.CancelRequest(requestId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        var apiResponse = notFoundResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain($"Friend request not found: {requestId}");
-    }
-
-    [Fact]
-    public async Task CancelRequest_WhenNotRequester_ReturnsUnauthorized()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var requestId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.CancelRequestAsync(userId, requestId))
-            .ThrowsAsync(new UnauthorizedAccessException("Only the requester can cancel this request."));
-
-        // Act
-        var result = await _sut.CancelRequest(requestId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var unauthorizedResult = result.Result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
-        var apiResponse = unauthorizedResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain("Only the requester can cancel this request.");
-    }
-
-    [Fact]
-    public async Task CancelRequest_WhenRequestNotPending_ReturnsBadRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var requestId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.CancelRequestAsync(userId, requestId))
-            .ThrowsAsync(new InvalidOperationException("Cannot cancel request with status: accepted"));
-
-        // Act
-        var result = await _sut.CancelRequest(requestId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var apiResponse = badRequestResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain("Cannot cancel request with status: accepted");
-    }
-
-    [Fact]
-    public async Task CancelRequest_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var requestId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.CancelRequestAsync(userId, requestId))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.CancelRequest(requestId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var apiResponse = statusCodeResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain("An error occurred: Database connection failed");
     }
 
     #endregion
@@ -743,50 +431,6 @@ public class FriendsControllerTests
         _mockFriendService.Verify(x => x.GetFriendAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
     }
 
-    [Fact]
-    public async Task GetFriend_WithNonExistentFriend_ReturnsNotFound()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var friendId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.GetFriendAsync(userId, friendId))
-            .ThrowsAsync(new KeyNotFoundException("Friend not found."));
-
-        // Act
-        var result = await _sut.GetFriend(friendId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        var apiResponse = notFoundResult.Value.Should().BeOfType<ApiResponse<FriendResponse>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain("Friend not found.");
-    }
-
-    [Fact]
-    public async Task GetFriend_WithPendingFriendship_ReturnsNotFound()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var friendId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.GetFriendAsync(userId, friendId))
-            .ThrowsAsync(new KeyNotFoundException("Friend not found."));
-
-        // Act
-        var result = await _sut.GetFriend(friendId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        var apiResponse = notFoundResult.Value.Should().BeOfType<ApiResponse<FriendResponse>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain("Friend not found.");
-    }
-
     #endregion
 
     #region RemoveFriend Tests
@@ -828,28 +472,6 @@ public class FriendsControllerTests
         apiResponse.Success.Should().BeFalse();
         apiResponse.Errors.Should().Contain("User is not authenticated.");
         _mockFriendService.Verify(x => x.RemoveFriendAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task RemoveFriend_WithNonExistentFriendship_ReturnsNotFound()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var friendId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockFriendService.Setup(x => x.RemoveFriendAsync(userId, friendId))
-            .ThrowsAsync(new KeyNotFoundException($"Friendship not found between users {userId} and {friendId}"));
-
-        // Act
-        var result = await _sut.RemoveFriend(friendId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        var apiResponse = notFoundResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        apiResponse.Success.Should().BeFalse();
-        apiResponse.Errors.Should().Contain($"Friendship not found between users {userId} and {friendId}");
     }
 
     #endregion

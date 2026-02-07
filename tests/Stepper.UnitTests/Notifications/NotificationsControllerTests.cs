@@ -98,49 +98,6 @@ public class NotificationsControllerTests
         _mockService.Verify(x => x.GetAllAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
     }
 
-    [Fact]
-    public async Task GetAll_WhenServiceThrowsArgumentException_ReturnsBadRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockService.Setup(x => x.GetAllAsync(userId, 20, 0))
-            .ThrowsAsync(new ArgumentException("Invalid parameters"));
-
-        // Act
-        var result = await _sut.GetAll();
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<NotificationListResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Invalid parameters");
-    }
-
-    [Fact]
-    public async Task GetAll_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockService.Setup(x => x.GetAllAsync(userId, 20, 0))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.GetAll();
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<NotificationListResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An error occurred: Database connection failed");
-    }
-
     #endregion
 
     #region GetUnreadCount Tests
@@ -185,49 +142,6 @@ public class NotificationsControllerTests
         response.Success.Should().BeFalse();
         response.Errors.Should().Contain("User is not authenticated.");
         _mockService.Verify(x => x.GetUnreadCountAsync(It.IsAny<Guid>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task GetUnreadCount_WhenServiceThrowsArgumentException_ReturnsBadRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockService.Setup(x => x.GetUnreadCountAsync(userId))
-            .ThrowsAsync(new ArgumentException("Invalid user ID"));
-
-        // Act
-        var result = await _sut.GetUnreadCount();
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<UnreadCountResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Invalid user ID");
-    }
-
-    [Fact]
-    public async Task GetUnreadCount_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockService.Setup(x => x.GetUnreadCountAsync(userId))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.GetUnreadCount();
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<UnreadCountResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An error occurred: Database connection failed");
     }
 
     #endregion
@@ -292,70 +206,6 @@ public class NotificationsControllerTests
         _mockService.Verify(x => x.MarkAsReadAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
     }
 
-    [Fact]
-    public async Task MarkAsRead_WithNotFoundNotification_ReturnsNotFound()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var notificationId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockService.Setup(x => x.MarkAsReadAsync(userId, notificationId))
-            .ThrowsAsync(new KeyNotFoundException($"Notification not found with ID: {notificationId}"));
-
-        // Act
-        var result = await _sut.MarkAsRead(notificationId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        var response = notFoundResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain($"Notification not found with ID: {notificationId}");
-    }
-
-    [Fact]
-    public async Task MarkAsRead_WithUnauthorizedAccess_ReturnsForbid()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var notificationId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockService.Setup(x => x.MarkAsReadAsync(userId, notificationId))
-            .ThrowsAsync(new UnauthorizedAccessException("You do not have permission to access this notification."));
-
-        // Act
-        var result = await _sut.MarkAsRead(notificationId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Result.Should().BeOfType<ForbidResult>();
-    }
-
-    [Fact]
-    public async Task MarkAsRead_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var notificationId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockService.Setup(x => x.MarkAsReadAsync(userId, notificationId))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.MarkAsRead(notificationId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An error occurred: Database connection failed");
-    }
-
     #endregion
 
     #region MarkAllAsRead Tests
@@ -395,49 +245,6 @@ public class NotificationsControllerTests
         response.Success.Should().BeFalse();
         response.Errors.Should().Contain("User is not authenticated.");
         _mockService.Verify(x => x.MarkAllAsReadAsync(It.IsAny<Guid>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task MarkAllAsRead_WhenServiceThrowsArgumentException_ReturnsBadRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockService.Setup(x => x.MarkAllAsReadAsync(userId))
-            .ThrowsAsync(new ArgumentException("Invalid user ID"));
-
-        // Act
-        var result = await _sut.MarkAllAsRead();
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Invalid user ID");
-    }
-
-    [Fact]
-    public async Task MarkAllAsRead_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockService.Setup(x => x.MarkAllAsReadAsync(userId))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.MarkAllAsRead();
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An error occurred: Database connection failed");
     }
 
     #endregion
@@ -500,70 +307,6 @@ public class NotificationsControllerTests
         response.Success.Should().BeFalse();
         response.Errors.Should().Contain("Notification ID cannot be empty.");
         _mockService.Verify(x => x.DeleteAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task Delete_WithNotFoundNotification_ReturnsNotFound()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var notificationId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockService.Setup(x => x.DeleteAsync(userId, notificationId))
-            .ThrowsAsync(new KeyNotFoundException($"Notification not found with ID: {notificationId}"));
-
-        // Act
-        var result = await _sut.Delete(notificationId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        var response = notFoundResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain($"Notification not found with ID: {notificationId}");
-    }
-
-    [Fact]
-    public async Task Delete_WithUnauthorizedAccess_ReturnsForbid()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var notificationId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockService.Setup(x => x.DeleteAsync(userId, notificationId))
-            .ThrowsAsync(new UnauthorizedAccessException("You do not have permission to access this notification."));
-
-        // Act
-        var result = await _sut.Delete(notificationId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Result.Should().BeOfType<ForbidResult>();
-    }
-
-    [Fact]
-    public async Task Delete_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var notificationId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockService.Setup(x => x.DeleteAsync(userId, notificationId))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.Delete(notificationId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An error occurred: Database connection failed");
     }
 
     #endregion

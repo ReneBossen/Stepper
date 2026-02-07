@@ -44,19 +44,8 @@ public class ActivityController : ControllerBase
             return Unauthorized(ApiResponse<ActivityFeedResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _activityService.GetFeedAsync(userId.Value, limit, offset);
-            return Ok(ApiResponse<ActivityFeedResponse>.SuccessResponse(result));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<ActivityFeedResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<ActivityFeedResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _activityService.GetFeedAsync(userId.Value, limit, offset);
+        return Ok(ApiResponse<ActivityFeedResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -73,22 +62,7 @@ public class ActivityController : ControllerBase
             return Unauthorized(ApiResponse<ActivityItemResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _activityService.GetByIdAsync(userId.Value, id);
-            return Ok(ApiResponse<ActivityItemResponse>.SuccessResponse(result));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<ActivityItemResponse>.ErrorResponse(ex.Message));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<ActivityItemResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<ActivityItemResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _activityService.GetByIdAsync(userId.Value, id);
+        return Ok(ApiResponse<ActivityItemResponse>.SuccessResponse(result));
     }
 }

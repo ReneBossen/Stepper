@@ -81,62 +81,6 @@ public class AuthControllerTests
         _mockAuthService.Verify(x => x.RegisterAsync(It.IsAny<RegisterRequest>()), Times.Never);
     }
 
-    [Fact]
-    public async Task Register_WithInvalidEmail_ReturnsBadRequest()
-    {
-        // Arrange
-        var request = new RegisterRequest("invalid-email", "password123", "Test User");
-        _mockAuthService.Setup(x => x.RegisterAsync(request))
-            .ThrowsAsync(new ArgumentException("Invalid email format."));
-
-        // Act
-        var result = await _sut.Register(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<AuthResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Invalid email format.");
-    }
-
-    [Fact]
-    public async Task Register_WhenEmailAlreadyExists_ReturnsBadRequest()
-    {
-        // Arrange
-        var request = new RegisterRequest("existing@example.com", "password123", "Test User");
-        _mockAuthService.Setup(x => x.RegisterAsync(request))
-            .ThrowsAsync(new InvalidOperationException("An account with this email already exists."));
-
-        // Act
-        var result = await _sut.Register(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<AuthResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An account with this email already exists.");
-    }
-
-    [Fact]
-    public async Task Register_WithShortPassword_ReturnsBadRequest()
-    {
-        // Arrange
-        var request = new RegisterRequest("test@example.com", "123", "Test User");
-        _mockAuthService.Setup(x => x.RegisterAsync(request))
-            .ThrowsAsync(new ArgumentException("Password must be at least 6 characters long."));
-
-        // Act
-        var result = await _sut.Register(request);
-
-        // Assert
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<AuthResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Password must be at least 6 characters long.");
-    }
-
     #endregion
 
     #region Login Tests
@@ -175,42 +119,6 @@ public class AuthControllerTests
         var response = badRequestResult.Value.Should().BeOfType<ApiResponse<AuthResponse>>().Subject;
         response.Success.Should().BeFalse();
         response.Errors.Should().Contain("Request body cannot be null.");
-    }
-
-    [Fact]
-    public async Task Login_WithEmptyEmail_ReturnsBadRequest()
-    {
-        // Arrange
-        var request = new LoginRequest("", "password123");
-        _mockAuthService.Setup(x => x.LoginAsync(request))
-            .ThrowsAsync(new ArgumentException("Email cannot be empty."));
-
-        // Act
-        var result = await _sut.Login(request);
-
-        // Assert
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<AuthResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Email cannot be empty.");
-    }
-
-    [Fact]
-    public async Task Login_WithInvalidCredentials_ReturnsUnauthorized()
-    {
-        // Arrange
-        var request = new LoginRequest("test@example.com", "wrongpassword");
-        _mockAuthService.Setup(x => x.LoginAsync(request))
-            .ThrowsAsync(new UnauthorizedAccessException("Invalid email or password."));
-
-        // Act
-        var result = await _sut.Login(request);
-
-        // Assert
-        var unauthorizedResult = result.Result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
-        var response = unauthorizedResult.Value.Should().BeOfType<ApiResponse<AuthResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Invalid email or password.");
     }
 
     #endregion
@@ -252,24 +160,6 @@ public class AuthControllerTests
         _mockAuthService.Verify(x => x.LogoutAsync(It.IsAny<string>()), Times.Never);
     }
 
-    [Fact]
-    public async Task Logout_WhenServiceFails_ReturnsBadRequest()
-    {
-        // Arrange
-        SetupHttpContextWithAuthToken("valid-access-token");
-        _mockAuthService.Setup(x => x.LogoutAsync("valid-access-token"))
-            .ThrowsAsync(new InvalidOperationException("Failed to logout. Please try again."));
-
-        // Act
-        var result = await _sut.Logout();
-
-        // Assert
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Failed to logout. Please try again.");
-    }
-
     #endregion
 
     #region RefreshToken Tests
@@ -309,42 +199,6 @@ public class AuthControllerTests
         response.Errors.Should().Contain("Request body cannot be null.");
     }
 
-    [Fact]
-    public async Task RefreshToken_WithEmptyToken_ReturnsBadRequest()
-    {
-        // Arrange
-        var request = new RefreshTokenRequest("");
-        _mockAuthService.Setup(x => x.RefreshTokenAsync(request))
-            .ThrowsAsync(new ArgumentException("Refresh token cannot be empty."));
-
-        // Act
-        var result = await _sut.RefreshToken(request);
-
-        // Assert
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<AuthResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Refresh token cannot be empty.");
-    }
-
-    [Fact]
-    public async Task RefreshToken_WithExpiredToken_ReturnsUnauthorized()
-    {
-        // Arrange
-        var request = new RefreshTokenRequest("expired-refresh-token");
-        _mockAuthService.Setup(x => x.RefreshTokenAsync(request))
-            .ThrowsAsync(new UnauthorizedAccessException("Invalid or expired refresh token."));
-
-        // Act
-        var result = await _sut.RefreshToken(request);
-
-        // Assert
-        var unauthorizedResult = result.Result.Should().BeOfType<UnauthorizedObjectResult>().Subject;
-        var response = unauthorizedResult.Value.Should().BeOfType<ApiResponse<AuthResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Invalid or expired refresh token.");
-    }
-
     #endregion
 
     #region ForgotPassword Tests
@@ -378,24 +232,6 @@ public class AuthControllerTests
         var response = badRequestResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
         response.Success.Should().BeFalse();
         response.Errors.Should().Contain("Request body cannot be null.");
-    }
-
-    [Fact]
-    public async Task ForgotPassword_WithInvalidEmailFormat_ReturnsBadRequest()
-    {
-        // Arrange
-        var request = new ForgotPasswordRequest("invalid-email");
-        _mockAuthService.Setup(x => x.ForgotPasswordAsync(request))
-            .ThrowsAsync(new ArgumentException("Invalid email format."));
-
-        // Act
-        var result = await _sut.ForgotPassword(request);
-
-        // Assert
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Invalid email format.");
     }
 
     [Fact]
@@ -448,60 +284,6 @@ public class AuthControllerTests
         var response = badRequestResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
         response.Success.Should().BeFalse();
         response.Errors.Should().Contain("Request body cannot be null.");
-    }
-
-    [Fact]
-    public async Task ResetPassword_WithEmptyToken_ReturnsBadRequest()
-    {
-        // Arrange
-        var request = new ResetPasswordRequest("", "newPassword123");
-        _mockAuthService.Setup(x => x.ResetPasswordAsync(request))
-            .ThrowsAsync(new ArgumentException("Reset token cannot be empty."));
-
-        // Act
-        var result = await _sut.ResetPassword(request);
-
-        // Assert
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Reset token cannot be empty.");
-    }
-
-    [Fact]
-    public async Task ResetPassword_WithInvalidToken_ReturnsBadRequest()
-    {
-        // Arrange
-        var request = new ResetPasswordRequest("invalid-token", "newPassword123");
-        _mockAuthService.Setup(x => x.ResetPasswordAsync(request))
-            .ThrowsAsync(new InvalidOperationException("Invalid or expired reset token."));
-
-        // Act
-        var result = await _sut.ResetPassword(request);
-
-        // Assert
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Invalid or expired reset token.");
-    }
-
-    [Fact]
-    public async Task ResetPassword_WithShortPassword_ReturnsBadRequest()
-    {
-        // Arrange
-        var request = new ResetPasswordRequest("valid-token", "123");
-        _mockAuthService.Setup(x => x.ResetPasswordAsync(request))
-            .ThrowsAsync(new ArgumentException("Password must be at least 6 characters long."));
-
-        // Act
-        var result = await _sut.ResetPassword(request);
-
-        // Assert
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Password must be at least 6 characters long.");
     }
 
     #endregion

@@ -40,19 +40,8 @@ public class NotificationsController : ControllerBase
             return Unauthorized(ApiResponse<NotificationListResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _notificationService.GetAllAsync(userId.Value, limit, offset);
-            return Ok(ApiResponse<NotificationListResponse>.SuccessResponse(result));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<NotificationListResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<NotificationListResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _notificationService.GetAllAsync(userId.Value, limit, offset);
+        return Ok(ApiResponse<NotificationListResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -69,19 +58,8 @@ public class NotificationsController : ControllerBase
             return Unauthorized(ApiResponse<UnreadCountResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _notificationService.GetUnreadCountAsync(userId.Value);
-            return Ok(ApiResponse<UnreadCountResponse>.SuccessResponse(result));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<UnreadCountResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<UnreadCountResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _notificationService.GetUnreadCountAsync(userId.Value);
+        return Ok(ApiResponse<UnreadCountResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -104,27 +82,8 @@ public class NotificationsController : ControllerBase
             return BadRequest(ApiResponse<object>.ErrorResponse("Notification ID cannot be empty."));
         }
 
-        try
-        {
-            await _notificationService.MarkAsReadAsync(userId.Value, id);
-            return NoContent();
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        await _notificationService.MarkAsReadAsync(userId.Value, id);
+        return NoContent();
     }
 
     /// <summary>
@@ -141,19 +100,8 @@ public class NotificationsController : ControllerBase
             return Unauthorized(ApiResponse<object>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            await _notificationService.MarkAllAsReadAsync(userId.Value);
-            return NoContent();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        await _notificationService.MarkAllAsReadAsync(userId.Value);
+        return NoContent();
     }
 
     /// <summary>
@@ -176,26 +124,7 @@ public class NotificationsController : ControllerBase
             return BadRequest(ApiResponse<object>.ErrorResponse("Notification ID cannot be empty."));
         }
 
-        try
-        {
-            await _notificationService.DeleteAsync(userId.Value, id);
-            return NoContent();
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        await _notificationService.DeleteAsync(userId.Value, id);
+        return NoContent();
     }
 }

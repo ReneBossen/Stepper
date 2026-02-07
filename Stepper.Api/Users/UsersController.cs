@@ -32,29 +32,15 @@ public class UsersController : ControllerBase
     [HttpGet("me")]
     public async Task<ActionResult<ApiResponse<GetProfileResponse>>> GetMyProfile()
     {
-        _logger.LogDebug("GetMyProfile called");
         var userId = User.GetUserId();
 
         if (userId == null)
         {
-            _logger.LogWarning("GetMyProfile: User ID is null - not authenticated");
             return Unauthorized(ApiResponse<GetProfileResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        _logger.LogDebug("GetMyProfile: Fetching profile for user {UserId}", userId.Value);
-
-        try
-        {
-            var profile = await _userService.EnsureProfileExistsAsync(userId.Value);
-
-            _logger.LogInformation("GetMyProfile: Successfully returned profile for user {UserId}", userId.Value);
-            return Ok(ApiResponse<GetProfileResponse>.SuccessResponse(profile));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "GetMyProfile: Error for user {UserId}", userId.Value);
-            return StatusCode(500, ApiResponse<GetProfileResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
-        }
+        var profile = await _userService.EnsureProfileExistsAsync(userId.Value);
+        return Ok(ApiResponse<GetProfileResponse>.SuccessResponse(profile));
     }
 
     /// <summary>
@@ -77,24 +63,8 @@ public class UsersController : ControllerBase
             return BadRequest(ApiResponse<GetProfileResponse>.ErrorResponse("Request body cannot be null."));
         }
 
-        try
-        {
-            var profile = await _userService.UpdateProfileAsync(userId.Value, request);
-            return Ok(ApiResponse<GetProfileResponse>.SuccessResponse(profile));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<GetProfileResponse>.ErrorResponse(ex.Message));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<GetProfileResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "UpdateMyProfile: Error for user {UserId}", userId.Value);
-            return StatusCode(500, ApiResponse<GetProfileResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
-        }
+        var profile = await _userService.UpdateProfileAsync(userId.Value, request);
+        return Ok(ApiResponse<GetProfileResponse>.SuccessResponse(profile));
     }
 
     /// <summary>
@@ -117,20 +87,8 @@ public class UsersController : ControllerBase
             return BadRequest(ApiResponse<GetProfileResponse>.ErrorResponse("User ID cannot be empty."));
         }
 
-        try
-        {
-            var profile = await _userService.GetProfileAsync(id);
-            return Ok(ApiResponse<GetProfileResponse>.SuccessResponse(profile));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<GetProfileResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "GetProfileById: Error for user {Id}", id);
-            return StatusCode(500, ApiResponse<GetProfileResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
-        }
+        var profile = await _userService.GetProfileAsync(id);
+        return Ok(ApiResponse<GetProfileResponse>.SuccessResponse(profile));
     }
 
     /// <summary>
@@ -140,33 +98,15 @@ public class UsersController : ControllerBase
     [HttpGet("me/preferences")]
     public async Task<ActionResult<ApiResponse<UserPreferencesResponse>>> GetMyPreferences()
     {
-        _logger.LogDebug("GetMyPreferences called");
         var userId = User.GetUserId();
 
         if (userId == null)
         {
-            _logger.LogWarning("GetMyPreferences: User ID is null - not authenticated");
             return Unauthorized(ApiResponse<UserPreferencesResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        _logger.LogDebug("GetMyPreferences: Fetching preferences for user {UserId}", userId.Value);
-
-        try
-        {
-            var preferences = await _userService.GetPreferencesAsync(userId.Value);
-            _logger.LogInformation("GetMyPreferences: Successfully returned preferences for user {UserId}", userId.Value);
-            return Ok(ApiResponse<UserPreferencesResponse>.SuccessResponse(preferences));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            _logger.LogWarning(ex, "GetMyPreferences: Preferences not found for user {UserId}", userId.Value);
-            return NotFound(ApiResponse<UserPreferencesResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "GetMyPreferences: Error for user {UserId}", userId.Value);
-            return StatusCode(500, ApiResponse<UserPreferencesResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
-        }
+        var preferences = await _userService.GetPreferencesAsync(userId.Value);
+        return Ok(ApiResponse<UserPreferencesResponse>.SuccessResponse(preferences));
     }
 
     /// <summary>
@@ -189,24 +129,8 @@ public class UsersController : ControllerBase
             return BadRequest(ApiResponse<UserPreferencesResponse>.ErrorResponse("Request body cannot be null."));
         }
 
-        try
-        {
-            var preferences = await _userService.UpdatePreferencesAsync(userId.Value, request);
-            return Ok(ApiResponse<UserPreferencesResponse>.SuccessResponse(preferences));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<UserPreferencesResponse>.ErrorResponse(ex.Message));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<UserPreferencesResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "UpdateMyPreferences: Error for user {UserId}", userId.Value);
-            return StatusCode(500, ApiResponse<UserPreferencesResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
-        }
+        var preferences = await _userService.UpdatePreferencesAsync(userId.Value, request);
+        return Ok(ApiResponse<UserPreferencesResponse>.SuccessResponse(preferences));
     }
 
     /// <summary>
@@ -229,20 +153,8 @@ public class UsersController : ControllerBase
             return Unauthorized(ApiResponse<UserDataExportResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var exportData = await _userService.ExportUserDataAsync(userId.Value);
-            return Ok(ApiResponse<UserDataExportResponse>.SuccessResponse(exportData));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<UserDataExportResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "ExportMyData: Error for user {UserId}", userId.Value);
-            return StatusCode(500, ApiResponse<UserDataExportResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
-        }
+        var exportData = await _userService.ExportUserDataAsync(userId.Value);
+        return Ok(ApiResponse<UserDataExportResponse>.SuccessResponse(exportData));
     }
 
     /// <summary>
@@ -266,30 +178,14 @@ public class UsersController : ControllerBase
             return BadRequest(ApiResponse<AvatarUploadResponse>.ErrorResponse("No file was provided."));
         }
 
-        try
-        {
-            using var stream = file.OpenReadStream();
-            var response = await _userService.UploadAvatarAsync(
-                userId.Value,
-                stream,
-                file.FileName,
-                file.ContentType);
+        using var stream = file.OpenReadStream();
+        var response = await _userService.UploadAvatarAsync(
+            userId.Value,
+            stream,
+            file.FileName,
+            file.ContentType);
 
-            return Ok(ApiResponse<AvatarUploadResponse>.SuccessResponse(response));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<AvatarUploadResponse>.ErrorResponse(ex.Message));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<AvatarUploadResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "UploadAvatar: Error for user {UserId}", userId.Value);
-            return StatusCode(500, ApiResponse<AvatarUploadResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
-        }
+        return Ok(ApiResponse<AvatarUploadResponse>.SuccessResponse(response));
     }
 
     /// <summary>
@@ -317,20 +213,8 @@ public class UsersController : ControllerBase
             return BadRequest(ApiResponse<UserStatsResponse>.ErrorResponse("User ID cannot be empty."));
         }
 
-        try
-        {
-            var stats = await _userService.GetUserStatsAsync(id);
-            return Ok(ApiResponse<UserStatsResponse>.SuccessResponse(stats));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<UserStatsResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "GetUserStats: Error for user {Id}", id);
-            return StatusCode(500, ApiResponse<UserStatsResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
-        }
+        var stats = await _userService.GetUserStatsAsync(id);
+        return Ok(ApiResponse<UserStatsResponse>.SuccessResponse(stats));
     }
 
     /// <summary>
@@ -358,20 +242,8 @@ public class UsersController : ControllerBase
             return BadRequest(ApiResponse<UserActivityResponse>.ErrorResponse("User ID cannot be empty."));
         }
 
-        try
-        {
-            var activity = await _userService.GetUserActivityAsync(id);
-            return Ok(ApiResponse<UserActivityResponse>.SuccessResponse(activity));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<UserActivityResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "GetUserActivity: Error for user {Id}", id);
-            return StatusCode(500, ApiResponse<UserActivityResponse>.ErrorResponse("An unexpected error occurred. Please try again later."));
-        }
+        var activity = await _userService.GetUserActivityAsync(id);
+        return Ok(ApiResponse<UserActivityResponse>.SuccessResponse(activity));
     }
 
     /// <summary>
@@ -399,19 +271,7 @@ public class UsersController : ControllerBase
             return BadRequest(ApiResponse<List<MutualGroupResponse>>.ErrorResponse("User ID cannot be empty."));
         }
 
-        try
-        {
-            var mutualGroups = await _userService.GetMutualGroupsAsync(currentUserId.Value, id);
-            return Ok(ApiResponse<List<MutualGroupResponse>>.SuccessResponse(mutualGroups));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<List<MutualGroupResponse>>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "GetMutualGroups: Error for users {CurrentUserId} and {OtherUserId}", currentUserId.Value, id);
-            return StatusCode(500, ApiResponse<List<MutualGroupResponse>>.ErrorResponse("An unexpected error occurred. Please try again later."));
-        }
+        var mutualGroups = await _userService.GetMutualGroupsAsync(currentUserId.Value, id);
+        return Ok(ApiResponse<List<MutualGroupResponse>>.SuccessResponse(mutualGroups));
     }
 }

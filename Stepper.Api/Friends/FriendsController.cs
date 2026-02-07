@@ -37,27 +37,8 @@ public class FriendsController : ControllerBase
             return Unauthorized(ApiResponse<FriendRequestResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _friendService.SendFriendRequestAsync(userId.Value, request);
-            return Ok(ApiResponse<FriendRequestResponse>.SuccessResponse(result));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<FriendRequestResponse>.ErrorResponse(ex.Message));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<FriendRequestResponse>.ErrorResponse(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<FriendRequestResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<FriendRequestResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _friendService.SendFriendRequestAsync(userId.Value, request);
+        return Ok(ApiResponse<FriendRequestResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -73,15 +54,8 @@ public class FriendsController : ControllerBase
             return Unauthorized(ApiResponse<List<FriendRequestResponse>>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _friendService.GetPendingRequestsAsync(userId.Value);
-            return Ok(ApiResponse<List<FriendRequestResponse>>.SuccessResponse(result));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<List<FriendRequestResponse>>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _friendService.GetPendingRequestsAsync(userId.Value);
+        return Ok(ApiResponse<List<FriendRequestResponse>>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -97,15 +71,8 @@ public class FriendsController : ControllerBase
             return Unauthorized(ApiResponse<List<FriendRequestResponse>>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _friendService.GetSentRequestsAsync(userId.Value);
-            return Ok(ApiResponse<List<FriendRequestResponse>>.SuccessResponse(result));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<List<FriendRequestResponse>>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _friendService.GetSentRequestsAsync(userId.Value);
+        return Ok(ApiResponse<List<FriendRequestResponse>>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -122,27 +89,8 @@ public class FriendsController : ControllerBase
             return Unauthorized(ApiResponse<FriendRequestResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _friendService.AcceptRequestAsync(userId.Value, requestId);
-            return Ok(ApiResponse<FriendRequestResponse>.SuccessResponse(result));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<FriendRequestResponse>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<FriendRequestResponse>.ErrorResponse(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<FriendRequestResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<FriendRequestResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _friendService.AcceptRequestAsync(userId.Value, requestId);
+        return Ok(ApiResponse<FriendRequestResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -159,27 +107,8 @@ public class FriendsController : ControllerBase
             return Unauthorized(ApiResponse<FriendRequestResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _friendService.RejectRequestAsync(userId.Value, requestId);
-            return Ok(ApiResponse<FriendRequestResponse>.SuccessResponse(result));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<FriendRequestResponse>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<FriendRequestResponse>.ErrorResponse(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<FriendRequestResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<FriendRequestResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _friendService.RejectRequestAsync(userId.Value, requestId);
+        return Ok(ApiResponse<FriendRequestResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -196,27 +125,8 @@ public class FriendsController : ControllerBase
             return Unauthorized(ApiResponse<object>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            await _friendService.CancelRequestAsync(userId.Value, requestId);
-            return NoContent();
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        await _friendService.CancelRequestAsync(userId.Value, requestId);
+        return NoContent();
     }
 
     /// <summary>
@@ -232,15 +142,8 @@ public class FriendsController : ControllerBase
             return Unauthorized(ApiResponse<FriendListResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _friendService.GetFriendsAsync(userId.Value);
-            return Ok(ApiResponse<FriendListResponse>.SuccessResponse(result));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<FriendListResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _friendService.GetFriendsAsync(userId.Value);
+        return Ok(ApiResponse<FriendListResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -257,19 +160,8 @@ public class FriendsController : ControllerBase
             return Unauthorized(ApiResponse<FriendResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _friendService.GetFriendAsync(userId.Value, friendId);
-            return Ok(ApiResponse<FriendResponse>.SuccessResponse(result));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<FriendResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<FriendResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _friendService.GetFriendAsync(userId.Value, friendId);
+        return Ok(ApiResponse<FriendResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -286,18 +178,7 @@ public class FriendsController : ControllerBase
             return Unauthorized(ApiResponse<object>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            await _friendService.RemoveFriendAsync(userId.Value, friendId);
-            return NoContent();
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        await _friendService.RemoveFriendAsync(userId.Value, friendId);
+        return NoContent();
     }
 }
