@@ -48,6 +48,15 @@ jest.mock('react-native-paper', () => {
     Content: ({ title }: any) => (
       <RN.Text testID="appbar-title">{title}</RN.Text>
     ),
+    Action: ({ icon, onPress, accessibilityLabel }: any) => (
+      <RN.TouchableOpacity
+        testID={`appbar-action-${icon}`}
+        onPress={onPress}
+        accessibilityLabel={accessibilityLabel}
+      >
+        <RN.Text>{icon}</RN.Text>
+      </RN.TouchableOpacity>
+    ),
     BackAction: ({ onPress }: any) => (
       <RN.TouchableOpacity testID="back-button" onPress={onPress}>
         <RN.Text>Back</RN.Text>
@@ -55,8 +64,24 @@ jest.mock('react-native-paper', () => {
     ),
   };
 
+  const Dialog = ({ children, visible, onDismiss }: any) => {
+    if (!visible) return null;
+    return <RN.View testID="dialog">{children}</RN.View>;
+  };
+  Dialog.Title = ({ children }: any) => (
+    <RN.Text testID="dialog-title">{children}</RN.Text>
+  );
+  Dialog.Content = ({ children }: any) => (
+    <RN.View testID="dialog-content">{children}</RN.View>
+  );
+  Dialog.Actions = ({ children }: any) => (
+    <RN.View testID="dialog-actions">{children}</RN.View>
+  );
+
   return {
     Appbar,
+    Dialog,
+    Portal: ({ children }: any) => <RN.View testID="portal">{children}</RN.View>,
     Searchbar: ({ placeholder, onChangeText, value, testID }: any) => (
       <RN.View testID={testID}>
         <RN.TextInput
@@ -151,7 +176,10 @@ describe('JoinGroupScreen', () => {
     isSearching: false,
     searchError: null,
     isLoading: false,
+    featuredGroups: [],
+    isLoadingFeatured: false,
     searchPublicGroups: mockSearchPublicGroups,
+    fetchFeaturedGroups: jest.fn(),
     joinGroup: mockJoinGroup,
     joinGroupByCode: mockJoinGroupByCode,
     clearSearch: mockClearSearch,
@@ -192,7 +220,7 @@ describe('JoinGroupScreen', () => {
 
     it('should display the title', () => {
       const { getByTestId } = render(<JoinGroupScreen route={mockRoute as any} navigation={mockNavigation as any} />);
-      expect(getByTestId('appbar-title')).toHaveTextContent('Join Group');
+      expect(getByTestId('appbar-title')).toHaveTextContent('Find Groups');
     });
 
     it('should call clearSearch on unmount', () => {

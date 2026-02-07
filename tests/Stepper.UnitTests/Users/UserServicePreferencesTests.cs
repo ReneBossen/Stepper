@@ -1,7 +1,12 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Moq;
+using Stepper.Api.Activity;
 using Stepper.Api.Common.Database;
+using Stepper.Api.Friends;
+using Stepper.Api.Groups;
+using Stepper.Api.Notifications;
+using Stepper.Api.Steps;
 using Stepper.Api.Users;
 using Stepper.Api.Users.DTOs;
 
@@ -14,6 +19,11 @@ public class UserServicePreferencesTests
 {
     private readonly Mock<IUserRepository> _mockRepository;
     private readonly Mock<IUserPreferencesRepository> _mockPreferencesRepository;
+    private readonly Mock<IStepRepository> _mockStepRepository;
+    private readonly Mock<IFriendRepository> _mockFriendRepository;
+    private readonly Mock<IGroupRepository> _mockGroupRepository;
+    private readonly Mock<IActivityRepository> _mockActivityRepository;
+    private readonly Mock<INotificationRepository> _mockNotificationRepository;
     private readonly Mock<ISupabaseClientFactory> _mockClientFactory;
     private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
     private readonly UserService _sut;
@@ -22,11 +32,21 @@ public class UserServicePreferencesTests
     {
         _mockRepository = new Mock<IUserRepository>();
         _mockPreferencesRepository = new Mock<IUserPreferencesRepository>();
+        _mockStepRepository = new Mock<IStepRepository>();
+        _mockFriendRepository = new Mock<IFriendRepository>();
+        _mockGroupRepository = new Mock<IGroupRepository>();
+        _mockActivityRepository = new Mock<IActivityRepository>();
+        _mockNotificationRepository = new Mock<INotificationRepository>();
         _mockClientFactory = new Mock<ISupabaseClientFactory>();
         _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
         _sut = new UserService(
             _mockRepository.Object,
             _mockPreferencesRepository.Object,
+            _mockStepRepository.Object,
+            _mockFriendRepository.Object,
+            _mockGroupRepository.Object,
+            _mockActivityRepository.Object,
+            _mockNotificationRepository.Object,
             _mockClientFactory.Object,
             _mockHttpContextAccessor.Object);
     }
@@ -60,7 +80,7 @@ public class UserServicePreferencesTests
         result.NotificationsEnabled.Should().BeFalse();
         result.PrivateProfile.Should().BeTrue();
         _mockRepository.Verify(x => x.GetByIdAsync(userId), Times.Once);
-        _mockPreferencesRepository.Verify(x => x.GetByUserIdAsync(userId), Times.Once);
+        _mockPreferencesRepository.Verify(x => x.GetByUserIdAsync(userId), Times.Exactly(2));
     }
 
     [Fact]
@@ -100,20 +120,32 @@ public class UserServicePreferencesTests
     }
 
     [Fact]
-    public async Task GetPreferencesAsync_WithNonExistentUser_ThrowsKeyNotFoundException()
+    public async Task GetPreferencesAsync_WithNonExistentUser_CreatesUserAndPreferences()
     {
         // Arrange
         var userId = Guid.NewGuid();
         _mockRepository.Setup(x => x.GetByIdAsync(userId))
             .ReturnsAsync((User?)null);
+        _mockRepository.Setup(x => x.CreateAsync(It.IsAny<User>()))
+            .ReturnsAsync((User u) => u);
+        var defaultPreferences = CreateTestPreferences(userId);
+        _mockPreferencesRepository.Setup(x => x.GetByUserIdAsync(userId))
+            .ReturnsAsync((UserPreferencesEntity?)null);
+        _mockPreferencesRepository.Setup(x => x.CreateAsync(userId))
+            .ReturnsAsync(defaultPreferences);
 
         // Act
-        var act = async () => await _sut.GetPreferencesAsync(userId);
+        var result = await _sut.GetPreferencesAsync(userId);
 
         // Assert
-        await act.Should().ThrowAsync<KeyNotFoundException>()
-            .WithMessage($"User profile not found for user ID: {userId}");
+        // When user doesn't exist, GetPreferencesAsync creates a new user via EnsureProfileExistsAsync
+        // EnsureProfileExistsAsync also tries to create preferences, then GetPreferencesAsync calls GetByUserIdAsync
+        // and creates preferences again
+        result.Should().NotBeNull();
         _mockRepository.Verify(x => x.GetByIdAsync(userId), Times.Once);
+        _mockRepository.Verify(x => x.CreateAsync(It.IsAny<User>()), Times.Once);
+        _mockPreferencesRepository.Verify(x => x.GetByUserIdAsync(userId), Times.Once);
+        _mockPreferencesRepository.Verify(x => x.CreateAsync(userId), Times.Exactly(2));
     }
 
     [Fact]
@@ -126,8 +158,10 @@ public class UserServicePreferencesTests
 
         _mockRepository.Setup(x => x.GetByIdAsync(userId))
             .ReturnsAsync(user);
-        _mockPreferencesRepository.Setup(x => x.GetByUserIdAsync(userId))
-            .ReturnsAsync((UserPreferencesEntity?)null);
+        // First call returns null (in EnsureProfileExistsAsync), second returns the created preferences
+        _mockPreferencesRepository.SetupSequence(x => x.GetByUserIdAsync(userId))
+            .ReturnsAsync((UserPreferencesEntity?)null)
+            .ReturnsAsync(defaultPreferences);
         _mockPreferencesRepository.Setup(x => x.CreateAsync(userId))
             .ReturnsAsync(defaultPreferences);
 
@@ -136,6 +170,7 @@ public class UserServicePreferencesTests
 
         // Assert
         result.Should().NotBeNull();
+        _mockPreferencesRepository.Verify(x => x.GetByUserIdAsync(userId), Times.Exactly(2));
         _mockPreferencesRepository.Verify(x => x.CreateAsync(userId), Times.Once);
     }
 

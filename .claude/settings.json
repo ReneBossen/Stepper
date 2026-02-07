@@ -1,9 +1,10 @@
 {
-  "enabledPlugins": {
-    "frontend-design@claude-plugins-official": true
-  },
   "statusLine": {
     "type": "command",
     "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"E:\\Github Projects\\Stepper\\.claude\\statusline-command.ps1\""
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "claude-agents@rene-bossen-agents": true
   }
 }

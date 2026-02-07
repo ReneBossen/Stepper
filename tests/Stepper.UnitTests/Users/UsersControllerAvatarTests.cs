@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Stepper.Api.Common.Models;
 using Stepper.Api.Users;
@@ -15,12 +16,14 @@ namespace Stepper.UnitTests.Users;
 public class UsersControllerAvatarTests
 {
     private readonly Mock<IUserService> _mockUserService;
+    private readonly Mock<ILogger<UsersController>> _mockLogger;
     private readonly UsersController _sut;
 
     public UsersControllerAvatarTests()
     {
         _mockUserService = new Mock<IUserService>();
-        _sut = new UsersController(_mockUserService.Object);
+        _mockLogger = new Mock<ILogger<UsersController>>();
+        _sut = new UsersController(_mockUserService.Object, _mockLogger.Object);
     }
 
     #region UploadAvatar Tests
@@ -231,7 +234,7 @@ public class UsersControllerAvatarTests
         statusCodeResult.StatusCode.Should().Be(500);
         var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<AvatarUploadResponse>>().Subject;
         response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An error occurred: Storage service unavailable");
+        response.Errors.Should().Contain("An unexpected error occurred. Please try again later.");
     }
 
     [Theory]

@@ -1,7 +1,12 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Moq;
+using Stepper.Api.Activity;
 using Stepper.Api.Common.Database;
+using Stepper.Api.Friends;
+using Stepper.Api.Groups;
+using Stepper.Api.Notifications;
+using Stepper.Api.Steps;
 using Stepper.Api.Users;
 
 namespace Stepper.UnitTests.Users;
@@ -13,6 +18,11 @@ public class UserServiceAvatarTests
 {
     private readonly Mock<IUserRepository> _mockRepository;
     private readonly Mock<IUserPreferencesRepository> _mockPreferencesRepository;
+    private readonly Mock<IStepRepository> _mockStepRepository;
+    private readonly Mock<IFriendRepository> _mockFriendRepository;
+    private readonly Mock<IGroupRepository> _mockGroupRepository;
+    private readonly Mock<IActivityRepository> _mockActivityRepository;
+    private readonly Mock<INotificationRepository> _mockNotificationRepository;
     private readonly Mock<ISupabaseClientFactory> _mockClientFactory;
     private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
     private readonly UserService _sut;
@@ -21,11 +31,21 @@ public class UserServiceAvatarTests
     {
         _mockRepository = new Mock<IUserRepository>();
         _mockPreferencesRepository = new Mock<IUserPreferencesRepository>();
+        _mockStepRepository = new Mock<IStepRepository>();
+        _mockFriendRepository = new Mock<IFriendRepository>();
+        _mockGroupRepository = new Mock<IGroupRepository>();
+        _mockActivityRepository = new Mock<IActivityRepository>();
+        _mockNotificationRepository = new Mock<INotificationRepository>();
         _mockClientFactory = new Mock<ISupabaseClientFactory>();
         _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
         _sut = new UserService(
             _mockRepository.Object,
             _mockPreferencesRepository.Object,
+            _mockStepRepository.Object,
+            _mockFriendRepository.Object,
+            _mockGroupRepository.Object,
+            _mockActivityRepository.Object,
+            _mockNotificationRepository.Object,
             _mockClientFactory.Object,
             _mockHttpContextAccessor.Object);
     }

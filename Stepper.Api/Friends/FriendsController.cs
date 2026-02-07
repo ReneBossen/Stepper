@@ -273,44 +273,6 @@ public class FriendsController : ControllerBase
     }
 
     /// <summary>
-    /// Gets a friend's step data.
-    /// Note: This endpoint will be fully functional once the Steps feature (Plan 3) is implemented.
-    /// </summary>
-    /// <param name="friendId">The ID of the friend.</param>
-    /// <returns>The friend's step data.</returns>
-    [HttpGet("{friendId}/steps")]
-    public async Task<ActionResult<ApiResponse<FriendStepsResponse>>> GetFriendSteps(Guid friendId)
-    {
-        var userId = User.GetUserId();
-        if (userId == null)
-        {
-            return Unauthorized(ApiResponse<FriendStepsResponse>.ErrorResponse("User is not authenticated."));
-        }
-
-        try
-        {
-            var result = await _friendService.GetFriendStepsAsync(userId.Value, friendId);
-            return Ok(ApiResponse<FriendStepsResponse>.SuccessResponse(result));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<FriendStepsResponse>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<FriendStepsResponse>.ErrorResponse(ex.Message));
-        }
-        catch (NotImplementedException ex)
-        {
-            return StatusCode(501, ApiResponse<FriendStepsResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<FriendStepsResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
-    }
-
-    /// <summary>
     /// Removes a friend.
     /// </summary>
     /// <param name="friendId">The ID of the friend to remove.</param>

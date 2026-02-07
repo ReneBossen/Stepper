@@ -1,6 +1,4 @@
-using Stepper.Api.Common.Models;
 using Stepper.Api.Friends.DTOs;
-using Stepper.Api.Steps;
 using Stepper.Api.Users;
 
 namespace Stepper.Api.Friends;
@@ -12,20 +10,16 @@ public class FriendService : IFriendService
 {
     private readonly IFriendRepository _friendRepository;
     private readonly IUserRepository _userRepository;
-    private readonly IStepRepository _stepRepository;
 
     public FriendService(
         IFriendRepository friendRepository,
-        IUserRepository userRepository,
-        IStepRepository stepRepository)
+        IUserRepository userRepository)
     {
         ArgumentNullException.ThrowIfNull(friendRepository);
         ArgumentNullException.ThrowIfNull(userRepository);
-        ArgumentNullException.ThrowIfNull(stepRepository);
 
         _friendRepository = friendRepository;
         _userRepository = userRepository;
-        _stepRepository = stepRepository;
     }
 
     /// <inheritdoc />
@@ -266,59 +260,6 @@ public class FriendService : IFriendService
         {
             Friends = friendResponses,
             TotalCount = friendResponses.Count
-        };
-    }
-
-    /// <inheritdoc />
-    public async Task<FriendStepsResponse> GetFriendStepsAsync(Guid userId, Guid friendId)
-    {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        }
-
-        if (friendId == Guid.Empty)
-        {
-            throw new ArgumentException("Friend ID cannot be empty.", nameof(friendId));
-        }
-
-        // Verify friendship exists and is accepted
-        var friendship = await _friendRepository.GetFriendshipAsync(userId, friendId);
-        if (friendship == null || friendship.Status != FriendshipStatus.Accepted)
-        {
-            throw new UnauthorizedAccessException("You can only view steps of accepted friends.");
-        }
-
-        var friendProfile = await _userRepository.GetByIdAsync(friendId);
-        if (friendProfile == null)
-        {
-            throw new KeyNotFoundException($"Friend not found: {friendId}");
-        }
-
-        // Get today's steps
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var todaySummaries = await _stepRepository.GetDailySummariesAsync(friendId, new DateRange
-        {
-            StartDate = today,
-            EndDate = today
-        });
-        var todaySteps = todaySummaries.FirstOrDefault()?.TotalSteps ?? 0;
-
-        // Get weekly steps (last 7 days including today)
-        var weekStart = today.AddDays(-6);
-        var weeklySummaries = await _stepRepository.GetDailySummariesAsync(friendId, new DateRange
-        {
-            StartDate = weekStart,
-            EndDate = today
-        });
-        var weeklySteps = weeklySummaries.Sum(s => s.TotalSteps);
-
-        return new FriendStepsResponse
-        {
-            FriendId = friendId,
-            DisplayName = friendProfile.DisplayName,
-            TodaySteps = todaySteps,
-            WeeklySteps = weeklySteps
         };
     }
 

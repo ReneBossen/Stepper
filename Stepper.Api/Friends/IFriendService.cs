@@ -53,14 +53,6 @@ public interface IFriendService
     Task<FriendListResponse> GetFriendsAsync(Guid userId);
 
     /// <summary>
-    /// Gets a friend's step data.
-    /// </summary>
-    /// <param name="userId">The ID of the user requesting the data.</param>
-    /// <param name="friendId">The ID of the friend.</param>
-    /// <returns>The friend's step data.</returns>
-    Task<FriendStepsResponse> GetFriendStepsAsync(Guid userId, Guid friendId);
-
-    /// <summary>
     /// Removes a friendship.
     /// </summary>
     /// <param name="userId">The ID of the user removing the friend.</param>
