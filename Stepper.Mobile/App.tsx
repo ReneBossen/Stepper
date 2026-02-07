@@ -10,6 +10,7 @@ import { useUserStore } from '@store/userStore';
 import { useAnalyticsStore } from '@store/analyticsStore';
 import { validateConfig } from '@config/supabase.config';
 import { ErrorMessage } from '@components/common/ErrorMessage';
+import ErrorBoundary from '@components/common/ErrorBoundary';
 import * as SplashScreen from 'expo-splash-screen';
 
 // Keep splash screen visible while loading
@@ -152,7 +153,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AppContent />
+        <ErrorBoundary>
+          <AppContent />
+        </ErrorBoundary>
       </ThemeProvider>
     </SafeAreaProvider>
   );
