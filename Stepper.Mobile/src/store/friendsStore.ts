@@ -4,6 +4,7 @@ import { getErrorMessage } from '@utils/errorUtils';
 import { track, setUserProperties } from '@services/analytics';
 import { evaluate, MilestoneContext } from '@services/milestones';
 import { useAuthStore } from './authStore';
+import { createAsyncAction } from './utils';
 
 export interface Friend {
   id: string;
@@ -68,35 +69,29 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
   isLoading: false,
   error: null,
 
-  fetchFriends: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const friends = await friendsApi.getFriends();
-      set({ friends, isLoading: false });
-    } catch (error: unknown) {
-      set({ error: getErrorMessage(error), isLoading: false });
+  fetchFriends: createAsyncAction<FriendsState, [], Friend[]>(
+    set,
+    () => friendsApi.getFriends(),
+    {
+      onSuccess: (friends) => ({ friends }),
     }
-  },
+  ),
 
-  fetchFriendsWithSteps: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const friends = await friendsApi.getFriends();
-      set({ friends, isLoading: false });
-    } catch (error: unknown) {
-      set({ error: getErrorMessage(error), isLoading: false });
+  fetchFriendsWithSteps: createAsyncAction<FriendsState, [], Friend[]>(
+    set,
+    () => friendsApi.getFriends(),
+    {
+      onSuccess: (friends) => ({ friends }),
     }
-  },
+  ),
 
-  fetchRequests: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const requests = await friendsApi.getRequests();
-      set({ requests, isLoading: false });
-    } catch (error: unknown) {
-      set({ error: getErrorMessage(error), isLoading: false });
+  fetchRequests: createAsyncAction<FriendsState, [], Friend[]>(
+    set,
+    () => friendsApi.getRequests(),
+    {
+      onSuccess: (requests) => ({ requests }),
     }
-  },
+  ),
 
   sendRequest: async (userId) => {
     set({ isLoading: true, error: null });
