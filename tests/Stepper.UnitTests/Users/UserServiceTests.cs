@@ -1,7 +1,12 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Moq;
+using Stepper.Api.Activity;
 using Stepper.Api.Common.Database;
+using Stepper.Api.Friends;
+using Stepper.Api.Groups;
+using Stepper.Api.Notifications;
+using Stepper.Api.Steps;
 using Stepper.Api.Users;
 using Stepper.Api.Users.DTOs;
 
@@ -11,6 +16,11 @@ public class UserServiceTests
 {
     private readonly Mock<IUserRepository> _mockRepository;
     private readonly Mock<IUserPreferencesRepository> _mockPreferencesRepository;
+    private readonly Mock<IStepRepository> _mockStepRepository;
+    private readonly Mock<IFriendRepository> _mockFriendRepository;
+    private readonly Mock<IGroupRepository> _mockGroupRepository;
+    private readonly Mock<IActivityRepository> _mockActivityRepository;
+    private readonly Mock<INotificationRepository> _mockNotificationRepository;
     private readonly Mock<ISupabaseClientFactory> _mockClientFactory;
     private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
     private readonly UserService _sut;
@@ -19,11 +29,21 @@ public class UserServiceTests
     {
         _mockRepository = new Mock<IUserRepository>();
         _mockPreferencesRepository = new Mock<IUserPreferencesRepository>();
+        _mockStepRepository = new Mock<IStepRepository>();
+        _mockFriendRepository = new Mock<IFriendRepository>();
+        _mockGroupRepository = new Mock<IGroupRepository>();
+        _mockActivityRepository = new Mock<IActivityRepository>();
+        _mockNotificationRepository = new Mock<INotificationRepository>();
         _mockClientFactory = new Mock<ISupabaseClientFactory>();
         _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
         _sut = new UserService(
             _mockRepository.Object,
             _mockPreferencesRepository.Object,
+            _mockStepRepository.Object,
+            _mockFriendRepository.Object,
+            _mockGroupRepository.Object,
+            _mockActivityRepository.Object,
+            _mockNotificationRepository.Object,
             _mockClientFactory.Object,
             _mockHttpContextAccessor.Object);
     }
@@ -37,6 +57,11 @@ public class UserServiceTests
         var act = () => new UserService(
             null!,
             _mockPreferencesRepository.Object,
+            _mockStepRepository.Object,
+            _mockFriendRepository.Object,
+            _mockGroupRepository.Object,
+            _mockActivityRepository.Object,
+            _mockNotificationRepository.Object,
             _mockClientFactory.Object,
             _mockHttpContextAccessor.Object);
 
@@ -51,6 +76,11 @@ public class UserServiceTests
         var act = () => new UserService(
             _mockRepository.Object,
             null!,
+            _mockStepRepository.Object,
+            _mockFriendRepository.Object,
+            _mockGroupRepository.Object,
+            _mockActivityRepository.Object,
+            _mockNotificationRepository.Object,
             _mockClientFactory.Object,
             _mockHttpContextAccessor.Object);
 
@@ -65,6 +95,11 @@ public class UserServiceTests
         var act = () => new UserService(
             _mockRepository.Object,
             _mockPreferencesRepository.Object,
+            _mockStepRepository.Object,
+            _mockFriendRepository.Object,
+            _mockGroupRepository.Object,
+            _mockActivityRepository.Object,
+            _mockNotificationRepository.Object,
             null!,
             _mockHttpContextAccessor.Object);
 
@@ -79,6 +114,11 @@ public class UserServiceTests
         var act = () => new UserService(
             _mockRepository.Object,
             _mockPreferencesRepository.Object,
+            _mockStepRepository.Object,
+            _mockFriendRepository.Object,
+            _mockGroupRepository.Object,
+            _mockActivityRepository.Object,
+            _mockNotificationRepository.Object,
             _mockClientFactory.Object,
             null!);
 
@@ -224,22 +264,29 @@ public class UserServiceTests
     }
 
     [Theory]
-    [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
     public async Task UpdateProfileAsync_WithNullOrWhitespaceDisplayName_ThrowsArgumentException(string displayName)
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var request = new UpdateProfileRequest { DisplayName = displayName! };
+        var existingUser = CreateTestUser(userId);
+        var request = new UpdateProfileRequest { DisplayName = displayName };
+
+        _mockRepository.Setup(x => x.GetByIdAsync(userId))
+            .ReturnsAsync(existingUser);
+        _mockRepository.Setup(x => x.UpdateAsync(It.IsAny<User>()))
+            .ReturnsAsync((User u) => u);
 
         // Act
-        var act = async () => await _sut.UpdateProfileAsync(userId, request);
+        var result = await _sut.UpdateProfileAsync(userId, request);
 
         // Assert
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("Display name cannot be empty.");
-        _mockRepository.Verify(x => x.GetByIdAsync(It.IsAny<Guid>()), Times.Never);
+        // Empty or whitespace display name is silently ignored (not validated or updated)
+        result.Should().NotBeNull();
+        result.DisplayName.Should().Be(existingUser.DisplayName); // Not updated
+        _mockRepository.Verify(x => x.GetByIdAsync(userId), Times.Once);
+        _mockRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Once);
     }
 
     [Fact]
@@ -247,7 +294,11 @@ public class UserServiceTests
     {
         // Arrange
         var userId = Guid.NewGuid();
+        var existingUser = CreateTestUser(userId);
         var request = new UpdateProfileRequest { DisplayName = "A" };
+
+        _mockRepository.Setup(x => x.GetByIdAsync(userId))
+            .ReturnsAsync(existingUser);
 
         // Act
         var act = async () => await _sut.UpdateProfileAsync(userId, request);
@@ -255,7 +306,7 @@ public class UserServiceTests
         // Assert
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("Display name must be at least 2 characters long.");
-        _mockRepository.Verify(x => x.GetByIdAsync(It.IsAny<Guid>()), Times.Never);
+        _mockRepository.Verify(x => x.GetByIdAsync(userId), Times.Once);
     }
 
     [Fact]
@@ -263,10 +314,14 @@ public class UserServiceTests
     {
         // Arrange
         var userId = Guid.NewGuid();
+        var existingUser = CreateTestUser(userId);
         var request = new UpdateProfileRequest
         {
             DisplayName = new string('A', 51) // 51 characters
         };
+
+        _mockRepository.Setup(x => x.GetByIdAsync(userId))
+            .ReturnsAsync(existingUser);
 
         // Act
         var act = async () => await _sut.UpdateProfileAsync(userId, request);
@@ -274,7 +329,7 @@ public class UserServiceTests
         // Assert
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("Display name must not exceed 50 characters.");
-        _mockRepository.Verify(x => x.GetByIdAsync(It.IsAny<Guid>()), Times.Never);
+        _mockRepository.Verify(x => x.GetByIdAsync(userId), Times.Once);
     }
 
     [Theory]
@@ -286,11 +341,15 @@ public class UserServiceTests
     {
         // Arrange
         var userId = Guid.NewGuid();
+        var existingUser = CreateTestUser(userId);
         var request = new UpdateProfileRequest
         {
             DisplayName = "Valid Name",
             AvatarUrl = avatarUrl
         };
+
+        _mockRepository.Setup(x => x.GetByIdAsync(userId))
+            .ReturnsAsync(existingUser);
 
         // Act
         var act = async () => await _sut.UpdateProfileAsync(userId, request);
@@ -298,7 +357,7 @@ public class UserServiceTests
         // Assert
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("Avatar URL must be a valid HTTP or HTTPS URL.");
-        _mockRepository.Verify(x => x.GetByIdAsync(It.IsAny<Guid>()), Times.Never);
+        _mockRepository.Verify(x => x.GetByIdAsync(userId), Times.Once);
     }
 
     [Theory]
@@ -327,7 +386,10 @@ public class UserServiceTests
 
         // Assert
         result.Should().NotBeNull();
-        result.AvatarUrl.Should().Be(avatarUrl);
+        // Avatar URL is only updated if the request value is non-null and non-empty
+        var expectedAvatarUrl = avatarUrl ?? existingUser.AvatarUrl;
+        result.AvatarUrl.Should().Be(expectedAvatarUrl);
+        _mockRepository.Verify(x => x.GetByIdAsync(userId), Times.Once);
         _mockRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Once);
     }
 

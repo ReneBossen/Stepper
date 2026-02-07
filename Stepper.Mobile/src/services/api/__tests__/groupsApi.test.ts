@@ -293,6 +293,7 @@ describe('groupsApi', () => {
         isPublic: false,
         periodType: 'Weekly',
         memberCount: 1,
+        maxMembers: 5,
         joinCode: 'ABC123',
         role: 'Owner',
         createdAt: '2024-01-15T00:00:00Z',
@@ -307,6 +308,7 @@ describe('groupsApi', () => {
         description: 'Test description',
         isPublic: false,
         periodType: 'Weekly',
+        maxMembers: 5,
       });
       expect(result.id).toBe('new-group-id');
       expect(result.is_private).toBe(true);
@@ -325,6 +327,7 @@ describe('groupsApi', () => {
         isPublic: true,
         periodType: 'Daily',
         memberCount: 1,
+        maxMembers: 5,
         role: 'Owner',
         createdAt: '2024-01-15T00:00:00Z',
       };
@@ -338,6 +341,7 @@ describe('groupsApi', () => {
         description: undefined,
         isPublic: true,
         periodType: 'Daily',
+        maxMembers: 5,
       });
     });
   });

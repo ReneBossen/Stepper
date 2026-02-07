@@ -499,7 +499,7 @@ describe('usersApi', () => {
 
       await usersApi.downloadMyData();
 
-      expect(mockApiClient.get).toHaveBeenCalledWith('/users/me/data-export');
+      expect(mockApiClient.get).toHaveBeenCalledWith('/users/me/data-export', { timeout: 120000 });
     });
 
     it('should return complete export data', async () => {

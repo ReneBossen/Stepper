@@ -426,7 +426,7 @@ public class UserServiceDataExportTests
         _mockActivityRepository.Setup(x => x.GetFeedAsync(userId, It.IsAny<List<Guid>>(), It.IsAny<int>(), It.IsAny<int>()))
             .ReturnsAsync(new List<ActivityItem>());
         _mockNotificationRepository.Setup(x => x.GetAllAsync(userId, It.IsAny<int>(), It.IsAny<int>()))
-            .ReturnsAsync((new List<Notification>(), 0, false));
+            .ReturnsAsync((new List<Notification>(), 0, 0));
     }
 
     private void SetupMocksForCompleteExport(
@@ -459,7 +459,7 @@ public class UserServiceDataExportTests
         _mockActivityRepository.Setup(x => x.GetFeedAsync(userId, It.IsAny<List<Guid>>(), It.IsAny<int>(), It.IsAny<int>()))
             .ReturnsAsync(activityItems);
         _mockNotificationRepository.Setup(x => x.GetAllAsync(userId, It.IsAny<int>(), It.IsAny<int>()))
-            .ReturnsAsync((notifications, notifications.Count, false));
+            .ReturnsAsync((notifications, notifications.Count, 0));
     }
 
     private static User CreateTestUser(Guid userId)

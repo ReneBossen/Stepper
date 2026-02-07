@@ -706,38 +706,34 @@ describe('SettingsScreen', () => {
       expect(getByTestId('settings-privacy-policy')).toBeTruthy();
     });
 
-    it('should open Terms of Service URL when pressed', () => {
-      const { getByTestId } = render(<SettingsScreen />);
+    it('should open Terms of Service modal when pressed', () => {
+      const { getByTestId, queryByTestId } = render(<SettingsScreen />);
+      expect(queryByTestId('legal-modal-terms-of-service')).toBeNull();
       fireEvent.press(getByTestId('settings-terms'));
-      expect(Linking.openURL).toHaveBeenCalledWith('https://stepper.com/terms');
+      expect(getByTestId('legal-modal-terms-of-service')).toBeTruthy();
     });
 
-    it('should open Privacy Policy URL when pressed', () => {
-      const { getByTestId } = render(<SettingsScreen />);
+    it('should open Privacy Policy modal when pressed', () => {
+      const { getByTestId, queryByTestId } = render(<SettingsScreen />);
+      expect(queryByTestId('legal-modal-privacy-policy')).toBeNull();
       fireEvent.press(getByTestId('settings-privacy-policy'));
-      expect(Linking.openURL).toHaveBeenCalledWith('https://stepper.com/privacy');
+      expect(getByTestId('legal-modal-privacy-policy')).toBeTruthy();
     });
 
-    it('should show error alert when Terms URL fails to open', async () => {
-      (Linking.openURL as jest.Mock).mockRejectedValueOnce(new Error('Failed to open'));
-
-      const { getByTestId } = render(<SettingsScreen />);
+    it('should dismiss Terms of Service modal when dismiss is pressed', () => {
+      const { getByTestId, queryByTestId } = render(<SettingsScreen />);
       fireEvent.press(getByTestId('settings-terms'));
-
-      await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith('Error', 'Unable to open Terms of Service');
-      });
+      expect(getByTestId('legal-modal-terms-of-service')).toBeTruthy();
+      fireEvent.press(getByTestId('legal-modal-dismiss'));
+      expect(queryByTestId('legal-modal-terms-of-service')).toBeNull();
     });
 
-    it('should show error alert when Privacy URL fails to open', async () => {
-      (Linking.openURL as jest.Mock).mockRejectedValueOnce(new Error('Failed to open'));
-
-      const { getByTestId } = render(<SettingsScreen />);
+    it('should dismiss Privacy Policy modal when dismiss is pressed', () => {
+      const { getByTestId, queryByTestId } = render(<SettingsScreen />);
       fireEvent.press(getByTestId('settings-privacy-policy'));
-
-      await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith('Error', 'Unable to open Privacy Policy');
-      });
+      expect(getByTestId('legal-modal-privacy-policy')).toBeTruthy();
+      fireEvent.press(getByTestId('legal-modal-dismiss'));
+      expect(queryByTestId('legal-modal-privacy-policy')).toBeNull();
     });
   });
 

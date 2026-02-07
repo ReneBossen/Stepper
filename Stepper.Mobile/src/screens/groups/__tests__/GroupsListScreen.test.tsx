@@ -76,12 +76,54 @@ jest.mock('react-native-paper', () => {
         <RN.Text>{icon}</RN.Text>
       </RN.TouchableOpacity>
     ),
+    BackAction: ({ onPress, accessibilityLabel }: any) => (
+      <RN.TouchableOpacity
+        testID="appbar-back-action"
+        onPress={onPress}
+        accessibilityLabel={accessibilityLabel}
+      >
+        <RN.Text>Back</RN.Text>
+      </RN.TouchableOpacity>
+    ),
   };
+
+  const Dialog = ({ children, visible, onDismiss }: any) => {
+    if (!visible) return null;
+    return <RN.View testID="dialog">{children}</RN.View>;
+  };
+  Dialog.Title = ({ children }: any) => (
+    <RN.Text testID="dialog-title">{children}</RN.Text>
+  );
+  Dialog.Content = ({ children }: any) => (
+    <RN.View testID="dialog-content">{children}</RN.View>
+  );
+  Dialog.Actions = ({ children }: any) => (
+    <RN.View testID="dialog-actions">{children}</RN.View>
+  );
 
   return {
     Appbar,
+    Dialog,
+    Portal: ({ children }: any) => <RN.View testID="portal">{children}</RN.View>,
     Text: ({ children, style, variant, ...props }: any) => (
       <RN.Text {...props} style={style}>{children}</RN.Text>
+    ),
+    TextInput: ({ value, onChangeText, label, error, ...props }: any) => (
+      <RN.TextInput
+        {...props}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={label}
+      />
+    ),
+    Button: ({ children, onPress, loading, disabled, ...props }: any) => (
+      <RN.TouchableOpacity
+        {...props}
+        onPress={onPress}
+        disabled={disabled || loading}
+      >
+        <RN.Text>{children}</RN.Text>
+      </RN.TouchableOpacity>
     ),
     FAB: ({ icon, style, color, onPress, accessibilityLabel, testID }: any) => (
       <RN.TouchableOpacity
@@ -103,6 +145,7 @@ jest.mock('react-native-paper', () => {
         onSurface: '#000000',
         onSurfaceVariant: '#666666',
         onPrimary: '#FFFFFF',
+        error: '#FF0000',
       },
     }),
   };

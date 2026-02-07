@@ -10,7 +10,7 @@ module.exports = {
     }],
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(react-native|@react-native|expo|@expo|@supabase|@react-navigation|react-native-paper|react-native-safe-area-context|expo-image-picker|expo-modules-core)/)',
+    'node_modules/(?!(react-native|@react-native|expo|@expo|@supabase|@react-navigation|react-native-safe-area-context|expo-image-picker|expo-modules-core)/)',
   ],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   moduleNameMapper: {
@@ -27,6 +27,7 @@ module.exports = {
     '^@config/(.*)$': '<rootDir>/src/config/$1',
     '^@env$': '<rootDir>/__mocks__/env.ts',
     '^react-native$': '<rootDir>/__mocks__/react-native.ts',
+    '^react-native-paper$': '<rootDir>/__mocks__/react-native-paper.js',
     '^expo-secure-store$': '<rootDir>/__mocks__/expo-secure-store.ts',
     '^expo-clipboard$': '<rootDir>/__mocks__/expo-clipboard.ts',
     '^expo-image-picker$': '<rootDir>/__mocks__/expo-image-picker.ts',

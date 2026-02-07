@@ -1,9 +1,7 @@
 using FluentAssertions;
 using Moq;
-using Stepper.Api.Common.Models;
 using Stepper.Api.Friends;
 using Stepper.Api.Friends.DTOs;
-using Stepper.Api.Steps;
 using Stepper.Api.Users;
 
 namespace Stepper.UnitTests.Friends;
@@ -12,15 +10,13 @@ public class FriendServiceTests
 {
     private readonly Mock<IFriendRepository> _mockFriendRepository;
     private readonly Mock<IUserRepository> _mockUserRepository;
-    private readonly Mock<IStepRepository> _mockStepRepository;
     private readonly FriendService _sut;
 
     public FriendServiceTests()
     {
         _mockFriendRepository = new Mock<IFriendRepository>();
         _mockUserRepository = new Mock<IUserRepository>();
-        _mockStepRepository = new Mock<IStepRepository>();
-        _sut = new FriendService(_mockFriendRepository.Object, _mockUserRepository.Object, _mockStepRepository.Object);
+        _sut = new FriendService(_mockFriendRepository.Object, _mockUserRepository.Object);
     }
 
     #region Constructor Tests
@@ -29,7 +25,7 @@ public class FriendServiceTests
     public void Constructor_WithNullFriendRepository_ThrowsArgumentNullException()
     {
         // Arrange & Act
-        var act = () => new FriendService(null!, _mockUserRepository.Object, _mockStepRepository.Object);
+        var act = () => new FriendService(null!, _mockUserRepository.Object);
 
         // Assert
         act.Should().Throw<ArgumentNullException>();
@@ -39,17 +35,7 @@ public class FriendServiceTests
     public void Constructor_WithNullUserRepository_ThrowsArgumentNullException()
     {
         // Arrange & Act
-        var act = () => new FriendService(_mockFriendRepository.Object, null!, _mockStepRepository.Object);
-
-        // Assert
-        act.Should().Throw<ArgumentNullException>();
-    }
-
-    [Fact]
-    public void Constructor_WithNullStepRepository_ThrowsArgumentNullException()
-    {
-        // Arrange & Act
-        var act = () => new FriendService(_mockFriendRepository.Object, _mockUserRepository.Object, null!);
+        var act = () => new FriendService(_mockFriendRepository.Object, null!);
 
         // Assert
         act.Should().Throw<ArgumentNullException>();
@@ -544,139 +530,6 @@ public class FriendServiceTests
 
     #endregion
 
-    #region GetFriendStepsAsync Tests
-
-    [Fact]
-    public async Task GetFriendStepsAsync_WithValidFriendship_ReturnsFriendSteps()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var friendId = Guid.NewGuid();
-        var friendship = CreateTestFriendship(userId, friendId, FriendshipStatus.Accepted);
-        var friend = CreateTestUser(friendId, "Friend User");
-        var todaySummaries = new List<Api.Steps.DailyStepSummary>
-        {
-            new Api.Steps.DailyStepSummary { Date = DateOnly.FromDateTime(DateTime.UtcNow), TotalSteps = 5000, TotalDistanceMeters = 4000, EntryCount = 1 }
-        };
-        var weeklySummaries = new List<Api.Steps.DailyStepSummary>
-        {
-            new Api.Steps.DailyStepSummary { Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-6)), TotalSteps = 3000, TotalDistanceMeters = 2400, EntryCount = 1 },
-            new Api.Steps.DailyStepSummary { Date = DateOnly.FromDateTime(DateTime.UtcNow), TotalSteps = 5000, TotalDistanceMeters = 4000, EntryCount = 1 }
-        };
-
-        _mockFriendRepository.Setup(x => x.GetFriendshipAsync(userId, friendId))
-            .ReturnsAsync(friendship);
-        _mockUserRepository.Setup(x => x.GetByIdAsync(friendId))
-            .ReturnsAsync(friend);
-        _mockStepRepository.Setup(x => x.GetDailySummariesAsync(friendId, It.Is<Api.Common.Models.DateRange>(r => r.StartDate == r.EndDate)))
-            .ReturnsAsync(todaySummaries);
-        _mockStepRepository.Setup(x => x.GetDailySummariesAsync(friendId, It.Is<Api.Common.Models.DateRange>(r => r.StartDate != r.EndDate)))
-            .ReturnsAsync(weeklySummaries);
-
-        // Act
-        var result = await _sut.GetFriendStepsAsync(userId, friendId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.FriendId.Should().Be(friendId);
-        result.DisplayName.Should().Be("Friend User");
-        result.TodaySteps.Should().Be(5000);
-        result.WeeklySteps.Should().Be(8000);
-    }
-
-    [Fact]
-    public async Task GetFriendStepsAsync_WithEmptyUserId_ThrowsArgumentException()
-    {
-        // Arrange
-        var friendId = Guid.NewGuid();
-
-        // Act
-        var act = async () => await _sut.GetFriendStepsAsync(Guid.Empty, friendId);
-
-        // Assert
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("User ID cannot be empty.*");
-        _mockFriendRepository.Verify(x => x.GetFriendshipAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task GetFriendStepsAsync_WithEmptyFriendId_ThrowsArgumentException()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-
-        // Act
-        var act = async () => await _sut.GetFriendStepsAsync(userId, Guid.Empty);
-
-        // Assert
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("Friend ID cannot be empty.*");
-        _mockFriendRepository.Verify(x => x.GetFriendshipAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task GetFriendStepsAsync_WithNonExistentFriendship_ThrowsUnauthorizedAccessException()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var friendId = Guid.NewGuid();
-
-        _mockFriendRepository.Setup(x => x.GetFriendshipAsync(userId, friendId))
-            .ReturnsAsync((Friendship?)null);
-
-        // Act
-        var act = async () => await _sut.GetFriendStepsAsync(userId, friendId);
-
-        // Assert
-        await act.Should().ThrowAsync<UnauthorizedAccessException>()
-            .WithMessage("You can only view steps of accepted friends.");
-        _mockFriendRepository.Verify(x => x.GetFriendshipAsync(userId, friendId), Times.Once);
-    }
-
-    [Fact]
-    public async Task GetFriendStepsAsync_WithPendingFriendship_ThrowsUnauthorizedAccessException()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var friendId = Guid.NewGuid();
-        var friendship = CreateTestFriendship(userId, friendId, FriendshipStatus.Pending);
-
-        _mockFriendRepository.Setup(x => x.GetFriendshipAsync(userId, friendId))
-            .ReturnsAsync(friendship);
-
-        // Act
-        var act = async () => await _sut.GetFriendStepsAsync(userId, friendId);
-
-        // Assert
-        await act.Should().ThrowAsync<UnauthorizedAccessException>()
-            .WithMessage("You can only view steps of accepted friends.");
-        _mockFriendRepository.Verify(x => x.GetFriendshipAsync(userId, friendId), Times.Once);
-    }
-
-    [Fact]
-    public async Task GetFriendStepsAsync_WithNonExistentFriend_ThrowsKeyNotFoundException()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var friendId = Guid.NewGuid();
-        var friendship = CreateTestFriendship(userId, friendId, FriendshipStatus.Accepted);
-
-        _mockFriendRepository.Setup(x => x.GetFriendshipAsync(userId, friendId))
-            .ReturnsAsync(friendship);
-        _mockUserRepository.Setup(x => x.GetByIdAsync(friendId))
-            .ReturnsAsync((User?)null);
-
-        // Act
-        var act = async () => await _sut.GetFriendStepsAsync(userId, friendId);
-
-        // Assert
-        await act.Should().ThrowAsync<KeyNotFoundException>()
-            .WithMessage($"Friend not found: {friendId}");
-        _mockUserRepository.Verify(x => x.GetByIdAsync(friendId), Times.Once);
-    }
-
-    #endregion
-
     #region RemoveFriendAsync Tests
 
     [Fact]
@@ -956,56 +809,6 @@ public class FriendServiceTests
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Cannot cancel request with status: accepted");
         _mockFriendRepository.Verify(x => x.CancelRequestAsync(requestId, userId), Times.Once);
-    }
-
-    #endregion
-
-    #region GetFriendStepsAsync - Additional Edge Cases
-
-    [Fact]
-    public async Task GetFriendStepsAsync_WithNoStepData_ReturnsZeroSteps()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var friendId = Guid.NewGuid();
-        var friendship = CreateTestFriendship(userId, friendId, FriendshipStatus.Accepted);
-        var friend = CreateTestUser(friendId, "Friend User");
-
-        _mockFriendRepository.Setup(x => x.GetFriendshipAsync(userId, friendId))
-            .ReturnsAsync(friendship);
-        _mockUserRepository.Setup(x => x.GetByIdAsync(friendId))
-            .ReturnsAsync(friend);
-        _mockStepRepository.Setup(x => x.GetDailySummariesAsync(friendId, It.IsAny<Api.Common.Models.DateRange>()))
-            .ReturnsAsync(new List<Api.Steps.DailyStepSummary>());
-
-        // Act
-        var result = await _sut.GetFriendStepsAsync(userId, friendId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.FriendId.Should().Be(friendId);
-        result.DisplayName.Should().Be("Friend User");
-        result.TodaySteps.Should().Be(0);
-        result.WeeklySteps.Should().Be(0);
-    }
-
-    [Fact]
-    public async Task GetFriendStepsAsync_WithRejectedFriendship_ThrowsUnauthorizedAccessException()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var friendId = Guid.NewGuid();
-        var friendship = CreateTestFriendship(userId, friendId, FriendshipStatus.Rejected);
-
-        _mockFriendRepository.Setup(x => x.GetFriendshipAsync(userId, friendId))
-            .ReturnsAsync(friendship);
-
-        // Act
-        var act = async () => await _sut.GetFriendStepsAsync(userId, friendId);
-
-        // Assert
-        await act.Should().ThrowAsync<UnauthorizedAccessException>()
-            .WithMessage("You can only view steps of accepted friends.");
     }
 
     #endregion
