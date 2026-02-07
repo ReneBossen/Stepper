@@ -59,7 +59,7 @@ public class GroupService : IGroupService
             Description = request.Description?.Trim(),
             CreatedById = userId,
             IsPublic = request.IsPublic,
-            JoinCode = request.IsPublic ? null : GenerateJoinCode(),
+            JoinCode = GenerateJoinCode(),
             PeriodType = request.PeriodType,
             CreatedAt = DateTime.UtcNow,
             MemberCount = 0,
@@ -68,8 +68,8 @@ public class GroupService : IGroupService
 
         var createdGroup = await _groupRepository.CreateAsync(group);
 
-        // Store join code in separate table for private groups
-        if (!request.IsPublic && !string.IsNullOrEmpty(group.JoinCode))
+        // Store join code in separate table
+        if (!string.IsNullOrEmpty(group.JoinCode))
         {
             await _groupRepository.CreateJoinCodeAsync(createdGroup.Id, group.JoinCode);
         }
@@ -190,36 +190,19 @@ public class GroupService : IGroupService
             group.MaxMembers = request.MaxMembers.Value;
         }
 
-        // Track visibility change for join code management
-        var wasPrivate = !group.IsPublic;
-        var willBePublic = request.IsPublic;
-
         // Update the group
         group.Name = request.Name.Trim();
         group.Description = request.Description?.Trim();
         group.IsPublic = request.IsPublic;
 
-        // If changing from public to private, generate join code
-        if (!request.IsPublic && !wasPrivate)
-        {
-            group.JoinCode = GenerateJoinCode();
-        }
-        // If changing from private to public, clear join code
-        else if (willBePublic && wasPrivate)
-        {
-            group.JoinCode = null;
-        }
-
         var updatedGroup = await _groupRepository.UpdateAsync(group);
 
-        // Manage join code in separate table based on visibility change
-        if (!request.IsPublic && !wasPrivate && !string.IsNullOrEmpty(group.JoinCode))
+        // Ensure group has a join code (legacy public groups may not have one)
+        var existingJoinCode = await _groupRepository.GetJoinCodeAsync(updatedGroup.Id);
+        if (existingJoinCode == null)
         {
-            await _groupRepository.CreateJoinCodeAsync(updatedGroup.Id, group.JoinCode);
-        }
-        else if (willBePublic && wasPrivate)
-        {
-            await _groupRepository.DeleteJoinCodeAsync(updatedGroup.Id);
+            var newCode = GenerateJoinCode();
+            await _groupRepository.CreateJoinCodeAsync(updatedGroup.Id, newCode);
         }
 
         return await MapToGroupResponseAsync(updatedGroup, membership.Role);
@@ -605,11 +588,6 @@ public class GroupService : IGroupService
         if (membership == null || (membership.Role != MemberRole.Owner && membership.Role != MemberRole.Admin))
         {
             throw new UnauthorizedAccessException("Only group owners and admins can regenerate the join code.");
-        }
-
-        if (group.IsPublic)
-        {
-            throw new InvalidOperationException("Public groups do not have join codes.");
         }
 
         var newJoinCode = GenerateJoinCode();
