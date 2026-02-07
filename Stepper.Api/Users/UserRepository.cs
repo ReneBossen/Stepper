@@ -141,7 +141,9 @@ public class UserRepository : IUserRepository
 
         var response = await client
             .From<StepEntryQueryEntity>()
-            .Where(x => x.UserId == userId && x.Date >= startDate && x.Date <= endDate)
+            .Filter("user_id", Supabase.Postgrest.Constants.Operator.Equals, userId.ToString())
+            .Filter("date", Supabase.Postgrest.Constants.Operator.GreaterThanOrEqual, startDate.ToString("yyyy-MM-dd"))
+            .Filter("date", Supabase.Postgrest.Constants.Operator.LessThanOrEqual, endDate.ToString("yyyy-MM-dd"))
             .Get();
 
         return response.Models

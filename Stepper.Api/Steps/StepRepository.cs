@@ -69,7 +69,8 @@ public class StepRepository : IStepRepository
 
         var response = await client
             .From<StepEntryEntity>()
-            .Where(x => x.UserId == userId && x.Date == date)
+            .Filter("user_id", Supabase.Postgrest.Constants.Operator.Equals, userId.ToString())
+            .Filter("date", Supabase.Postgrest.Constants.Operator.Equals, date.ToString("yyyy-MM-dd"))
             .Order("recorded_at", Supabase.Postgrest.Constants.Ordering.Descending)
             .Get();
 
@@ -95,7 +96,9 @@ public class StepRepository : IStepRepository
         var offset = (page - 1) * pageSize;
         var response = await client
             .From<StepEntryEntity>()
-            .Where(x => x.UserId == userId && x.Date >= range.StartDate && x.Date <= range.EndDate)
+            .Filter("user_id", Supabase.Postgrest.Constants.Operator.Equals, userId.ToString())
+            .Filter("date", Supabase.Postgrest.Constants.Operator.GreaterThanOrEqual, range.StartDate.ToString("yyyy-MM-dd"))
+            .Filter("date", Supabase.Postgrest.Constants.Operator.LessThanOrEqual, range.EndDate.ToString("yyyy-MM-dd"))
             .Order("date", Supabase.Postgrest.Constants.Ordering.Descending)
             .Order("recorded_at", Supabase.Postgrest.Constants.Ordering.Descending)
             .Range(offset, offset + pageSize - 1)
