@@ -26,16 +26,15 @@ public class ExceptionHandlingMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An unhandled exception occurred: {Message}", ex.Message);
-            await HandleExceptionAsync(context, ex);
+            var (statusCode, message) = MapException(ex);
+            LogException(ex, statusCode);
+            await WriteErrorResponse(context, statusCode, message);
         }
     }
 
-    private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private static (HttpStatusCode StatusCode, string Message) MapException(Exception exception)
     {
-        context.Response.ContentType = "application/json";
-
-        var (statusCode, message) = exception switch
+        return exception switch
         {
             KeyNotFoundException => (HttpStatusCode.NotFound, exception.Message),
             UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "Unauthorized access."),
@@ -44,7 +43,22 @@ public class ExceptionHandlingMiddleware
             HttpRequestException => (HttpStatusCode.BadGateway, "An external service error occurred."),
             _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
         };
+    }
 
+    private void LogException(Exception exception, HttpStatusCode statusCode)
+    {
+        if (statusCode == HttpStatusCode.InternalServerError)
+        {
+            _logger.LogError(exception, "An unhandled exception occurred: {Message}", exception.Message);
+            return;
+        }
+
+        _logger.LogWarning("Handled exception ({StatusCode}): {Message}", (int)statusCode, exception.Message);
+    }
+
+    private static async Task WriteErrorResponse(HttpContext context, HttpStatusCode statusCode, string message)
+    {
+        context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)statusCode;
 
         var response = ApiResponse<object>.ErrorResponse(message);

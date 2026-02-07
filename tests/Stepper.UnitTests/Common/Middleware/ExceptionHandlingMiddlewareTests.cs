@@ -201,6 +201,61 @@ public class ExceptionHandlingMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_WithBusinessException_LogsWarning()
+    {
+        // Arrange
+        var errorMessage = "Entity not found";
+        RequestDelegate next = (HttpContext ctx) =>
+        {
+            throw new KeyNotFoundException(errorMessage);
+        };
+
+        var middleware = new ExceptionHandlingMiddleware(next, _loggerMock.Object);
+        var context = new DefaultHttpContext();
+        context.Response.Body = new MemoryStream();
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Handled exception")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithBusinessException_DoesNotLogError()
+    {
+        // Arrange
+        RequestDelegate next = (HttpContext ctx) =>
+        {
+            throw new InvalidOperationException("Group is full");
+        };
+
+        var middleware = new ExceptionHandlingMiddleware(next, _loggerMock.Object);
+        var context = new DefaultHttpContext();
+        context.Response.Body = new MemoryStream();
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        _loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task InvokeAsync_WithException_ReturnsJsonResponse()
     {
         // Arrange
