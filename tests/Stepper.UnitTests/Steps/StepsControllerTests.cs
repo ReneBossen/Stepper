@@ -110,113 +110,6 @@ public class StepsControllerTests
         _mockStepService.Verify(x => x.RecordStepsAsync(It.IsAny<Guid>(), It.IsAny<RecordStepsRequest>()), Times.Never);
     }
 
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(200001)]
-    public async Task RecordSteps_WithInvalidStepCount_ReturnsBadRequest(int stepCount)
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var request = new RecordStepsRequest
-        {
-            StepCount = stepCount,
-            Date = DateOnly.FromDateTime(DateTime.UtcNow)
-        };
-        SetupAuthenticatedUser(userId);
-
-        _mockStepService.Setup(x => x.RecordStepsAsync(userId, request))
-            .ThrowsAsync(new ArgumentException("Step count must be between 0 and 200000."));
-
-        // Act
-        var result = await _sut.RecordSteps(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<StepEntryResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Step count must be between 0 and 200000.");
-    }
-
-    [Fact]
-    public async Task RecordSteps_WithNegativeDistance_ReturnsBadRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var request = new RecordStepsRequest
-        {
-            StepCount = 5000,
-            DistanceMeters = -100,
-            Date = DateOnly.FromDateTime(DateTime.UtcNow)
-        };
-        SetupAuthenticatedUser(userId);
-
-        _mockStepService.Setup(x => x.RecordStepsAsync(userId, request))
-            .ThrowsAsync(new ArgumentException("Distance must be a positive value."));
-
-        // Act
-        var result = await _sut.RecordSteps(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<StepEntryResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Distance must be a positive value.");
-    }
-
-    [Fact]
-    public async Task RecordSteps_WithFutureDate_ReturnsBadRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var request = new RecordStepsRequest
-        {
-            StepCount = 5000,
-            Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1))
-        };
-        SetupAuthenticatedUser(userId);
-
-        _mockStepService.Setup(x => x.RecordStepsAsync(userId, request))
-            .ThrowsAsync(new ArgumentException("Date cannot be in the future."));
-
-        // Act
-        var result = await _sut.RecordSteps(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<StepEntryResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Date cannot be in the future.");
-    }
-
-    [Fact]
-    public async Task RecordSteps_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var request = new RecordStepsRequest
-        {
-            StepCount = 5000,
-            Date = DateOnly.FromDateTime(DateTime.UtcNow)
-        };
-        SetupAuthenticatedUser(userId);
-
-        _mockStepService.Setup(x => x.RecordStepsAsync(userId, request))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.RecordSteps(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<StepEntryResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An error occurred: Database connection failed");
-    }
 
     #endregion
 
@@ -301,28 +194,6 @@ public class StepsControllerTests
         _mockStepService.Verify(x => x.GetTodayAsync(It.IsAny<Guid>()), Times.Never);
     }
 
-    [Fact]
-    public async Task GetToday_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockStepService.Setup(x => x.GetTodayAsync(userId))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.GetToday();
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<DailyStepsResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An error occurred: Database connection failed");
-    }
-
     #endregion
 
     #region GetDailyHistory Tests
@@ -401,53 +272,6 @@ public class StepsControllerTests
         response.Success.Should().BeFalse();
         response.Errors.Should().Contain("User is not authenticated.");
         _mockStepService.Verify(x => x.GetDailyHistoryAsync(It.IsAny<Guid>(), It.IsAny<DateRange>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task GetDailyHistory_WithInvalidDateRange_ReturnsBadRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var startDate = new DateOnly(2026, 1, 7);
-        var endDate = new DateOnly(2026, 1, 1);
-        SetupAuthenticatedUser(userId);
-
-        _mockStepService.Setup(x => x.GetDailyHistoryAsync(userId, It.IsAny<DateRange>()))
-            .ThrowsAsync(new ArgumentException("Start date must be before or equal to end date."));
-
-        // Act
-        var result = await _sut.GetDailyHistory(startDate, endDate);
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<List<DailyStepsResponse>>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Start date must be before or equal to end date.");
-    }
-
-    [Fact]
-    public async Task GetDailyHistory_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var startDate = new DateOnly(2026, 1, 1);
-        var endDate = new DateOnly(2026, 1, 7);
-        SetupAuthenticatedUser(userId);
-
-        _mockStepService.Setup(x => x.GetDailyHistoryAsync(userId, It.IsAny<DateRange>()))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.GetDailyHistory(startDate, endDate);
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<List<DailyStepsResponse>>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An error occurred: Database connection failed");
     }
 
     #endregion
@@ -548,53 +372,6 @@ public class StepsControllerTests
         _mockStepService.Verify(x => x.GetDetailedHistoryAsync(It.IsAny<Guid>(), It.IsAny<DateRange>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
     }
 
-    [Fact]
-    public async Task GetHistory_WithInvalidPage_ReturnsBadRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var startDate = new DateOnly(2026, 1, 1);
-        var endDate = new DateOnly(2026, 1, 7);
-        SetupAuthenticatedUser(userId);
-
-        _mockStepService.Setup(x => x.GetDetailedHistoryAsync(userId, It.IsAny<DateRange>(), 0, 50))
-            .ThrowsAsync(new ArgumentException("Page number must be greater than 0."));
-
-        // Act
-        var result = await _sut.GetHistory(startDate, endDate, 0, 50);
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<StepHistoryResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Page number must be greater than 0.");
-    }
-
-    [Fact]
-    public async Task GetHistory_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var startDate = new DateOnly(2026, 1, 1);
-        var endDate = new DateOnly(2026, 1, 7);
-        SetupAuthenticatedUser(userId);
-
-        _mockStepService.Setup(x => x.GetDetailedHistoryAsync(userId, It.IsAny<DateRange>(), It.IsAny<int>(), It.IsAny<int>()))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.GetHistory(startDate, endDate);
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<StepHistoryResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An error occurred: Database connection failed");
-    }
-
     #endregion
 
     #region GetEntry Tests
@@ -661,70 +438,6 @@ public class StepsControllerTests
         response.Success.Should().BeFalse();
         response.Errors.Should().Contain("Entry ID cannot be empty.");
         _mockStepService.Verify(x => x.GetEntryAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task GetEntry_WithNonExistentEntry_ReturnsNotFound()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var entryId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockStepService.Setup(x => x.GetEntryAsync(userId, entryId))
-            .ThrowsAsync(new KeyNotFoundException($"Step entry not found with ID: {entryId}"));
-
-        // Act
-        var result = await _sut.GetEntry(entryId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        var response = notFoundResult.Value.Should().BeOfType<ApiResponse<StepEntryResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain($"Step entry not found with ID: {entryId}");
-    }
-
-    [Fact]
-    public async Task GetEntry_WithUnauthorizedAccess_ReturnsForbid()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var entryId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockStepService.Setup(x => x.GetEntryAsync(userId, entryId))
-            .ThrowsAsync(new UnauthorizedAccessException("You do not have permission to access this step entry."));
-
-        // Act
-        var result = await _sut.GetEntry(entryId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Result.Should().BeOfType<ForbidResult>();
-    }
-
-    [Fact]
-    public async Task GetEntry_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var entryId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockStepService.Setup(x => x.GetEntryAsync(userId, entryId))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.GetEntry(entryId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<StepEntryResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An error occurred: Database connection failed");
     }
 
     #endregion
@@ -809,48 +522,6 @@ public class StepsControllerTests
         var response = notFoundResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
         response.Success.Should().BeFalse();
         response.Errors.Should().Contain("Step entry not found.");
-    }
-
-    [Fact]
-    public async Task DeleteEntry_WithUnauthorizedAccess_ReturnsForbid()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var entryId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockStepService.Setup(x => x.DeleteEntryAsync(userId, entryId))
-            .ThrowsAsync(new UnauthorizedAccessException("You do not have permission to delete this step entry."));
-
-        // Act
-        var result = await _sut.DeleteEntry(entryId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Result.Should().BeOfType<ForbidResult>();
-    }
-
-    [Fact]
-    public async Task DeleteEntry_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var entryId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockStepService.Setup(x => x.DeleteEntryAsync(userId, entryId))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.DeleteEntry(entryId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<object>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An error occurred: Database connection failed");
     }
 
     #endregion

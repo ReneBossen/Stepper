@@ -112,49 +112,6 @@ public class ActivityControllerTests
     }
 
     [Fact]
-    public async Task GetFeed_WhenServiceThrowsArgumentException_ReturnsBadRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockActivityService.Setup(x => x.GetFeedAsync(userId, 20, 0))
-            .ThrowsAsync(new ArgumentException("User ID cannot be empty."));
-
-        // Act
-        var result = await _sut.GetFeed();
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<ActivityFeedResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("User ID cannot be empty.");
-    }
-
-    [Fact]
-    public async Task GetFeed_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockActivityService.Setup(x => x.GetFeedAsync(userId, 20, 0))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.GetFeed();
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<ActivityFeedResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An error occurred: Database connection failed");
-    }
-
-    [Fact]
     public async Task GetFeed_WithEmptyFeed_ReturnsOkWithEmptyItems()
     {
         // Arrange

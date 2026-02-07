@@ -82,28 +82,6 @@ public class UsersControllerTests
         _mockUserService.Verify(x => x.EnsureProfileExistsAsync(It.IsAny<Guid>()), Times.Never);
     }
 
-    [Fact]
-    public async Task GetMyProfile_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        SetupAuthenticatedUser(userId);
-
-        _mockUserService.Setup(x => x.EnsureProfileExistsAsync(userId))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.GetMyProfile();
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<GetProfileResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An unexpected error occurred. Please try again later.");
-    }
-
     #endregion
 
     #region UpdateMyProfile Tests
@@ -175,99 +153,6 @@ public class UsersControllerTests
         _mockUserService.Verify(x => x.UpdateProfileAsync(It.IsAny<Guid>(), It.IsAny<UpdateProfileRequest>()), Times.Never);
     }
 
-    [Fact]
-    public async Task UpdateMyProfile_WithInvalidDisplayName_ReturnsBadRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var request = new UpdateProfileRequest { DisplayName = "A" }; // Too short
-        SetupAuthenticatedUser(userId);
-
-        _mockUserService.Setup(x => x.UpdateProfileAsync(userId, request))
-            .ThrowsAsync(new ArgumentException("Display name must be at least 2 characters long."));
-
-        // Act
-        var result = await _sut.UpdateMyProfile(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<GetProfileResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Display name must be at least 2 characters long.");
-    }
-
-    [Fact]
-    public async Task UpdateMyProfile_WithInvalidAvatarUrl_ReturnsBadRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var request = new UpdateProfileRequest
-        {
-            DisplayName = "Valid Name",
-            AvatarUrl = "not-a-valid-url"
-        };
-        SetupAuthenticatedUser(userId);
-
-        _mockUserService.Setup(x => x.UpdateProfileAsync(userId, request))
-            .ThrowsAsync(new ArgumentException("Avatar URL must be a valid HTTP or HTTPS URL."));
-
-        // Act
-        var result = await _sut.UpdateMyProfile(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-        var response = badRequestResult.Value.Should().BeOfType<ApiResponse<GetProfileResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("Avatar URL must be a valid HTTP or HTTPS URL.");
-    }
-
-    [Fact]
-    public async Task UpdateMyProfile_WithNonExistentUser_ReturnsNotFound()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var request = new UpdateProfileRequest { DisplayName = "Test" };
-        SetupAuthenticatedUser(userId);
-
-        _mockUserService.Setup(x => x.UpdateProfileAsync(userId, request))
-            .ThrowsAsync(new KeyNotFoundException($"User profile not found for user ID: {userId}"));
-
-        // Act
-        var result = await _sut.UpdateMyProfile(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        var response = notFoundResult.Value.Should().BeOfType<ApiResponse<GetProfileResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain($"User profile not found for user ID: {userId}");
-    }
-
-    [Fact]
-    public async Task UpdateMyProfile_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var request = new UpdateProfileRequest { DisplayName = "Test" };
-        SetupAuthenticatedUser(userId);
-
-        _mockUserService.Setup(x => x.UpdateProfileAsync(userId, request))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.UpdateMyProfile(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<GetProfileResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An unexpected error occurred. Please try again later.");
-    }
-
     #endregion
 
     #region GetProfileById Tests
@@ -335,50 +220,6 @@ public class UsersControllerTests
         _mockUserService.Verify(x => x.GetProfileAsync(It.IsAny<Guid>()), Times.Never);
     }
 
-    [Fact]
-    public async Task GetProfileById_WithNonExistentUser_ReturnsNotFound()
-    {
-        // Arrange
-        var currentUserId = Guid.NewGuid();
-        var targetUserId = Guid.NewGuid();
-        SetupAuthenticatedUser(currentUserId);
-
-        _mockUserService.Setup(x => x.GetProfileAsync(targetUserId))
-            .ThrowsAsync(new KeyNotFoundException($"User profile not found for user ID: {targetUserId}"));
-
-        // Act
-        var result = await _sut.GetProfileById(targetUserId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var notFoundResult = result.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
-        var response = notFoundResult.Value.Should().BeOfType<ApiResponse<GetProfileResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain($"User profile not found for user ID: {targetUserId}");
-    }
-
-    [Fact]
-    public async Task GetProfileById_WhenServiceThrowsException_ReturnsInternalServerError()
-    {
-        // Arrange
-        var currentUserId = Guid.NewGuid();
-        var targetUserId = Guid.NewGuid();
-        SetupAuthenticatedUser(currentUserId);
-
-        _mockUserService.Setup(x => x.GetProfileAsync(targetUserId))
-            .ThrowsAsync(new Exception("Database connection failed"));
-
-        // Act
-        var result = await _sut.GetProfileById(targetUserId);
-
-        // Assert
-        result.Should().NotBeNull();
-        var statusCodeResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
-        statusCodeResult.StatusCode.Should().Be(500);
-        var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<GetProfileResponse>>().Subject;
-        response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An unexpected error occurred. Please try again later.");
-    }
 
     #endregion
 

@@ -42,19 +42,8 @@ public class StepsController : ControllerBase
             return BadRequest(ApiResponse<StepEntryResponse>.ErrorResponse("Request body cannot be null."));
         }
 
-        try
-        {
-            var entry = await _stepService.RecordStepsAsync(userId.Value, request);
-            return CreatedAtAction(nameof(GetEntry), new { id = entry.Id }, ApiResponse<StepEntryResponse>.SuccessResponse(entry));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<StepEntryResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<StepEntryResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var entry = await _stepService.RecordStepsAsync(userId.Value, request);
+        return CreatedAtAction(nameof(GetEntry), new { id = entry.Id }, ApiResponse<StepEntryResponse>.SuccessResponse(entry));
     }
 
     /// <summary>
@@ -71,15 +60,8 @@ public class StepsController : ControllerBase
             return Unauthorized(ApiResponse<StepStatsResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var stats = await _stepService.GetStatsAsync(userId.Value);
-            return Ok(ApiResponse<StepStatsResponse>.SuccessResponse(stats));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<StepStatsResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var stats = await _stepService.GetStatsAsync(userId.Value);
+        return Ok(ApiResponse<StepStatsResponse>.SuccessResponse(stats));
     }
 
     /// <summary>
@@ -96,15 +78,8 @@ public class StepsController : ControllerBase
             return Unauthorized(ApiResponse<DailyStepsResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var summary = await _stepService.GetTodayAsync(userId.Value);
-            return Ok(ApiResponse<DailyStepsResponse>.SuccessResponse(summary));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<DailyStepsResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var summary = await _stepService.GetTodayAsync(userId.Value);
+        return Ok(ApiResponse<DailyStepsResponse>.SuccessResponse(summary));
     }
 
     /// <summary>
@@ -125,20 +100,9 @@ public class StepsController : ControllerBase
             return Unauthorized(ApiResponse<List<DailyStepsResponse>>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var range = new DateRange { StartDate = startDate, EndDate = endDate };
-            var summaries = await _stepService.GetDailyHistoryAsync(userId.Value, range);
-            return Ok(ApiResponse<List<DailyStepsResponse>>.SuccessResponse(summaries));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<List<DailyStepsResponse>>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<List<DailyStepsResponse>>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var range = new DateRange { StartDate = startDate, EndDate = endDate };
+        var summaries = await _stepService.GetDailyHistoryAsync(userId.Value, range);
+        return Ok(ApiResponse<List<DailyStepsResponse>>.SuccessResponse(summaries));
     }
 
     /// <summary>
@@ -163,20 +127,9 @@ public class StepsController : ControllerBase
             return Unauthorized(ApiResponse<StepHistoryResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var range = new DateRange { StartDate = startDate, EndDate = endDate };
-            var history = await _stepService.GetDetailedHistoryAsync(userId.Value, range, page, pageSize);
-            return Ok(ApiResponse<StepHistoryResponse>.SuccessResponse(history));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<StepHistoryResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<StepHistoryResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var range = new DateRange { StartDate = startDate, EndDate = endDate };
+        var history = await _stepService.GetDetailedHistoryAsync(userId.Value, range, page, pageSize);
+        return Ok(ApiResponse<StepHistoryResponse>.SuccessResponse(history));
     }
 
     /// <summary>
@@ -199,23 +152,8 @@ public class StepsController : ControllerBase
             return BadRequest(ApiResponse<StepEntryResponse>.ErrorResponse("Entry ID cannot be empty."));
         }
 
-        try
-        {
-            var entry = await _stepService.GetEntryAsync(userId.Value, id);
-            return Ok(ApiResponse<StepEntryResponse>.SuccessResponse(entry));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<StepEntryResponse>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<StepEntryResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var entry = await _stepService.GetEntryAsync(userId.Value, id);
+        return Ok(ApiResponse<StepEntryResponse>.SuccessResponse(entry));
     }
 
     /// <summary>
@@ -238,25 +176,14 @@ public class StepsController : ControllerBase
             return BadRequest(ApiResponse<object>.ErrorResponse("Entry ID cannot be empty."));
         }
 
-        try
-        {
-            var deleted = await _stepService.DeleteEntryAsync(userId.Value, id);
+        var deleted = await _stepService.DeleteEntryAsync(userId.Value, id);
 
-            if (!deleted)
-            {
-                return NotFound(ApiResponse<object>.ErrorResponse("Step entry not found."));
-            }
+        if (!deleted)
+        {
+            return NotFound(ApiResponse<object>.ErrorResponse("Step entry not found."));
+        }
 
-            return NoContent();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        return NoContent();
     }
 
     /// <summary>
@@ -279,19 +206,8 @@ public class StepsController : ControllerBase
             return BadRequest(ApiResponse<SyncStepsResponse>.ErrorResponse("Request body cannot be null."));
         }
 
-        try
-        {
-            var response = await _stepService.SyncStepsAsync(userId.Value, request);
-            return Ok(ApiResponse<SyncStepsResponse>.SuccessResponse(response));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<SyncStepsResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<SyncStepsResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var response = await _stepService.SyncStepsAsync(userId.Value, request);
+        return Ok(ApiResponse<SyncStepsResponse>.SuccessResponse(response));
     }
 
     /// <summary>
@@ -315,18 +231,7 @@ public class StepsController : ControllerBase
             return BadRequest(ApiResponse<DeleteBySourceResponse>.ErrorResponse("Source cannot be empty."));
         }
 
-        try
-        {
-            var response = await _stepService.DeleteBySourceAsync(userId.Value, source);
-            return Ok(ApiResponse<DeleteBySourceResponse>.SuccessResponse(response));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<DeleteBySourceResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<DeleteBySourceResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var response = await _stepService.DeleteBySourceAsync(userId.Value, source);
+        return Ok(ApiResponse<DeleteBySourceResponse>.SuccessResponse(response));
     }
 }

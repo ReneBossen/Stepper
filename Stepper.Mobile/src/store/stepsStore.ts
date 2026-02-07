@@ -7,6 +7,7 @@ import {
   RecordStepsRequest,
 } from '@services/api/stepsApi';
 import { getErrorMessage } from '@utils/errorUtils';
+import { EARLIEST_HISTORY_DATE } from '@utils/constants';
 import { track, setUserProperties } from '@services/analytics';
 import type { HealthProvider } from '@services/analytics/analyticsTypes';
 
@@ -207,7 +208,7 @@ export const useStepsStore = create<StepsState>((set, get) => ({
 
       // Fetch all data only once (when fullDailyHistory is null)
       if (allItems === null) {
-        const startDate = '1970-01-01';
+        const startDate = EARLIEST_HISTORY_DATE;
         const endDate = getTodayString();
         const dailySummaries = await stepsApi.getDailyHistory({ startDate, endDate });
 

@@ -2,8 +2,26 @@ import { API_CONFIG } from '../../config/api';
 import { ApiResponse, ApiError, ApiErrorResponse } from './types';
 import { tokenStorage } from '../tokenStorage';
 import { authApi } from './authApi';
-import { useAuthStore } from '../../store/authStore';
 import { track } from '../analytics';
+
+/**
+ * Module-level callback invoked when the session has expired
+ * (e.g., 401 response or expired OAuth token).
+ * Registered by the auth store to decouple the API client from state management.
+ */
+let onSessionExpired: (() => void) | null = null;
+
+/**
+ * Registers a callback to be invoked when the API client detects
+ * that the user session has expired. This allows the auth layer to
+ * react (e.g., clear user state) without coupling the API client
+ * to a specific state management library.
+ *
+ * @param callback - Function to call when session expires
+ */
+export function setOnSessionExpired(callback: () => void): void {
+  onSessionExpired = callback;
+}
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
@@ -36,8 +54,8 @@ async function getAuthToken(): Promise<string | null> {
     const isExpired = await tokenStorage.isAccessTokenExpired();
     if (isExpired) {
       await tokenStorage.clearTokens();
-      // Notify the auth store that the session has expired
-      useAuthStore.getState().setUser(null);
+      // Notify the auth layer that the session has expired
+      onSessionExpired?.();
       return null;
     }
     return accessToken;
@@ -114,9 +132,9 @@ async function request<T>(
 
     // Handle authentication errors
     if (response.status === 401) {
-      // Token is invalid or expired, clear tokens and notify auth store
+      // Token is invalid or expired, clear tokens and notify auth layer
       await tokenStorage.clearTokens();
-      useAuthStore.getState().setUser(null);
+      onSessionExpired?.();
     }
 
     // Handle empty responses (204 No Content)

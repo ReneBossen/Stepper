@@ -37,19 +37,8 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<List<GroupSearchResponse>>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _groupService.GetPublicGroupsAsync(userId.Value, limit);
-            return Ok(ApiResponse<List<GroupSearchResponse>>.SuccessResponse(result));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<List<GroupSearchResponse>>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<List<GroupSearchResponse>>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _groupService.GetPublicGroupsAsync(userId.Value, limit);
+        return Ok(ApiResponse<List<GroupSearchResponse>>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -69,19 +58,8 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<List<GroupSearchResponse>>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _groupService.SearchPublicGroupsAsync(userId.Value, query, limit);
-            return Ok(ApiResponse<List<GroupSearchResponse>>.SuccessResponse(result));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<List<GroupSearchResponse>>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<List<GroupSearchResponse>>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _groupService.SearchPublicGroupsAsync(userId.Value, query, limit);
+        return Ok(ApiResponse<List<GroupSearchResponse>>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -99,27 +77,8 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<GroupResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _groupService.JoinByCodeAsync(userId.Value, request.Code);
-            return Ok(ApiResponse<GroupResponse>.SuccessResponse(result));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<GroupResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _groupService.JoinByCodeAsync(userId.Value, request.Code);
+        return Ok(ApiResponse<GroupResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -137,19 +96,8 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<GroupResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _groupService.CreateGroupAsync(userId.Value, request);
-            return Ok(ApiResponse<GroupResponse>.SuccessResponse(result));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<GroupResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _groupService.CreateGroupAsync(userId.Value, request);
+        return Ok(ApiResponse<GroupResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -165,15 +113,8 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<GroupListResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _groupService.GetUserGroupsAsync(userId.Value);
-            return Ok(ApiResponse<GroupListResponse>.SuccessResponse(result));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<GroupListResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _groupService.GetUserGroupsAsync(userId.Value);
+        return Ok(ApiResponse<GroupListResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -190,23 +131,8 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<GroupResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _groupService.GetGroupAsync(userId.Value, id);
-            return Ok(ApiResponse<GroupResponse>.SuccessResponse(result));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<GroupResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _groupService.GetGroupAsync(userId.Value, id);
+        return Ok(ApiResponse<GroupResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -226,27 +152,8 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<GroupResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _groupService.UpdateGroupAsync(userId.Value, id, request);
-            return Ok(ApiResponse<GroupResponse>.SuccessResponse(result));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<GroupResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _groupService.UpdateGroupAsync(userId.Value, id, request);
+        return Ok(ApiResponse<GroupResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -263,23 +170,8 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<object>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            await _groupService.DeleteGroupAsync(userId.Value, id);
-            return Ok(ApiResponse<object>.SuccessResponse(new { message = "Group deleted successfully" }));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        await _groupService.DeleteGroupAsync(userId.Value, id);
+        return Ok(ApiResponse<object>.SuccessResponse(new { message = "Group deleted successfully" }));
     }
 
     /// <summary>
@@ -299,31 +191,8 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<GroupResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _groupService.JoinGroupAsync(userId.Value, id, request);
-            return Ok(ApiResponse<GroupResponse>.SuccessResponse(result));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<GroupResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _groupService.JoinGroupAsync(userId.Value, id, request);
+        return Ok(ApiResponse<GroupResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -340,23 +209,8 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<object>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            await _groupService.LeaveGroupAsync(userId.Value, id);
-            return Ok(ApiResponse<object>.SuccessResponse(new { message = "Left group successfully" }));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        await _groupService.LeaveGroupAsync(userId.Value, id);
+        return Ok(ApiResponse<object>.SuccessResponse(new { message = "Left group successfully" }));
     }
 
     /// <summary>
@@ -376,23 +230,8 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<List<GroupMemberResponse>>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _groupService.GetMembersAsync(userId.Value, id, status);
-            return Ok(ApiResponse<List<GroupMemberResponse>>.SuccessResponse(result));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<List<GroupMemberResponse>>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<List<GroupMemberResponse>>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<List<GroupMemberResponse>>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _groupService.GetMembersAsync(userId.Value, id, status);
+        return Ok(ApiResponse<List<GroupMemberResponse>>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -412,31 +251,8 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<GroupMemberResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _groupService.InviteMemberAsync(userId.Value, id, request);
-            return Ok(ApiResponse<GroupMemberResponse>.SuccessResponse(result));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<GroupMemberResponse>.ErrorResponse(ex.Message));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<GroupMemberResponse>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<GroupMemberResponse>.ErrorResponse(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<GroupMemberResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<GroupMemberResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _groupService.InviteMemberAsync(userId.Value, id, request);
+        return Ok(ApiResponse<GroupMemberResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -458,27 +274,8 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<GroupMemberResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _groupService.UpdateMemberRoleAsync(userId.Value, id, memberId, request.Role);
-            return Ok(ApiResponse<GroupMemberResponse>.SuccessResponse(result));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<GroupMemberResponse>.ErrorResponse(ex.Message));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<GroupMemberResponse>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<GroupMemberResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<GroupMemberResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _groupService.UpdateMemberRoleAsync(userId.Value, id, memberId, request.Role);
+        return Ok(ApiResponse<GroupMemberResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -496,31 +293,8 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<object>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            await _groupService.RemoveMemberAsync(currentUserId.Value, id, userId);
-            return Ok(ApiResponse<object>.SuccessResponse(new { message = "Member removed successfully" }));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        await _groupService.RemoveMemberAsync(currentUserId.Value, id, userId);
+        return Ok(ApiResponse<object>.SuccessResponse(new { message = "Member removed successfully" }));
     }
 
     /// <summary>
@@ -538,27 +312,8 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<GroupMemberResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _groupService.ApproveMemberAsync(userId.Value, id, memberId);
-            return Ok(ApiResponse<GroupMemberResponse>.SuccessResponse(result));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<GroupMemberResponse>.ErrorResponse(ex.Message));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<GroupMemberResponse>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<GroupMemberResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<GroupMemberResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _groupService.ApproveMemberAsync(userId.Value, id, memberId);
+        return Ok(ApiResponse<GroupMemberResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -575,23 +330,8 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<LeaderboardResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _groupService.GetLeaderboardAsync(userId.Value, id);
-            return Ok(ApiResponse<LeaderboardResponse>.SuccessResponse(result));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<LeaderboardResponse>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<LeaderboardResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<LeaderboardResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _groupService.GetLeaderboardAsync(userId.Value, id);
+        return Ok(ApiResponse<LeaderboardResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -608,26 +348,7 @@ public class GroupsController : ControllerBase
             return Unauthorized(ApiResponse<GroupResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _groupService.RegenerateJoinCodeAsync(userId.Value, id);
-            return Ok(ApiResponse<GroupResponse>.SuccessResponse(result));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<GroupResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<GroupResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _groupService.RegenerateJoinCodeAsync(userId.Value, id);
+        return Ok(ApiResponse<GroupResponse>.SuccessResponse(result));
     }
 }

@@ -38,19 +38,8 @@ public class AuthController : ControllerBase
             return BadRequest(ApiResponse<AuthResponse>.ErrorResponse("Request body cannot be null."));
         }
 
-        try
-        {
-            var response = await _authService.RegisterAsync(request);
-            return Ok(ApiResponse<AuthResponse>.SuccessResponse(response));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<AuthResponse>.ErrorResponse(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<AuthResponse>.ErrorResponse(ex.Message));
-        }
+        var response = await _authService.RegisterAsync(request);
+        return Ok(ApiResponse<AuthResponse>.SuccessResponse(response));
     }
 
     /// <summary>
@@ -67,19 +56,8 @@ public class AuthController : ControllerBase
             return BadRequest(ApiResponse<AuthResponse>.ErrorResponse("Request body cannot be null."));
         }
 
-        try
-        {
-            var response = await _authService.LoginAsync(request);
-            return Ok(ApiResponse<AuthResponse>.SuccessResponse(response));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<AuthResponse>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<AuthResponse>.ErrorResponse(ex.Message));
-        }
+        var response = await _authService.LoginAsync(request);
+        return Ok(ApiResponse<AuthResponse>.SuccessResponse(response));
     }
 
     /// <summary>
@@ -96,15 +74,8 @@ public class AuthController : ControllerBase
             return Unauthorized(ApiResponse<object>.ErrorResponse("No valid access token provided."));
         }
 
-        try
-        {
-            await _authService.LogoutAsync(accessToken);
-            return Ok(ApiResponse<object>.SuccessResponse(new { message = "Successfully logged out." }));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
+        await _authService.LogoutAsync(accessToken);
+        return Ok(ApiResponse<object>.SuccessResponse(new { message = "Successfully logged out." }));
     }
 
     /// <summary>
@@ -121,19 +92,8 @@ public class AuthController : ControllerBase
             return BadRequest(ApiResponse<AuthResponse>.ErrorResponse("Request body cannot be null."));
         }
 
-        try
-        {
-            var response = await _authService.RefreshTokenAsync(request);
-            return Ok(ApiResponse<AuthResponse>.SuccessResponse(response));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<AuthResponse>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<AuthResponse>.ErrorResponse(ex.Message));
-        }
+        var response = await _authService.RefreshTokenAsync(request);
+        return Ok(ApiResponse<AuthResponse>.SuccessResponse(response));
     }
 
     /// <summary>
@@ -150,16 +110,9 @@ public class AuthController : ControllerBase
             return BadRequest(ApiResponse<object>.ErrorResponse("Request body cannot be null."));
         }
 
-        try
-        {
-            await _authService.ForgotPasswordAsync(request);
-            // Always return success to prevent email enumeration attacks
-            return Ok(ApiResponse<object>.SuccessResponse(new { message = "If an account with that email exists, a password reset link has been sent." }));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
+        await _authService.ForgotPasswordAsync(request);
+        // Always return success to prevent email enumeration attacks
+        return Ok(ApiResponse<object>.SuccessResponse(new { message = "If an account with that email exists, a password reset link has been sent." }));
     }
 
     /// <summary>
@@ -176,19 +129,8 @@ public class AuthController : ControllerBase
             return BadRequest(ApiResponse<object>.ErrorResponse("Request body cannot be null."));
         }
 
-        try
-        {
-            await _authService.ResetPasswordAsync(request);
-            return Ok(ApiResponse<object>.SuccessResponse(new { message = "Password has been reset successfully." }));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
+        await _authService.ResetPasswordAsync(request);
+        return Ok(ApiResponse<object>.SuccessResponse(new { message = "Password has been reset successfully." }));
     }
 
     /// <summary>
@@ -211,23 +153,8 @@ public class AuthController : ControllerBase
             return Unauthorized(ApiResponse<object>.ErrorResponse("No valid access token provided."));
         }
 
-        try
-        {
-            await _authService.ChangePasswordAsync(accessToken, request);
-            return Ok(ApiResponse<object>.SuccessResponse(new { message = "Password has been changed successfully." }));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
+        await _authService.ChangePasswordAsync(accessToken, request);
+        return Ok(ApiResponse<object>.SuccessResponse(new { message = "Password has been changed successfully." }));
     }
 
     private string? ExtractAccessToken()

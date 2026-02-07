@@ -41,19 +41,8 @@ public class FriendDiscoveryController : ControllerBase
             return BadRequest(ApiResponse<SearchUsersResponse>.ErrorResponse("Search query cannot be empty."));
         }
 
-        try
-        {
-            var result = await _discoveryService.SearchUsersAsync(userId.Value, query);
-            return Ok(ApiResponse<SearchUsersResponse>.SuccessResponse(result));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<SearchUsersResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<SearchUsersResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _discoveryService.SearchUsersAsync(userId.Value, query);
+        return Ok(ApiResponse<SearchUsersResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -69,19 +58,8 @@ public class FriendDiscoveryController : ControllerBase
             return Unauthorized(ApiResponse<QrCodeResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _discoveryService.GetMyQrCodeAsync(userId.Value);
-            return Ok(ApiResponse<QrCodeResponse>.SuccessResponse(result));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<QrCodeResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<QrCodeResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _discoveryService.GetMyQrCodeAsync(userId.Value);
+        return Ok(ApiResponse<QrCodeResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -103,19 +81,8 @@ public class FriendDiscoveryController : ControllerBase
             return BadRequest(ApiResponse<UserSearchResult>.ErrorResponse("QR code ID cannot be empty."));
         }
 
-        try
-        {
-            var result = await _discoveryService.GetUserByQrCodeAsync(qrCodeId);
-            return Ok(ApiResponse<UserSearchResult>.SuccessResponse(result));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<UserSearchResult>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<UserSearchResult>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _discoveryService.GetUserByQrCodeAsync(qrCodeId);
+        return Ok(ApiResponse<UserSearchResult>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -133,19 +100,8 @@ public class FriendDiscoveryController : ControllerBase
             return Unauthorized(ApiResponse<GenerateInviteLinkResponse>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            var result = await _discoveryService.GenerateInviteLinkAsync(userId.Value, request);
-            return Ok(ApiResponse<GenerateInviteLinkResponse>.SuccessResponse(result));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<GenerateInviteLinkResponse>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<GenerateInviteLinkResponse>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        var result = await _discoveryService.GenerateInviteLinkAsync(userId.Value, request);
+        return Ok(ApiResponse<GenerateInviteLinkResponse>.SuccessResponse(result));
     }
 
     /// <summary>
@@ -163,26 +119,7 @@ public class FriendDiscoveryController : ControllerBase
             return Unauthorized(ApiResponse<object>.ErrorResponse("User is not authenticated."));
         }
 
-        try
-        {
-            await _discoveryService.RedeemInviteCodeAsync(userId.Value, request.Code);
-            return Ok(ApiResponse<object>.SuccessResponse(new { message = "Friend request sent successfully." }));
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<object>.ErrorResponse(ex.Message));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object>.ErrorResponse($"An error occurred: {ex.Message}"));
-        }
+        await _discoveryService.RedeemInviteCodeAsync(userId.Value, request.Code);
+        return Ok(ApiResponse<object>.SuccessResponse(new { message = "Friend request sent successfully." }));
     }
 }
