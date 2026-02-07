@@ -452,6 +452,7 @@ public class ActivityServiceTests
     {
         // Arrange
         var userId = Guid.NewGuid();
+        var invalidMetadata = "invalid json {{{";
         var activities = new List<ActivityItem>
         {
             new()
@@ -460,7 +461,7 @@ public class ActivityServiceTests
                 UserId = userId,
                 Type = "steps_recorded",
                 Message = "Recorded steps",
-                Metadata = "invalid json {{{",
+                Metadata = invalidMetadata,
                 CreatedAt = DateTime.UtcNow
             }
         };
@@ -482,7 +483,7 @@ public class ActivityServiceTests
         // Assert
         result.Should().NotBeNull();
         result.Items.Should().HaveCount(1);
-        result.Items[0].Metadata.Should().BeNull();
+        result.Items[0].Metadata.Should().Be(invalidMetadata);
     }
 
     [Fact]

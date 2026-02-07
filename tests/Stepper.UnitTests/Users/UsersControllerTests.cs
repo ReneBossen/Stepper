@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Stepper.Api.Common.Models;
 using Stepper.Api.Users;
@@ -12,12 +13,14 @@ namespace Stepper.UnitTests.Users;
 public class UsersControllerTests
 {
     private readonly Mock<IUserService> _mockUserService;
+    private readonly Mock<ILogger<UsersController>> _mockLogger;
     private readonly UsersController _sut;
 
     public UsersControllerTests()
     {
         _mockUserService = new Mock<IUserService>();
-        _sut = new UsersController(_mockUserService.Object);
+        _mockLogger = new Mock<ILogger<UsersController>>();
+        _sut = new UsersController(_mockUserService.Object, _mockLogger.Object);
     }
 
     #region Constructor Tests
@@ -26,7 +29,7 @@ public class UsersControllerTests
     public void Constructor_WithNullUserService_ThrowsArgumentNullException()
     {
         // Arrange & Act
-        var act = () => new UsersController(null!);
+        var act = () => new UsersController(null!, _mockLogger.Object);
 
         // Assert
         act.Should().Throw<ArgumentNullException>();
@@ -98,7 +101,7 @@ public class UsersControllerTests
         statusCodeResult.StatusCode.Should().Be(500);
         var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<GetProfileResponse>>().Subject;
         response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An error occurred: Database connection failed");
+        response.Errors.Should().Contain("An unexpected error occurred. Please try again later.");
     }
 
     #endregion
@@ -262,7 +265,7 @@ public class UsersControllerTests
         statusCodeResult.StatusCode.Should().Be(500);
         var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<GetProfileResponse>>().Subject;
         response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An error occurred: Database connection failed");
+        response.Errors.Should().Contain("An unexpected error occurred. Please try again later.");
     }
 
     #endregion
@@ -374,7 +377,7 @@ public class UsersControllerTests
         statusCodeResult.StatusCode.Should().Be(500);
         var response = statusCodeResult.Value.Should().BeOfType<ApiResponse<GetProfileResponse>>().Subject;
         response.Success.Should().BeFalse();
-        response.Errors.Should().Contain("An error occurred: Database connection failed");
+        response.Errors.Should().Contain("An unexpected error occurred. Please try again later.");
     }
 
     #endregion
