@@ -4,9 +4,9 @@ namespace Stepper.Api.Users.DTOs;
 /// Request model for updating a user profile.
 /// Preferences are updated separately via the /users/me/preferences endpoint.
 /// </summary>
-public class UpdateProfileRequest
+public record UpdateProfileRequest
 {
-    public string DisplayName { get; set; } = string.Empty;
-    public string? AvatarUrl { get; set; }
-    public bool? OnboardingCompleted { get; set; }
+    public string DisplayName { get; init; } = string.Empty;
+    public string? AvatarUrl { get; init; }
+    public bool? OnboardingCompleted { get; init; }
 }

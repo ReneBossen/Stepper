@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Card, Text, useTheme } from 'react-native-paper';
+import { Card, Text, Icon, useTheme } from 'react-native-paper';
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
 import { StreakBadge } from './StreakBadge';
 
@@ -96,7 +96,7 @@ export const StepCounterCard: React.FC<StepCounterCardProps> = ({
 
           <View style={styles.statsRow}>
             <View style={styles.distanceContainer}>
-              <Text style={styles.statIcon}>📏</Text>
+              <Icon source="ruler" size={16} color={theme.colors.onSurfaceVariant} />
               <Text
                 variant="labelLarge"
                 style={{ color: theme.colors.onSurface }}
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  statIcon: {
-    fontSize: 16,
+  statIconContainer: {
+    justifyContent: 'center',
   },
 });

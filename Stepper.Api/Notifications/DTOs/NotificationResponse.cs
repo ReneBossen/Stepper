@@ -3,45 +3,45 @@ namespace Stepper.Api.Notifications.DTOs;
 /// <summary>
 /// Response DTO for a single notification.
 /// </summary>
-public class NotificationResponse
+public record NotificationResponse
 {
     /// <summary>
-    /// Gets or sets the notification ID.
+    /// Gets the notification ID.
     /// </summary>
-    public Guid Id { get; set; }
+    public Guid Id { get; init; }
 
     /// <summary>
-    /// Gets or sets the user ID.
+    /// Gets the user ID.
     /// </summary>
-    public Guid UserId { get; set; }
+    public Guid UserId { get; init; }
 
     /// <summary>
-    /// Gets or sets the notification type as a string.
+    /// Gets the notification type as a string.
     /// </summary>
-    public string Type { get; set; } = string.Empty;
+    public string Type { get; init; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the notification title.
+    /// Gets the notification title.
     /// </summary>
-    public string Title { get; set; } = string.Empty;
+    public string Title { get; init; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the notification message.
+    /// Gets the notification message.
     /// </summary>
-    public string Message { get; set; } = string.Empty;
+    public string Message { get; init; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets whether the notification has been read.
+    /// Gets whether the notification has been read.
     /// </summary>
-    public bool IsRead { get; set; }
+    public bool IsRead { get; init; }
 
     /// <summary>
-    /// Gets or sets additional metadata as a JSON string.
+    /// Gets additional metadata as a JSON string.
     /// </summary>
-    public string? Data { get; set; }
+    public string? Data { get; init; }
 
     /// <summary>
-    /// Gets or sets the creation timestamp.
+    /// Gets the creation timestamp.
     /// </summary>
-    public DateTime CreatedAt { get; set; }
+    public DateTime CreatedAt { get; init; }
 }

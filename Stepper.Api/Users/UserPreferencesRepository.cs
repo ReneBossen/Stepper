@@ -52,9 +52,9 @@ public class UserPreferencesRepository : IUserPreferencesRepository
             NotifyAchievements = true,
             NotifyDailyReminder = true,
             DailyReminderTime = null,
-            PrivacyProfileVisibility = "public",
-            PrivacyFindMe = "public",
-            PrivacyShowSteps = "partial"
+            PrivacyProfileVisibility = PrivacyLevel.Public,
+            PrivacyFindMe = PrivacyLevel.Public,
+            PrivacyShowSteps = PrivacyLevel.Partial
         };
 
         var response = await client

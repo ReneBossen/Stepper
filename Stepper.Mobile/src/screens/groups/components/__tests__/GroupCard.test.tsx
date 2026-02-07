@@ -7,48 +7,6 @@ import type { GroupWithLeaderboard, LeaderboardEntry } from '@store/groupsStore'
 jest.mock('react-native-paper', () => {
   const RN = require('react-native');
 
-  return {
-    Card: ({ children, style, mode }: any) => (
-      <RN.View testID="card" style={style}>{children}</RN.View>
-    ),
-    Text: ({ children, style, variant, numberOfLines, ...props }: any) => (
-      <RN.Text {...props} style={style} numberOfLines={numberOfLines}>{children}</RN.Text>
-    ),
-    Chip: ({ children, compact, textStyle, style }: any) => (
-      <RN.View testID="chip" style={style}>
-        <RN.Text style={textStyle}>{children}</RN.Text>
-      </RN.View>
-    ),
-    Avatar: {
-      Image: ({ size, source }: any) => (
-        <RN.View testID="avatar-image" style={{ width: size, height: size }} />
-      ),
-      Text: ({ size, label, style, labelStyle }: any) => (
-        <RN.View testID="avatar-text" style={[{ width: size, height: size }, style]}>
-          <RN.Text style={labelStyle}>{label}</RN.Text>
-        </RN.View>
-      ),
-    },
-    useTheme: () => ({
-      colors: {
-        primary: '#4CAF50',
-        surface: '#FFFFFF',
-        surfaceVariant: '#F5F5F5',
-        onSurface: '#000000',
-        onSurfaceVariant: '#666666',
-        onPrimary: '#FFFFFF',
-        primaryContainer: '#E8F5E9',
-        onPrimaryContainer: '#1B5E20',
-        secondaryContainer: '#E3F2FD',
-      },
-    }),
-  };
-});
-
-// Add missing Card.Content mock
-jest.mock('react-native-paper', () => {
-  const RN = require('react-native');
-
   const Card = ({ children, style, mode }: any) => (
     <RN.View testID="card" style={style}>{children}</RN.View>
   );
@@ -65,6 +23,9 @@ jest.mock('react-native-paper', () => {
       <RN.View testID="chip" style={style}>
         <RN.Text style={textStyle}>{children}</RN.Text>
       </RN.View>
+    ),
+    Icon: ({ source, size, color, ...props }: any) => (
+      <RN.View testID={props.testID || `icon-${source}`} />
     ),
     Avatar: {
       Image: ({ size, source }: any) => (

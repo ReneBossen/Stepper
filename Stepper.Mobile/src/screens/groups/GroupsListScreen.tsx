@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, FlatList, StyleSheet, RefreshControl, Alert } from 'react-native';
-import { Appbar, Text, TextInput, Button, Divider, Portal, Dialog, useTheme, FAB } from 'react-native-paper';
+import { Appbar, Text, TextInput, Button, Divider, Portal, Dialog, Icon, useTheme, FAB } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LoadingSpinner } from '@components/common/LoadingSpinner';
@@ -145,7 +145,7 @@ export default function GroupsListScreen() {
   const ListEmptyComponent = useCallback(
     () => (
       <View style={styles.emptyState}>
-        <Text style={styles.emptyIcon}>{'\u{1F465}'}</Text>
+        <Icon source="account-group" size={48} color={theme.colors.onSurfaceVariant} />
         <Text
           variant="titleMedium"
           style={{ color: theme.colors.onSurface, marginTop: 16 }}
@@ -398,8 +398,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 48,
   },
-  emptyIcon: {
-    fontSize: 48,
+  emptyIconContainer: {
+    alignItems: 'center',
   },
   emptySubtext: {
     marginTop: 8,

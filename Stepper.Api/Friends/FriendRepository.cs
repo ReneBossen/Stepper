@@ -1,5 +1,4 @@
 using Supabase;
-using Stepper.Api.Common.Constants;
 using Stepper.Api.Common.Database;
 
 namespace Stepper.Api.Friends;

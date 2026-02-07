@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { Text, Button, Card, IconButton } from 'react-native-paper';
+import { Text, Button, Card, IconButton, Icon } from 'react-native-paper';
 import { OnboardingStackScreenProps } from '@navigation/types';
 import { useAppTheme } from '@hooks/useAppTheme';
 import { track } from '@services/analytics';
@@ -125,9 +125,9 @@ export default function PermissionsScreen({ navigation }: Props) {
           <Card style={styles.card} mode="outlined">
             <Card.Content>
               <View style={styles.cardHeader}>
-                <Text variant="displaySmall" style={styles.cardIcon}>
-                  🔔
-                </Text>
+                <View style={styles.cardIconContainer}>
+                  <Icon source="bell" size={48} color={paperTheme.colors.primary} />
+                </View>
                 <IconButton
                   icon={getPermissionIcon(notificationStatus)}
                   iconColor={getPermissionColor(notificationStatus)}
@@ -216,8 +216,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  cardIcon: {
-    fontSize: 48,
+  cardIconContainer: {
+    justifyContent: 'center',
   },
   cardTitle: {
     fontWeight: '600',

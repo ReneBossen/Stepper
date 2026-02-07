@@ -6,7 +6,7 @@ import {
   Platform,
   StyleSheet,
 } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text, Icon } from 'react-native-paper';
 import { useAppTheme } from '@hooks/useAppTheme';
 
 interface AuthLayoutProps {
@@ -30,9 +30,9 @@ export default function AuthLayout({ children, title, subtitle }: AuthLayoutProp
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.container}>
-          <Text style={[styles.logo, { color: paperTheme.colors.primary }]}>
-            🚶
-          </Text>
+          <View style={styles.logoContainer}>
+            <Icon source="walk" size={48} color={paperTheme.colors.primary} />
+          </View>
           <Text variant="headlineMedium" style={styles.title}>
             {title}
           </Text>
@@ -62,9 +62,8 @@ const styles = StyleSheet.create({
     padding: 24,
     justifyContent: 'center',
   },
-  logo: {
-    fontSize: 48,
-    textAlign: 'center',
+  logoContainer: {
+    alignItems: 'center',
     marginBottom: 16,
   },
   title: {

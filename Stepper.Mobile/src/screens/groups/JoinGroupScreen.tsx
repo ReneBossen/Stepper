@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   Portal,
   Dialog,
+  Icon,
   useTheme,
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -54,7 +55,7 @@ function PublicGroupCard({ group, onJoin, isJoining, testID }: PublicGroupCardPr
       <Card.Content style={styles.groupCardContent}>
         <View style={styles.groupInfo}>
           <View style={styles.groupHeader}>
-            <Text style={styles.groupIcon}>{'\u{1F3C6}'}</Text>
+            <Icon source="trophy" size={20} color={theme.colors.primary} />
             <Text
               variant="titleMedium"
               style={[styles.groupName, { color: theme.colors.onSurface }]}
@@ -465,9 +466,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  groupIcon: {
-    fontSize: 20,
+  groupIconContainer: {
     marginRight: 8,
+    justifyContent: 'center',
   },
   groupName: {
     fontWeight: '600',

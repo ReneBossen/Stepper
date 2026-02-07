@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { Text, Icon, useTheme } from 'react-native-paper';
 
 interface StreakBadgeProps {
   streak: number;
@@ -19,7 +19,7 @@ export const StreakBadge: React.FC<StreakBadgeProps> = ({ streak }) => {
       accessibilityLabel={`${streak} day streak`}
       accessibilityRole="text"
     >
-      <Text style={styles.icon}>🔥</Text>
+      <Icon source="fire" size={16} color={theme.colors.onTertiaryContainer} />
       <Text
         variant="labelLarge"
         style={[styles.text, { color: theme.colors.onTertiaryContainer }]}
@@ -39,8 +39,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     gap: 4,
   },
-  icon: {
-    fontSize: 16,
+  iconContainer: {
+    justifyContent: 'center',
   },
   text: {
     fontWeight: '600',

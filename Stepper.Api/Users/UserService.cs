@@ -396,9 +396,9 @@ public class UserService : IUserService
             NotifyFriendRequests: preferences.NotifyFriendRequests,
             NotifyGroupInvites: preferences.NotifyGroupInvites,
             NotifyAchievements: preferences.NotifyAchievements,
-            PrivacyProfileVisibility: preferences.PrivacyProfileVisibility ?? "public",
-            PrivacyFindMe: preferences.PrivacyFindMe ?? "public",
-            PrivacyShowSteps: preferences.PrivacyShowSteps ?? "partial");
+            PrivacyProfileVisibility: preferences.PrivacyProfileVisibility ?? PrivacyLevel.Public,
+            PrivacyFindMe: preferences.PrivacyFindMe ?? PrivacyLevel.Public,
+            PrivacyShowSteps: preferences.PrivacyShowSteps ?? PrivacyLevel.Partial);
     }
 
     private static ExportedPreferences CreateDefaultExportedPreferences()
@@ -411,9 +411,9 @@ public class UserService : IUserService
             NotifyFriendRequests: true,
             NotifyGroupInvites: true,
             NotifyAchievements: true,
-            PrivacyProfileVisibility: "public",
-            PrivacyFindMe: "public",
-            PrivacyShowSteps: "partial");
+            PrivacyProfileVisibility: PrivacyLevel.Public,
+            PrivacyFindMe: PrivacyLevel.Public,
+            PrivacyShowSteps: PrivacyLevel.Partial);
     }
 
     private async Task<List<ExportedStepEntry>> FetchAllStepEntriesAsync(Guid userId)
@@ -660,7 +660,7 @@ public class UserService : IUserService
 
         if (request.PrivateProfile.HasValue)
         {
-            preferences.PrivacyProfileVisibility = request.PrivateProfile.Value ? "private" : "public";
+            preferences.PrivacyProfileVisibility = request.PrivateProfile.Value ? PrivacyLevel.Private : PrivacyLevel.Public;
         }
     }
 
@@ -784,7 +784,7 @@ public class UserService : IUserService
             NotificationsEnabled: preferences.NotifyDailyReminder,
             DailyStepGoal: preferences.DailyStepGoal,
             DistanceUnit: preferences.Units,
-            PrivateProfile: preferences.PrivacyProfileVisibility == "private"
+            PrivateProfile: preferences.PrivacyProfileVisibility == PrivacyLevel.Private
         );
     }
 

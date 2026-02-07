@@ -17,10 +17,13 @@ jest.mock('@hooks/useAppTheme', () => ({
 
 jest.mock('react-native-paper', () => {
   const React = require('react');
-  const { Text: RNText } = require('react-native');
+  const { Text: RNText, View: RNView } = require('react-native');
   return {
     Text: ({ children, variant, style, testID }: any) => {
       return React.createElement(RNText, { testID, variant, style }, children);
+    },
+    Icon: ({ source, size, color, ...props }: any) => {
+      return React.createElement(RNView, { testID: props.testID || `icon-${source}`, source, size, color });
     },
   };
 });
@@ -58,13 +61,13 @@ describe('AuthLayout', () => {
     });
 
     it('AuthLayout_WhenRendered_DisplaysLogo', () => {
-      const { getByText } = render(
+      const { getByTestId } = render(
         <AuthLayout title="Test Title" subtitle="Test Subtitle">
           <Text>Child Content</Text>
         </AuthLayout>
       );
 
-      expect(getByText('🚶')).toBeTruthy();
+      expect(getByTestId('icon-walk')).toBeTruthy();
     });
   });
 
@@ -150,13 +153,13 @@ describe('AuthLayout', () => {
 
   describe('AuthLayout_Structure_CorrectHierarchy', () => {
     it('AuthLayout_WhenRendered_MaintainsCorrectStructure', () => {
-      const { getByText } = render(
+      const { getByText, getByTestId } = render(
         <AuthLayout title="Test Title" subtitle="Test Subtitle">
           <Text>Content</Text>
         </AuthLayout>
       );
 
-      const logo = getByText('🚶');
+      const logo = getByTestId('icon-walk');
       const title = getByText('Test Title');
       const subtitle = getByText('Test Subtitle');
       const content = getByText('Content');
@@ -170,7 +173,7 @@ describe('AuthLayout', () => {
 
   describe('AuthLayout_Reusability_WorksWithDifferentContent', () => {
     it('AuthLayout_WhenUsedMultipleTimes_RendersIndependently', () => {
-      const { getAllByText } = render(
+      const { getAllByTestId } = render(
         <>
           <AuthLayout title="First" subtitle="First Subtitle">
             <Text>First Content</Text>
@@ -181,7 +184,7 @@ describe('AuthLayout', () => {
         </>
       );
 
-      expect(getAllByText('🚶')).toHaveLength(2);
+      expect(getAllByTestId('icon-walk')).toHaveLength(2);
     });
 
     it('AuthLayout_WhenDifferentProps_DisplaysDifferentContent', () => {

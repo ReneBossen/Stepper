@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Text, Avatar, useTheme } from 'react-native-paper';
+import { Text, Avatar, Icon, useTheme } from 'react-native-paper';
 import type { ActivityItem } from '@store/activityStore';
 
 interface ActivityFeedItemProps {
@@ -19,18 +19,18 @@ export const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
 
   const formattedTime = formatRelativeTime(item.timestamp);
 
-  const getActivityIcon = (): string => {
+  const getActivityIconSource = (): string => {
     switch (item.type) {
       case 'milestone':
-        return '🎯';
+        return 'target';
       case 'friend_achievement':
-        return '🎉';
+        return 'party-popper';
       case 'group_join':
-        return '👥';
+        return 'account-group';
       case 'streak':
-        return '🔥';
+        return 'fire';
       default:
-        return '📝';
+        return 'note-text';
     }
   };
 
@@ -55,7 +55,9 @@ export const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
       </View>
       <View style={styles.contentContainer}>
         <View style={styles.messageRow}>
-          <Text style={styles.icon}>{getActivityIcon()}</Text>
+          <View style={styles.iconContainer}>
+            <Icon source={getActivityIconSource()} size={14} color={theme.colors.onSurfaceVariant} />
+          </View>
           <Text
             variant="bodyMedium"
             style={[styles.message, { color: theme.colors.onSurface }]}
@@ -144,8 +146,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 6,
   },
-  icon: {
-    fontSize: 14,
+  iconContainer: {
     marginTop: 2,
   },
   message: {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
-import { Text, Avatar, useTheme } from 'react-native-paper';
+import { Text, Avatar, Icon, useTheme } from 'react-native-paper';
 import type { LeaderboardEntry } from '@store/groupsStore';
 
 interface LeaderboardItemProps {
@@ -10,12 +10,17 @@ interface LeaderboardItemProps {
 }
 
 /**
- * Medal icons for top 3 positions.
+ * Medal icon configuration for top 3 positions.
  */
-const MEDAL_ICONS: Record<number, string> = {
-  1: '\u{1F947}', // Gold medal
-  2: '\u{1F948}', // Silver medal
-  3: '\u{1F949}', // Bronze medal
+interface MedalConfig {
+  source: string;
+  color: string;
+}
+
+const MEDAL_ICONS: Record<number, MedalConfig> = {
+  1: { source: 'medal', color: '#FFD700' },     // Gold
+  2: { source: 'medal', color: '#C0C0C0' },     // Silver
+  3: { source: 'medal', color: '#CD7F32' },      // Bronze
 };
 
 /**
@@ -35,38 +40,47 @@ export function LeaderboardItem({ entry, onPress, testID }: LeaderboardItemProps
     .toUpperCase()
     .slice(0, 2);
 
-  const medalIcon = MEDAL_ICONS[entry.rank];
+  const medalConfig = MEDAL_ICONS[entry.rank];
 
   const getRankChangeDisplay = () => {
     if (entry.rank_change === 0) {
       return (
-        <Text
-          variant="labelSmall"
-          style={[styles.rankChange, { color: theme.colors.onSurfaceVariant }]}
-        >
-          {'\u2500'} 0
-        </Text>
+        <View style={styles.rankChangeRow}>
+          <Icon source="minus" size={14} color={theme.colors.onSurfaceVariant} />
+          <Text
+            variant="labelSmall"
+            style={[styles.rankChange, { color: theme.colors.onSurfaceVariant }]}
+          >
+            {' '}0
+          </Text>
+        </View>
       );
     }
 
     if (entry.rank_change > 0) {
       return (
-        <Text
-          variant="labelSmall"
-          style={[styles.rankChange, { color: theme.colors.primary }]}
-        >
-          {'\u{1F446}'} +{entry.rank_change}
-        </Text>
+        <View style={styles.rankChangeRow}>
+          <Icon source="arrow-up-bold" size={14} color={theme.colors.primary} />
+          <Text
+            variant="labelSmall"
+            style={[styles.rankChange, { color: theme.colors.primary }]}
+          >
+            {' '}+{entry.rank_change}
+          </Text>
+        </View>
       );
     }
 
     return (
-      <Text
-        variant="labelSmall"
-        style={[styles.rankChange, { color: theme.colors.error }]}
-      >
-        {'\u{1F447}'} {entry.rank_change}
-      </Text>
+      <View style={styles.rankChangeRow}>
+        <Icon source="arrow-down-bold" size={14} color={theme.colors.error} />
+        <Text
+          variant="labelSmall"
+          style={[styles.rankChange, { color: theme.colors.error }]}
+        >
+          {' '}{entry.rank_change}
+        </Text>
+      </View>
     );
   };
 
@@ -86,8 +100,8 @@ export function LeaderboardItem({ entry, onPress, testID }: LeaderboardItemProps
       accessibilityRole="button"
     >
       <View style={styles.rankContainer}>
-        {medalIcon ? (
-          <Text style={styles.medalIcon}>{medalIcon}</Text>
+        {medalConfig ? (
+          <Icon source={medalConfig.source} size={24} color={medalConfig.color} />
         ) : (
           <Text
             variant="titleMedium"
@@ -171,8 +185,9 @@ const styles = StyleSheet.create({
     width: 40,
     alignItems: 'center',
   },
-  medalIcon: {
-    fontSize: 24,
+  medalIconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rankNumber: {
     fontWeight: '600',
@@ -190,6 +205,10 @@ const styles = StyleSheet.create({
   rankChangeContainer: {
     alignItems: 'flex-end',
     minWidth: 50,
+  },
+  rankChangeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   rankChange: {
     fontWeight: '500',

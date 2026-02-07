@@ -1,4 +1,4 @@
-namespace Stepper.Api.Common.Constants;
+namespace Stepper.Api.Friends;
 
 /// <summary>
 /// String constants for friendship status values stored in the database.

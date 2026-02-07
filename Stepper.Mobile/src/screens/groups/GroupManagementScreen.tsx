@@ -15,6 +15,7 @@ import {
   Button,
   Divider,
   IconButton,
+  Icon,
   useTheme,
   HelperText,
   Snackbar,
@@ -316,7 +317,7 @@ export default function GroupManagementScreen({ route }: Props) {
                 { backgroundColor: theme.colors.primaryContainer },
               ]}
             >
-              <Text style={styles.avatarEmoji}>{'\u{1F3C6}'}</Text>
+              <Icon source="trophy" size={36} color={theme.colors.onPrimaryContainer} />
             </View>
             <Text
               variant="titleLarge"
@@ -645,8 +646,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  avatarEmoji: {
-    fontSize: 36,
+  avatarIconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   groupName: {
     fontWeight: '600',
