@@ -1,14 +1,13 @@
-using Microsoft.Extensions.Options;
 using Supabase.Gotrue;
 using Supabase.Gotrue.Exceptions;
 using Stepper.Api.Auth.DTOs;
-using Stepper.Api.Common.Configuration;
-using SupabaseClient = Supabase.Client;
 
 namespace Stepper.Api.Auth;
 
 /// <summary>
-/// Service implementation for authentication operations using Supabase Auth.
+/// Service implementation for authentication operations.
+/// Contains business logic, validation, and error mapping.
+/// Delegates Supabase interactions to <see cref="IAuthRepository"/>.
 /// </summary>
 public class AuthService : IAuthService
 {
@@ -16,19 +15,19 @@ public class AuthService : IAuthService
     private const int MinDisplayNameLength = 2;
     private const int MaxDisplayNameLength = 50;
 
-    private readonly SupabaseSettings _settings;
+    private readonly IAuthRepository _authRepository;
     private readonly ILogger<AuthService> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AuthService"/> class.
     /// </summary>
-    /// <param name="settings">The Supabase configuration settings.</param>
+    /// <param name="authRepository">The authentication repository for Supabase operations.</param>
     /// <param name="logger">The logger instance.</param>
-    public AuthService(IOptions<SupabaseSettings> settings, ILogger<AuthService> logger)
+    public AuthService(IAuthRepository authRepository, ILogger<AuthService> logger)
     {
-        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(authRepository);
         ArgumentNullException.ThrowIfNull(logger);
-        _settings = settings.Value;
+        _authRepository = authRepository;
         _logger = logger;
     }
 
@@ -37,38 +36,19 @@ public class AuthService : IAuthService
     {
         ValidateRegisterRequest(request);
 
-        var client = await CreateSupabaseClientAsync();
-
         try
         {
-            var session = await client.Auth.SignUp(
-                request.Email,
-                request.Password,
-                new SignUpOptions
-                {
-                    Data = new Dictionary<string, object>
-                    {
-                        { "display_name", request.DisplayName }
-                    }
-                });
+            var metadata = new Dictionary<string, object>
+            {
+                { "display_name", request.DisplayName }
+            };
 
-            // When email confirmation is required, we get a user but no access token
-            // This is NOT an error - it means registration succeeded but email needs verification
-            if (session?.User != null && session.AccessToken == null)
+            var session = await _authRepository.SignUpAsync(request.Email, request.Password, metadata);
+
+            if (IsAwaitingEmailConfirmation(session))
             {
                 _logger.LogInformation("Registration successful for email: {Email}, awaiting email confirmation", request.Email);
-
-                return new AuthResponse(
-                    AccessToken: string.Empty,
-                    RefreshToken: string.Empty,
-                    ExpiresIn: 0,
-                    User: new AuthUserInfo(
-                        Id: Guid.Parse(session.User.Id!),
-                        Email: session.User.Email!,
-                        DisplayName: request.DisplayName
-                    ),
-                    RequiresEmailConfirmation: true
-                );
+                return MapToEmailConfirmationResponse(session!, request.DisplayName);
             }
 
             EnsureSessionValid(session);
@@ -93,11 +73,9 @@ public class AuthService : IAuthService
     {
         ValidateLoginRequest(request);
 
-        var client = await CreateSupabaseClientAsync();
-
         try
         {
-            var session = await client.Auth.SignIn(request.Email, request.Password);
+            var session = await _authRepository.SignInAsync(request.Email, request.Password);
 
             EnsureSessionValid(session);
 
@@ -118,11 +96,9 @@ public class AuthService : IAuthService
             throw new ArgumentException("Access token cannot be empty.", nameof(accessToken));
         }
 
-        var client = await CreateAuthenticatedClientAsync(accessToken);
-
         try
         {
-            await client.Auth.SignOut();
+            await _authRepository.SignOutAsync(accessToken);
         }
         catch (GotrueException ex)
         {
@@ -136,13 +112,9 @@ public class AuthService : IAuthService
     {
         ValidateRefreshTokenRequest(request);
 
-        var client = await CreateSupabaseClientAsync();
-
         try
         {
-            // Set the session with the refresh token to enable refresh
-            await client.Auth.SetSession(string.Empty, request.RefreshToken);
-            var session = await client.Auth.RefreshSession();
+            var session = await _authRepository.RefreshSessionAsync(request.RefreshToken);
 
             EnsureSessionValid(session);
 
@@ -160,11 +132,9 @@ public class AuthService : IAuthService
     {
         ValidateForgotPasswordRequest(request);
 
-        var client = await CreateSupabaseClientAsync();
-
         try
         {
-            await client.Auth.ResetPasswordForEmail(request.Email);
+            await _authRepository.ResetPasswordForEmailAsync(request.Email);
         }
         catch (GotrueException ex)
         {
@@ -179,24 +149,16 @@ public class AuthService : IAuthService
     {
         ValidateResetPasswordRequest(request);
 
-        var client = await CreateSupabaseClientAsync();
-
         try
         {
-            // First verify the token by exchanging it for a session
-            var session = await client.Auth.ExchangeCodeForSession(request.Token, request.Token);
+            var session = await _authRepository.ExchangeCodeForSessionAsync(request.Token);
 
             if (session?.AccessToken == null)
             {
                 throw new InvalidOperationException("Invalid or expired reset token.");
             }
 
-            // Now update the password using the session
-            var authenticatedClient = await CreateAuthenticatedClientAsync(session.AccessToken);
-            await authenticatedClient.Auth.Update(new UserAttributes
-            {
-                Password = request.NewPassword
-            });
+            await _authRepository.UpdateUserPasswordAsync(session.AccessToken, request.NewPassword);
         }
         catch (GotrueException ex)
         {
@@ -210,22 +172,18 @@ public class AuthService : IAuthService
     {
         ValidateChangePasswordRequest(accessToken, request);
 
-        var client = await CreateAuthenticatedClientAsync(accessToken);
-        var currentUser = client.Auth.CurrentUser;
+        var email = await _authRepository.GetUserEmailAsync(accessToken);
+        EnsureUserEmailResolved(email);
 
-        EnsureUserIsAuthenticated(currentUser);
-
-        await VerifyCurrentPassword(currentUser!.Email!, request.CurrentPassword);
-        await UpdatePassword(client, request.NewPassword);
+        await VerifyCurrentPassword(email!, request.CurrentPassword);
+        await UpdatePassword(accessToken, request.NewPassword);
     }
 
     private async Task VerifyCurrentPassword(string email, string currentPassword)
     {
-        var client = await CreateSupabaseClientAsync();
-
         try
         {
-            await client.Auth.SignIn(email, currentPassword);
+            await _authRepository.SignInAsync(email, currentPassword);
         }
         catch (GotrueException ex)
         {
@@ -234,14 +192,11 @@ public class AuthService : IAuthService
         }
     }
 
-    private static async Task UpdatePassword(SupabaseClient client, string newPassword)
+    private async Task UpdatePassword(string accessToken, string newPassword)
     {
         try
         {
-            await client.Auth.Update(new UserAttributes
-            {
-                Password = newPassword
-            });
+            await _authRepository.UpdateUserPasswordAsync(accessToken, newPassword);
         }
         catch (GotrueException ex)
         {
@@ -249,12 +204,32 @@ public class AuthService : IAuthService
         }
     }
 
-    private static void EnsureUserIsAuthenticated(Supabase.Gotrue.User? user)
+    private static void EnsureUserEmailResolved(string? email)
     {
-        if (user?.Email == null)
+        if (string.IsNullOrEmpty(email))
         {
             throw new UnauthorizedAccessException("User is not authenticated.");
         }
+    }
+
+    private static bool IsAwaitingEmailConfirmation(Session? session)
+    {
+        return session?.User != null && session.AccessToken == null;
+    }
+
+    private static AuthResponse MapToEmailConfirmationResponse(Session session, string displayName)
+    {
+        return new AuthResponse(
+            AccessToken: string.Empty,
+            RefreshToken: string.Empty,
+            ExpiresIn: 0,
+            User: new AuthUserInfo(
+                Id: Guid.Parse(session.User!.Id!),
+                Email: session.User.Email!,
+                DisplayName: displayName
+            ),
+            RequiresEmailConfirmation: true
+        );
     }
 
     private static void ValidateChangePasswordRequest(string accessToken, ChangePasswordRequest request)
@@ -285,39 +260,6 @@ public class AuthService : IAuthService
         {
             throw new ArgumentException("New password must be different from current password.");
         }
-    }
-
-    private async Task<SupabaseClient> CreateSupabaseClientAsync()
-    {
-        var options = new Supabase.SupabaseOptions
-        {
-            AutoConnectRealtime = false
-        };
-
-        var client = new SupabaseClient(_settings.Url, _settings.AnonKey, options);
-        await client.InitializeAsync();
-
-        return client;
-    }
-
-    private async Task<SupabaseClient> CreateAuthenticatedClientAsync(string accessToken)
-    {
-        var options = new Supabase.SupabaseOptions
-        {
-            AutoConnectRealtime = false,
-            Headers = new Dictionary<string, string>
-            {
-                { "Authorization", $"Bearer {accessToken}" }
-            }
-        };
-
-        var client = new SupabaseClient(_settings.Url, _settings.AnonKey, options);
-        await client.InitializeAsync();
-
-        // Set the session with the access token
-        await client.Auth.SetSession(accessToken, string.Empty);
-
-        return client;
     }
 
     private static void ValidateRegisterRequest(RegisterRequest request)
@@ -461,7 +403,6 @@ public class AuthService : IAuthService
 
     private static string GetFriendlyAuthErrorMessage(GotrueException ex)
     {
-        // Supabase error messages can vary, so we provide friendly alternatives
         var message = ex.Message?.ToLowerInvariant() ?? string.Empty;
 
         if (message.Contains("rate limit") || message.Contains("over_email_send_rate_limit"))
