@@ -90,11 +90,9 @@ public class UserRepository : IUserRepository
 
         var client = await GetAuthenticatedClientAsync();
 
-        // Build IN clause filter - format: "id.in.(uuid1,uuid2,uuid3)"
-        var idsString = string.Join(",", userIds);
         var response = await client
             .From<UserEntity>()
-            .Filter("id", Supabase.Postgrest.Constants.Operator.In, $"({idsString})")
+            .Filter("id", Supabase.Postgrest.Constants.Operator.In, userIds.Select(id => (object)id.ToString()).ToList())
             .Get();
 
         return response.Models.Select(e => e.ToUser()).ToList();
@@ -193,10 +191,9 @@ public class UserRepository : IUserRepository
 
         var client = await GetAuthenticatedClientAsync();
 
-        var idsString = string.Join(",", groupIds);
         var response = await client
             .From<GroupQueryEntity>()
-            .Filter("id", Supabase.Postgrest.Constants.Operator.In, $"({idsString})")
+            .Filter("id", Supabase.Postgrest.Constants.Operator.In, groupIds.Select(id => (object)id.ToString()).ToList())
             .Get();
 
         return response.Models.Select(g => (g.Id, g.Name)).ToList();

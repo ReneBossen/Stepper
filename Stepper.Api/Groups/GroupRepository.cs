@@ -83,10 +83,9 @@ public class GroupRepository : IGroupRepository
 
         // Batch fetch all groups to avoid N+1 query
         var groupIds = memberships.Models.Select(m => m.GroupId).ToList();
-        var groupIdString = string.Join(",", groupIds);
         var groups = await client
             .From<GroupEntity>()
-            .Filter("id", Supabase.Postgrest.Constants.Operator.In, $"({groupIdString})")
+            .Filter("id", Supabase.Postgrest.Constants.Operator.In, groupIds.Select(id => (object)id.ToString()).ToList())
             .Get();
 
         // Get member counts for all groups
@@ -468,10 +467,9 @@ public class GroupRepository : IGroupRepository
         Supabase.Client client,
         List<Guid> groupIds)
     {
-        var groupIdString = string.Join(",", groupIds);
         var groupsResponse = await client
             .From<GroupEntity>()
-            .Filter("id", Supabase.Postgrest.Constants.Operator.In, $"({groupIdString})")
+            .Filter("id", Supabase.Postgrest.Constants.Operator.In, groupIds.Select(id => (object)id.ToString()).ToList())
             .Get();
 
         var memberCounts = new Dictionary<Guid, int>();
