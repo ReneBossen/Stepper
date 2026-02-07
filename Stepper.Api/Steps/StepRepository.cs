@@ -13,6 +13,7 @@ namespace Stepper.Api.Steps;
 public class StepRepository : IStepRepository
 {
     private const int DefaultDailyGoal = 10000;
+    private static readonly DateOnly EarliestHistoryDate = new(2020, 1, 1);
 
     private readonly ISupabaseClientFactory _clientFactory;
     private readonly IHttpContextAccessor _httpContextAccessor;
@@ -180,7 +181,7 @@ public class StepRepository : IStepRepository
         // Use database function to get all summaries for the user
         // We query from the beginning of time to today
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var startDate = new DateOnly(2020, 1, 1); // Reasonable start date
+        var startDate = EarliestHistoryDate;
 
         var response = await client.Rpc("get_daily_step_summary", new Dictionary<string, object>
         {
