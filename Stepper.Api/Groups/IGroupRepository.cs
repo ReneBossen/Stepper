@@ -74,13 +74,38 @@ public interface IGroupRepository
     Task<GroupMembership> UpdateMemberRoleAsync(Guid groupId, Guid userId, MemberRole role);
 
     /// <summary>
-    /// Gets a group by join code.
-    /// Reserved for future use (e.g., POST /api/groups/join-by-code endpoint).
-    /// Currently, joining requires knowing the group ID and providing the join code for validation.
+    /// Gets a group by join code, looking up from the group_join_codes table.
     /// </summary>
     /// <param name="joinCode">The join code.</param>
     /// <returns>The group, or null if not found.</returns>
     Task<Group?> GetByJoinCodeAsync(string joinCode);
+
+    /// <summary>
+    /// Gets the join code for a group from the group_join_codes table.
+    /// </summary>
+    /// <param name="groupId">The group ID.</param>
+    /// <returns>The join code, or null if none exists.</returns>
+    Task<string?> GetJoinCodeAsync(Guid groupId);
+
+    /// <summary>
+    /// Creates a join code record for a group in the group_join_codes table.
+    /// </summary>
+    /// <param name="groupId">The group ID.</param>
+    /// <param name="joinCode">The join code to store.</param>
+    Task CreateJoinCodeAsync(Guid groupId, string joinCode);
+
+    /// <summary>
+    /// Updates the join code for a group in the group_join_codes table.
+    /// </summary>
+    /// <param name="groupId">The group ID.</param>
+    /// <param name="joinCode">The new join code.</param>
+    Task UpdateJoinCodeAsync(Guid groupId, string joinCode);
+
+    /// <summary>
+    /// Deletes the join code for a group from the group_join_codes table.
+    /// </summary>
+    /// <param name="groupId">The group ID.</param>
+    Task DeleteJoinCodeAsync(Guid groupId);
 
     /// <summary>
     /// Gets a user's membership in a group.

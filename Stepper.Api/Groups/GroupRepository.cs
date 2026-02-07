@@ -250,18 +250,84 @@ public class GroupRepository : IGroupRepository
 
         var client = await GetAuthenticatedClientAsync();
 
-        var response = await client
-            .From<GroupEntity>()
+        var joinCodeEntity = await client
+            .From<GroupJoinCodeEntity>()
             .Where(x => x.JoinCode == joinCode)
             .Single();
 
-        if (response == null)
+        if (joinCodeEntity == null)
         {
             return null;
         }
 
-        var memberCount = await GetMemberCountAsync(response.Id);
-        return response.ToGroup(memberCount);
+        return await GetByIdAsync(joinCodeEntity.GroupId);
+    }
+
+    /// <inheritdoc />
+    public async Task<string?> GetJoinCodeAsync(Guid groupId)
+    {
+        var client = await GetAuthenticatedClientAsync();
+
+        var response = await client
+            .From<GroupJoinCodeEntity>()
+            .Where(x => x.GroupId == groupId)
+            .Single();
+
+        return response?.JoinCode;
+    }
+
+    /// <inheritdoc />
+    public async Task CreateJoinCodeAsync(Guid groupId, string joinCode)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(joinCode);
+
+        var client = await GetAuthenticatedClientAsync();
+
+        var entity = new GroupJoinCodeEntity
+        {
+            Id = Guid.NewGuid(),
+            GroupId = groupId,
+            JoinCode = joinCode,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        await client.From<GroupJoinCodeEntity>().Insert(entity);
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateJoinCodeAsync(Guid groupId, string joinCode)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(joinCode);
+
+        var client = await GetAuthenticatedClientAsync();
+
+        var existing = await client
+            .From<GroupJoinCodeEntity>()
+            .Where(x => x.GroupId == groupId)
+            .Single();
+
+        if (existing == null)
+        {
+            await CreateJoinCodeAsync(groupId, joinCode);
+            return;
+        }
+
+        existing.JoinCode = joinCode;
+        existing.UpdatedAt = DateTime.UtcNow;
+
+        await client.From<GroupJoinCodeEntity>().Update(existing);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteJoinCodeAsync(Guid groupId)
+    {
+        var client = await GetAuthenticatedClientAsync();
+
+        await client
+            .From<GroupJoinCodeEntity>()
+            .Where(x => x.GroupId == groupId)
+            .Delete();
     }
 
     /// <inheritdoc />
