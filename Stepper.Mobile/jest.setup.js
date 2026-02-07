@@ -76,3 +76,16 @@ jest.mock('@hooks/useStepTracking', () => ({
     getStepsForDateRange: jest.fn(),
   }),
 }));
+
+// Mock @react-native-community/slider
+jest.mock('@react-native-community/slider', () => {
+  const React = require('react');
+  const RN = require('react-native');
+  return React.forwardRef((props, ref) =>
+    React.createElement(RN.View, {
+      ref,
+      testID: props.testID,
+      ...props,
+    })
+  );
+});

@@ -644,6 +644,7 @@ describe('GroupManagementScreen', () => {
           description: 'New Description',
           is_private: true,
           require_approval: false,
+          max_members: 5,
         });
       });
     });

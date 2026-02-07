@@ -326,6 +326,7 @@ describe('CreateGroupScreen', () => {
           description: 'A great group',
           competition_type: 'daily',
           is_private: false,
+          max_members: 5,
         });
       });
     });
