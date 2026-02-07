@@ -1,45 +1,33 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moq;
 using Stepper.Api.Auth;
 using Stepper.Api.Auth.DTOs;
-using Stepper.Api.Common.Configuration;
+using Supabase.Gotrue;
 
 namespace Stepper.UnitTests.Auth;
 
 /// <summary>
-/// Unit tests for AuthService validation logic.
-/// Note: Integration with Supabase is not tested here as it requires a real Supabase instance.
-/// These tests focus on input validation and error handling.
+/// Unit tests for AuthService.
+/// Tests input validation, business logic, and repository interaction.
 /// </summary>
 public class AuthServiceTests
 {
-    private readonly Mock<IOptions<SupabaseSettings>> _mockSettings;
+    private readonly Mock<IAuthRepository> _mockAuthRepository;
     private readonly Mock<ILogger<AuthService>> _mockLogger;
     private readonly AuthService _sut;
 
     public AuthServiceTests()
     {
-        _mockSettings = new Mock<IOptions<SupabaseSettings>>();
-        _mockSettings.Setup(x => x.Value).Returns(new SupabaseSettings
-        {
-            Url = "https://test.supabase.co",
-            AnonKey = "test-anon-key",
-            ServiceRoleKey = "test-service-role-key",
-            JwtSecret = "test-jwt-secret",
-            JwtIssuer = "https://test.supabase.co/auth/v1",
-            JwtAudience = "authenticated"
-        });
-
+        _mockAuthRepository = new Mock<IAuthRepository>();
         _mockLogger = new Mock<ILogger<AuthService>>();
-        _sut = new AuthService(_mockSettings.Object, _mockLogger.Object);
+        _sut = new AuthService(_mockAuthRepository.Object, _mockLogger.Object);
     }
 
     #region Constructor Tests
 
     [Fact]
-    public void Constructor_WithNullSettings_ThrowsArgumentNullException()
+    public void Constructor_WithNullAuthRepository_ThrowsArgumentNullException()
     {
         // Arrange & Act
         var act = () => new AuthService(null!, _mockLogger.Object);
@@ -52,7 +40,7 @@ public class AuthServiceTests
     public void Constructor_WithNullLogger_ThrowsArgumentNullException()
     {
         // Arrange & Act
-        var act = () => new AuthService(_mockSettings.Object, null!);
+        var act = () => new AuthService(_mockAuthRepository.Object, null!);
 
         // Assert
         act.Should().Throw<ArgumentNullException>();
@@ -400,37 +388,213 @@ public class AuthServiceTests
 
     #endregion
 
-    #region Valid Input Tests (Will fail at Supabase connection)
+    #region RegisterAsync Repository Interaction Tests
 
     [Fact]
-    public async Task RegisterAsync_WithValidRequest_AttemptsSupabaseConnection()
+    public async Task RegisterAsync_WithValidRequest_CallsRepositorySignUp()
     {
         // Arrange
         var request = new RegisterRequest("test@example.com", "password123", "Test User");
+        var session = CreateTestSession();
 
-        // Act & Assert
-        // This will fail because it tries to connect to Supabase, but it proves validation passed
-        var act = async () => await _sut.RegisterAsync(request);
+        _mockAuthRepository
+            .Setup(x => x.SignUpAsync(
+                request.Email,
+                request.Password,
+                It.Is<Dictionary<string, object>>(d => d.ContainsKey("display_name"))))
+            .ReturnsAsync(session);
 
-        // The exception should be from Supabase connection, not validation
-        var exception = await act.Should().ThrowAsync<Exception>();
-        exception.Which.Message.Should().NotContain("cannot be empty")
-            .And.NotContain("Invalid email format")
-            .And.NotContain("at least");
+        // Act
+        var result = await _sut.RegisterAsync(request);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.AccessToken.Should().Be("test-access-token");
+        result.RefreshToken.Should().Be("test-refresh-token");
+        result.User.Email.Should().Be("test@example.com");
+
+        _mockAuthRepository.Verify(x => x.SignUpAsync(
+            request.Email,
+            request.Password,
+            It.IsAny<Dictionary<string, object>>()), Times.Once);
     }
 
+    #endregion
+
+    #region LoginAsync Repository Interaction Tests
+
     [Fact]
-    public async Task LoginAsync_WithValidRequest_AttemptsSupabaseConnection()
+    public async Task LoginAsync_WithValidRequest_CallsRepositorySignIn()
     {
         // Arrange
         var request = new LoginRequest("test@example.com", "password123");
+        var session = CreateTestSession();
 
-        // Act & Assert
-        var act = async () => await _sut.LoginAsync(request);
+        _mockAuthRepository
+            .Setup(x => x.SignInAsync(request.Email, request.Password))
+            .ReturnsAsync(session);
 
-        // Should fail at Supabase connection, not validation
-        var exception = await act.Should().ThrowAsync<Exception>();
-        exception.Which.Message.Should().NotContain("cannot be empty");
+        // Act
+        var result = await _sut.LoginAsync(request);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.AccessToken.Should().Be("test-access-token");
+        result.User.Email.Should().Be("test@example.com");
+
+        _mockAuthRepository.Verify(x => x.SignInAsync(request.Email, request.Password), Times.Once);
+    }
+
+    #endregion
+
+    #region LogoutAsync Repository Interaction Tests
+
+    [Fact]
+    public async Task LogoutAsync_WithValidToken_CallsRepositorySignOut()
+    {
+        // Arrange
+        var accessToken = "valid-access-token";
+
+        _mockAuthRepository
+            .Setup(x => x.SignOutAsync(accessToken))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _sut.LogoutAsync(accessToken);
+
+        // Assert
+        _mockAuthRepository.Verify(x => x.SignOutAsync(accessToken), Times.Once);
+    }
+
+    #endregion
+
+    #region RefreshTokenAsync Repository Interaction Tests
+
+    [Fact]
+    public async Task RefreshTokenAsync_WithValidRequest_CallsRepositoryRefreshSession()
+    {
+        // Arrange
+        var request = new RefreshTokenRequest("valid-refresh-token");
+        var session = CreateTestSession();
+
+        _mockAuthRepository
+            .Setup(x => x.RefreshSessionAsync(request.RefreshToken))
+            .ReturnsAsync(session);
+
+        // Act
+        var result = await _sut.RefreshTokenAsync(request);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.AccessToken.Should().Be("test-access-token");
+
+        _mockAuthRepository.Verify(x => x.RefreshSessionAsync(request.RefreshToken), Times.Once);
+    }
+
+    #endregion
+
+    #region ForgotPasswordAsync Repository Interaction Tests
+
+    [Fact]
+    public async Task ForgotPasswordAsync_WithValidRequest_CallsRepositoryResetPasswordForEmail()
+    {
+        // Arrange
+        var request = new ForgotPasswordRequest("test@example.com");
+
+        _mockAuthRepository
+            .Setup(x => x.ResetPasswordForEmailAsync(request.Email))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _sut.ForgotPasswordAsync(request);
+
+        // Assert
+        _mockAuthRepository.Verify(x => x.ResetPasswordForEmailAsync(request.Email), Times.Once);
+    }
+
+    #endregion
+
+    #region ChangePasswordAsync Validation Tests
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task ChangePasswordAsync_WithNullOrWhitespaceAccessToken_ThrowsArgumentException(string? accessToken)
+    {
+        // Arrange
+        var request = new ChangePasswordRequest("currentPass", "newPass123");
+
+        // Act
+        var act = async () => await _sut.ChangePasswordAsync(accessToken!, request);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("Access token cannot be empty.*");
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsync_WithNullRequest_ThrowsArgumentNullException()
+    {
+        // Arrange & Act
+        var act = async () => await _sut.ChangePasswordAsync("valid-token", null!);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsync_WithSamePasswords_ThrowsArgumentException()
+    {
+        // Arrange
+        var request = new ChangePasswordRequest("samePassword", "samePassword");
+
+        // Act
+        var act = async () => await _sut.ChangePasswordAsync("valid-token", request);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("New password must be different from current password.");
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsync_WithShortNewPassword_ThrowsArgumentException()
+    {
+        // Arrange
+        var request = new ChangePasswordRequest("currentPass", "short");
+
+        // Act
+        var act = async () => await _sut.ChangePasswordAsync("valid-token", request);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("New password must be at least 6 characters long.");
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    private static Session CreateTestSession()
+    {
+        var userId = Guid.NewGuid().ToString();
+        var user = new User
+        {
+            Id = userId,
+            Email = "test@example.com",
+            UserMetadata = new Dictionary<string, object>
+            {
+                { "display_name", "Test User" }
+            }
+        };
+
+        return new Session
+        {
+            AccessToken = "test-access-token",
+            RefreshToken = "test-refresh-token",
+            ExpiresIn = 3600,
+            User = user
+        };
     }
 
     #endregion

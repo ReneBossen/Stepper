@@ -64,10 +64,14 @@ public class GroupServiceTests
 
         _mockGroupRepository.Setup(x => x.CreateAsync(It.IsAny<Group>()))
             .ReturnsAsync(createdGroup);
+        _mockGroupRepository.Setup(x => x.CreateJoinCodeAsync(createdGroup.Id, It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
         _mockGroupRepository.Setup(x => x.AddMemberAsync(It.IsAny<GroupMembership>()))
             .ReturnsAsync(new GroupMembership { Id = Guid.NewGuid(), GroupId = createdGroup.Id, UserId = userId, Role = MemberRole.Owner, JoinedAt = DateTime.UtcNow });
         _mockGroupRepository.Setup(x => x.GetByIdAsync(createdGroup.Id))
             .ReturnsAsync(groupWithOwner);
+        _mockGroupRepository.Setup(x => x.GetJoinCodeAsync(createdGroup.Id))
+            .ReturnsAsync("ABC12345");
 
         // Act
         var result = await _sut.CreateGroupAsync(userId, request);
@@ -84,7 +88,7 @@ public class GroupServiceTests
             g.Description == "Test Description" &&
             g.IsPublic == true &&
             g.CreatedById == userId &&
-            g.JoinCode == null
+            !string.IsNullOrEmpty(g.JoinCode)
         )), Times.Once);
         _mockGroupRepository.Verify(x => x.AddMemberAsync(It.Is<GroupMembership>(m =>
             m.UserId == userId &&
@@ -105,15 +109,19 @@ public class GroupServiceTests
             PeriodType = CompetitionPeriodType.Weekly
         };
 
-        var createdGroup = CreateTestGroup(Guid.NewGuid(), "Private Group", userId, false, "ABC12345", CompetitionPeriodType.Weekly, 0);
-        var groupWithOwner = CreateTestGroup(createdGroup.Id, "Private Group", userId, false, "ABC12345", CompetitionPeriodType.Weekly, 1);
+        var createdGroup = CreateTestGroup(Guid.NewGuid(), "Private Group", userId, false, null, CompetitionPeriodType.Weekly, 0);
+        var groupWithOwner = CreateTestGroup(createdGroup.Id, "Private Group", userId, false, null, CompetitionPeriodType.Weekly, 1);
 
         _mockGroupRepository.Setup(x => x.CreateAsync(It.IsAny<Group>()))
             .ReturnsAsync(createdGroup);
+        _mockGroupRepository.Setup(x => x.CreateJoinCodeAsync(createdGroup.Id, It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
         _mockGroupRepository.Setup(x => x.AddMemberAsync(It.IsAny<GroupMembership>()))
             .ReturnsAsync(new GroupMembership { Id = Guid.NewGuid(), GroupId = createdGroup.Id, UserId = userId, Role = MemberRole.Owner, JoinedAt = DateTime.UtcNow });
         _mockGroupRepository.Setup(x => x.GetByIdAsync(createdGroup.Id))
             .ReturnsAsync(groupWithOwner);
+        _mockGroupRepository.Setup(x => x.GetJoinCodeAsync(createdGroup.Id))
+            .ReturnsAsync("ABC12345");
 
         // Act
         var result = await _sut.CreateGroupAsync(userId, request);
@@ -127,6 +135,7 @@ public class GroupServiceTests
             g.IsPublic == false &&
             !string.IsNullOrEmpty(g.JoinCode)
         )), Times.Once);
+        _mockGroupRepository.Verify(x => x.CreateJoinCodeAsync(createdGroup.Id, It.IsAny<string>()), Times.Once);
     }
 
     [Fact]
@@ -341,13 +350,15 @@ public class GroupServiceTests
         // Arrange
         var userId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
-        var group = CreateTestGroup(groupId, "Test Group", userId, false, "ABC12345", CompetitionPeriodType.Weekly, 1);
+        var group = CreateTestGroup(groupId, "Test Group", userId, false, null, CompetitionPeriodType.Weekly, 1);
         var membership = new GroupMembership { Id = Guid.NewGuid(), GroupId = groupId, UserId = userId, Role = MemberRole.Owner, JoinedAt = DateTime.UtcNow };
 
         _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
             .ReturnsAsync(group);
         _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
             .ReturnsAsync(membership);
+        _mockGroupRepository.Setup(x => x.GetJoinCodeAsync(groupId))
+            .ReturnsAsync("ABC12345");
 
         // Act
         var result = await _sut.GetGroupAsync(userId, groupId);
@@ -362,13 +373,15 @@ public class GroupServiceTests
         // Arrange
         var userId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
-        var group = CreateTestGroup(groupId, "Test Group", Guid.NewGuid(), false, "ABC12345", CompetitionPeriodType.Weekly, 1);
+        var group = CreateTestGroup(groupId, "Test Group", Guid.NewGuid(), false, null, CompetitionPeriodType.Weekly, 1);
         var membership = new GroupMembership { Id = Guid.NewGuid(), GroupId = groupId, UserId = userId, Role = MemberRole.Member, JoinedAt = DateTime.UtcNow };
 
         _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
             .ReturnsAsync(group);
         _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
             .ReturnsAsync(membership);
+        _mockGroupRepository.Setup(x => x.GetJoinCodeAsync(groupId))
+            .ReturnsAsync("ABC12345");
 
         // Act
         var result = await _sut.GetGroupAsync(userId, groupId);
@@ -387,7 +400,7 @@ public class GroupServiceTests
         // Arrange
         var userId = Guid.NewGuid();
         var group1 = CreateTestGroup(Guid.NewGuid(), "Group 1", userId, true, null, CompetitionPeriodType.Weekly, 5);
-        var group2 = CreateTestGroup(Guid.NewGuid(), "Group 2", Guid.NewGuid(), false, "ABC12345", CompetitionPeriodType.Monthly, 3);
+        var group2 = CreateTestGroup(Guid.NewGuid(), "Group 2", Guid.NewGuid(), false, null, CompetitionPeriodType.Monthly, 3);
 
         var groupsWithRoles = new List<(Group, MemberRole)>
         {
@@ -397,6 +410,8 @@ public class GroupServiceTests
 
         _mockGroupRepository.Setup(x => x.GetUserGroupsAsync(userId))
             .ReturnsAsync(groupsWithRoles);
+        _mockGroupRepository.Setup(x => x.GetJoinCodeAsync(group2.Id))
+            .ReturnsAsync("ABC12345");
 
         // Act
         var result = await _sut.GetUserGroupsAsync(userId);
@@ -454,7 +469,7 @@ public class GroupServiceTests
         var request = new UpdateGroupRequest { Name = "Updated Name", Description = "Updated Description", IsPublic = false };
         var group = CreateTestGroup(groupId, "Old Name", userId, true, null, CompetitionPeriodType.Weekly, 1);
         var membership = new GroupMembership { Id = Guid.NewGuid(), GroupId = groupId, UserId = userId, Role = MemberRole.Owner, JoinedAt = DateTime.UtcNow };
-        var updatedGroup = CreateTestGroup(groupId, "Updated Name", userId, false, "ABC12345", CompetitionPeriodType.Weekly, 1);
+        var updatedGroup = CreateTestGroup(groupId, "Updated Name", userId, false, null, CompetitionPeriodType.Weekly, 1);
 
         _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
             .ReturnsAsync(group);
@@ -462,6 +477,8 @@ public class GroupServiceTests
             .ReturnsAsync(membership);
         _mockGroupRepository.Setup(x => x.UpdateAsync(It.IsAny<Group>()))
             .ReturnsAsync(updatedGroup);
+        _mockGroupRepository.Setup(x => x.GetJoinCodeAsync(groupId))
+            .ReturnsAsync("ABC12345");
 
         // Act
         var result = await _sut.UpdateGroupAsync(userId, groupId, request);
@@ -473,9 +490,9 @@ public class GroupServiceTests
         _mockGroupRepository.Verify(x => x.UpdateAsync(It.Is<Group>(g =>
             g.Name == "Updated Name" &&
             g.Description == "Updated Description" &&
-            g.IsPublic == false &&
-            !string.IsNullOrEmpty(g.JoinCode)
+            g.IsPublic == false
         )), Times.Once);
+        _mockGroupRepository.Verify(x => x.CreateJoinCodeAsync(groupId, It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -487,7 +504,7 @@ public class GroupServiceTests
         var request = new UpdateGroupRequest { Name = "Test Group", IsPublic = false };
         var group = CreateTestGroup(groupId, "Test Group", userId, true, null, CompetitionPeriodType.Weekly, 1);
         var membership = new GroupMembership { Id = Guid.NewGuid(), GroupId = groupId, UserId = userId, Role = MemberRole.Owner, JoinedAt = DateTime.UtcNow };
-        var updatedGroup = CreateTestGroup(groupId, "Test Group", userId, false, "ABC12345", CompetitionPeriodType.Weekly, 1);
+        var updatedGroup = CreateTestGroup(groupId, "Test Group", userId, false, null, CompetitionPeriodType.Weekly, 1);
 
         _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
             .ReturnsAsync(group);
@@ -495,6 +512,11 @@ public class GroupServiceTests
             .ReturnsAsync(membership);
         _mockGroupRepository.Setup(x => x.UpdateAsync(It.IsAny<Group>()))
             .ReturnsAsync(updatedGroup);
+        _mockGroupRepository.SetupSequence(x => x.GetJoinCodeAsync(groupId))
+            .ReturnsAsync((string?)null)
+            .ReturnsAsync("ABC12345");
+        _mockGroupRepository.Setup(x => x.CreateJoinCodeAsync(groupId, It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _sut.UpdateGroupAsync(userId, groupId, request);
@@ -502,19 +524,19 @@ public class GroupServiceTests
         // Assert
         result.JoinCode.Should().NotBeNullOrEmpty();
         _mockGroupRepository.Verify(x => x.UpdateAsync(It.Is<Group>(g =>
-            g.IsPublic == false &&
-            !string.IsNullOrEmpty(g.JoinCode)
+            g.IsPublic == false
         )), Times.Once);
+        _mockGroupRepository.Verify(x => x.CreateJoinCodeAsync(groupId, It.IsAny<string>()), Times.Once);
     }
 
     [Fact]
-    public async Task UpdateGroupAsync_ChangingPrivateToPublic_ClearsJoinCode()
+    public async Task UpdateGroupAsync_ChangingPrivateToPublic_KeepsJoinCode()
     {
         // Arrange
         var userId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
         var request = new UpdateGroupRequest { Name = "Test Group", IsPublic = true };
-        var group = CreateTestGroup(groupId, "Test Group", userId, false, "ABC12345", CompetitionPeriodType.Weekly, 1);
+        var group = CreateTestGroup(groupId, "Test Group", userId, false, null, CompetitionPeriodType.Weekly, 1);
         var membership = new GroupMembership { Id = Guid.NewGuid(), GroupId = groupId, UserId = userId, Role = MemberRole.Owner, JoinedAt = DateTime.UtcNow };
         var updatedGroup = CreateTestGroup(groupId, "Test Group", userId, true, null, CompetitionPeriodType.Weekly, 1);
 
@@ -524,16 +546,20 @@ public class GroupServiceTests
             .ReturnsAsync(membership);
         _mockGroupRepository.Setup(x => x.UpdateAsync(It.IsAny<Group>()))
             .ReturnsAsync(updatedGroup);
+        _mockGroupRepository.Setup(x => x.GetJoinCodeAsync(groupId))
+            .ReturnsAsync("EXISTING");
 
         // Act
         var result = await _sut.UpdateGroupAsync(userId, groupId, request);
 
         // Assert
-        result.JoinCode.Should().BeNull();
+        result.JoinCode.Should().NotBeNull();
+        result.JoinCode.Should().Be("EXISTING");
         _mockGroupRepository.Verify(x => x.UpdateAsync(It.Is<Group>(g =>
-            g.IsPublic == true &&
-            g.JoinCode == null
+            g.IsPublic == true
         )), Times.Once);
+        _mockGroupRepository.Verify(x => x.DeleteJoinCodeAsync(groupId), Times.Never);
+        _mockGroupRepository.Verify(x => x.CreateJoinCodeAsync(It.IsAny<Guid>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -699,13 +725,15 @@ public class GroupServiceTests
         var groupId = Guid.NewGuid();
         var joinCode = "ABC12345";
         var request = new JoinGroupRequest { JoinCode = joinCode };
-        var group = CreateTestGroup(groupId, "Test Group", Guid.NewGuid(), false, joinCode, CompetitionPeriodType.Weekly, 5);
-        var groupAfterJoin = CreateTestGroup(groupId, "Test Group", group.CreatedById, false, joinCode, CompetitionPeriodType.Weekly, 6);
+        var group = CreateTestGroup(groupId, "Test Group", Guid.NewGuid(), false, null, CompetitionPeriodType.Weekly, 5);
+        var groupAfterJoin = CreateTestGroup(groupId, "Test Group", group.CreatedById, false, null, CompetitionPeriodType.Weekly, 6);
 
         _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
             .ReturnsAsync(group);
         _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
             .ReturnsAsync((GroupMembership?)null);
+        _mockGroupRepository.Setup(x => x.GetJoinCodeAsync(groupId))
+            .ReturnsAsync(joinCode);
         _mockGroupRepository.Setup(x => x.AddMemberAsync(It.IsAny<GroupMembership>()))
             .ReturnsAsync(new GroupMembership { Id = Guid.NewGuid(), GroupId = groupId, UserId = userId, Role = MemberRole.Member, JoinedAt = DateTime.UtcNow });
         _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
@@ -727,7 +755,7 @@ public class GroupServiceTests
         var userId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
         var request = new JoinGroupRequest { JoinCode = null };
-        var group = CreateTestGroup(groupId, "Test Group", Guid.NewGuid(), false, "ABC12345", CompetitionPeriodType.Weekly, 5);
+        var group = CreateTestGroup(groupId, "Test Group", Guid.NewGuid(), false, null, CompetitionPeriodType.Weekly, 5);
 
         _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
             .ReturnsAsync(group);
@@ -750,12 +778,14 @@ public class GroupServiceTests
         var userId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
         var request = new JoinGroupRequest { JoinCode = "WRONGCODE" };
-        var group = CreateTestGroup(groupId, "Test Group", Guid.NewGuid(), false, "ABC12345", CompetitionPeriodType.Weekly, 5);
+        var group = CreateTestGroup(groupId, "Test Group", Guid.NewGuid(), false, null, CompetitionPeriodType.Weekly, 5);
 
         _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
             .ReturnsAsync(group);
         _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
             .ReturnsAsync((GroupMembership?)null);
+        _mockGroupRepository.Setup(x => x.GetJoinCodeAsync(groupId))
+            .ReturnsAsync("ABC12345");
 
         // Act
         var act = async () => await _sut.JoinGroupAsync(userId, groupId, request);
@@ -1316,16 +1346,15 @@ public class GroupServiceTests
         // Arrange
         var userId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
-        var group = CreateTestGroup(groupId, "Test Group", userId, false, "OLDCODE1", CompetitionPeriodType.Weekly, 5);
+        var group = CreateTestGroup(groupId, "Test Group", userId, false, null, CompetitionPeriodType.Weekly, 5);
         var membership = new GroupMembership { Id = Guid.NewGuid(), GroupId = groupId, UserId = userId, Role = MemberRole.Owner, JoinedAt = DateTime.UtcNow };
-        var updatedGroup = CreateTestGroup(groupId, "Test Group", userId, false, "NEWCODE2", CompetitionPeriodType.Weekly, 5);
 
         _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
             .ReturnsAsync(group);
         _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
             .ReturnsAsync(membership);
-        _mockGroupRepository.Setup(x => x.UpdateAsync(It.IsAny<Group>()))
-            .ReturnsAsync(updatedGroup);
+        _mockGroupRepository.Setup(x => x.UpdateJoinCodeAsync(groupId, It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _sut.RegenerateJoinCodeAsync(userId, groupId);
@@ -1333,15 +1362,14 @@ public class GroupServiceTests
         // Assert
         result.Should().NotBeNull();
         result.JoinCode.Should().NotBeNullOrEmpty();
-        result.JoinCode.Should().NotBe("OLDCODE1");
-        _mockGroupRepository.Verify(x => x.UpdateAsync(It.Is<Group>(g =>
-            !string.IsNullOrEmpty(g.JoinCode) &&
-            g.JoinCode != "OLDCODE1"
+        _mockGroupRepository.Verify(x => x.UpdateJoinCodeAsync(groupId, It.Is<string>(code =>
+            !string.IsNullOrEmpty(code)
         )), Times.Once);
+        _mockGroupRepository.Verify(x => x.UpdateAsync(It.IsAny<Group>()), Times.Never);
     }
 
     [Fact]
-    public async Task RegenerateJoinCodeAsync_ForPublicGroup_ThrowsInvalidOperationException()
+    public async Task RegenerateJoinCodeAsync_ForPublicGroup_RegeneratesCode()
     {
         // Arrange
         var userId = Guid.NewGuid();
@@ -1353,14 +1381,20 @@ public class GroupServiceTests
             .ReturnsAsync(group);
         _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
             .ReturnsAsync(membership);
+        _mockGroupRepository.Setup(x => x.UpdateJoinCodeAsync(groupId, It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
+        _mockGroupRepository.Setup(x => x.GetJoinCodeAsync(groupId))
+            .ReturnsAsync("NEWCODE01");
 
         // Act
-        var act = async () => await _sut.RegenerateJoinCodeAsync(userId, groupId);
+        var result = await _sut.RegenerateJoinCodeAsync(userId, groupId);
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Public groups do not have join codes.");
-        _mockGroupRepository.Verify(x => x.UpdateAsync(It.IsAny<Group>()), Times.Never);
+        result.Should().NotBeNull();
+        result.JoinCode.Should().NotBeNullOrEmpty();
+        _mockGroupRepository.Verify(x => x.UpdateJoinCodeAsync(groupId, It.Is<string>(code =>
+            !string.IsNullOrEmpty(code)
+        )), Times.Once);
     }
 
     [Fact]
@@ -1369,7 +1403,7 @@ public class GroupServiceTests
         // Arrange
         var userId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
-        var group = CreateTestGroup(groupId, "Test Group", Guid.NewGuid(), false, "OLDCODE1", CompetitionPeriodType.Weekly, 5);
+        var group = CreateTestGroup(groupId, "Test Group", Guid.NewGuid(), false, null, CompetitionPeriodType.Weekly, 5);
         var membership = new GroupMembership { Id = Guid.NewGuid(), GroupId = groupId, UserId = userId, Role = MemberRole.Member, JoinedAt = DateTime.UtcNow };
 
         _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
@@ -1384,6 +1418,7 @@ public class GroupServiceTests
         await act.Should().ThrowAsync<UnauthorizedAccessException>()
             .WithMessage("Only group owners and admins can regenerate the join code.");
         _mockGroupRepository.Verify(x => x.UpdateAsync(It.IsAny<Group>()), Times.Never);
+        _mockGroupRepository.Verify(x => x.UpdateJoinCodeAsync(It.IsAny<Guid>(), It.IsAny<string>()), Times.Never);
     }
 
     #endregion

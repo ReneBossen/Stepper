@@ -24,9 +24,6 @@ public class GroupEntity : BaseModel
     [Column("is_public")]
     public bool IsPublic { get; set; }
 
-    [Column("join_code")]
-    public string? JoinCode { get; set; }
-
     [Column("period_type")]
     public string PeriodType { get; set; } = string.Empty;
 
@@ -48,7 +45,6 @@ public class GroupEntity : BaseModel
             Description = Description,
             CreatedById = CreatedById,
             IsPublic = IsPublic,
-            JoinCode = JoinCode,
             PeriodType = ParsePeriodType(PeriodType),
             CreatedAt = CreatedAt,
             MemberCount = memberCount,
@@ -68,7 +64,6 @@ public class GroupEntity : BaseModel
             Description = group.Description,
             CreatedById = group.CreatedById,
             IsPublic = group.IsPublic,
-            JoinCode = group.JoinCode,
             PeriodType = group.PeriodType.ToString().ToLowerInvariant(),
             CreatedAt = group.CreatedAt,
             MaxMembers = group.MaxMembers

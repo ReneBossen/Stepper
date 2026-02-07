@@ -55,12 +55,12 @@ internal class ActivityItemEntity : BaseModel
 
     private static object? ConvertMetadataToObject(JsonElement? metadata)
     {
-        if (!metadata.HasValue || metadata.Value.ValueKind == JsonValueKind.Null)
+        if (!metadata.HasValue || metadata.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
         {
             return null;
         }
 
-        return metadata.Value;
+        return metadata.Value.Clone();
     }
 
     /// <summary>

@@ -59,7 +59,7 @@ public class GroupService : IGroupService
             Description = request.Description?.Trim(),
             CreatedById = userId,
             IsPublic = request.IsPublic,
-            JoinCode = request.IsPublic ? null : GenerateJoinCode(),
+            JoinCode = GenerateJoinCode(),
             PeriodType = request.PeriodType,
             CreatedAt = DateTime.UtcNow,
             MemberCount = 0,
@@ -67,6 +67,12 @@ public class GroupService : IGroupService
         };
 
         var createdGroup = await _groupRepository.CreateAsync(group);
+
+        // Store join code in separate table
+        if (!string.IsNullOrEmpty(group.JoinCode))
+        {
+            await _groupRepository.CreateJoinCodeAsync(createdGroup.Id, group.JoinCode);
+        }
 
         // Add the creator as owner
         var membership = new GroupMembership
@@ -189,18 +195,15 @@ public class GroupService : IGroupService
         group.Description = request.Description?.Trim();
         group.IsPublic = request.IsPublic;
 
-        // If changing from public to private, generate join code
-        if (!request.IsPublic && string.IsNullOrEmpty(group.JoinCode))
-        {
-            group.JoinCode = GenerateJoinCode();
-        }
-        // If changing from private to public, clear join code
-        else if (request.IsPublic)
-        {
-            group.JoinCode = null;
-        }
-
         var updatedGroup = await _groupRepository.UpdateAsync(group);
+
+        // Ensure group has a join code (legacy public groups may not have one)
+        var existingJoinCode = await _groupRepository.GetJoinCodeAsync(updatedGroup.Id);
+        if (existingJoinCode == null)
+        {
+            var newCode = GenerateJoinCode();
+            await _groupRepository.CreateJoinCodeAsync(updatedGroup.Id, newCode);
+        }
 
         return await MapToGroupResponseAsync(updatedGroup, membership.Role);
     }
@@ -269,7 +272,8 @@ public class GroupService : IGroupService
                 throw new ArgumentException("Join code is required for private groups.");
             }
 
-            if (request.JoinCode != group.JoinCode)
+            var storedJoinCode = await _groupRepository.GetJoinCodeAsync(groupId);
+            if (request.JoinCode != storedJoinCode)
             {
                 throw new UnauthorizedAccessException("Invalid join code.");
             }
@@ -586,19 +590,20 @@ public class GroupService : IGroupService
             throw new UnauthorizedAccessException("Only group owners and admins can regenerate the join code.");
         }
 
-        if (group.IsPublic)
-        {
-            throw new InvalidOperationException("Public groups do not have join codes.");
-        }
+        var newJoinCode = GenerateJoinCode();
+        await _groupRepository.UpdateJoinCodeAsync(groupId, newJoinCode);
 
-        group.JoinCode = GenerateJoinCode();
-        var updatedGroup = await _groupRepository.UpdateAsync(group);
+        // Set join code on domain model for response mapping
+        group.JoinCode = newJoinCode;
 
-        return await MapToGroupResponseAsync(updatedGroup, membership.Role);
+        return await MapToGroupResponseAsync(group, membership.Role);
     }
 
     private async Task<GroupResponse> MapToGroupResponseAsync(Group group, MemberRole role)
     {
+        // Fetch join code from separate table if not already on domain model
+        var joinCode = group.JoinCode ?? await _groupRepository.GetJoinCodeAsync(group.Id);
+
         return new GroupResponse
         {
             Id = group.Id,
@@ -609,7 +614,7 @@ public class GroupService : IGroupService
             MemberCount = group.MemberCount,
             MaxMembers = group.MaxMembers,
             // Security: Only owners and admins can see join codes to prevent unauthorized sharing
-            JoinCode = (role == MemberRole.Owner || role == MemberRole.Admin) ? group.JoinCode : null,
+            JoinCode = (role == MemberRole.Owner || role == MemberRole.Admin) ? joinCode : null,
             Role = role,
             CreatedAt = group.CreatedAt
         };
