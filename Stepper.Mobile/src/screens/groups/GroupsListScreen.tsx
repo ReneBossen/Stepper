@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, FlatList, StyleSheet, RefreshControl, Alert } from 'react-native';
-import { Appbar, Text, TextInput, Button, Divider, Portal, Dialog, Icon, useTheme, FAB } from 'react-native-paper';
+import { View, FlatList, StyleSheet, RefreshControl } from 'react-native';
+import { Appbar, Text, Divider, Icon, useTheme, FAB } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LoadingSpinner } from '@components/common/LoadingSpinner';
 import { ErrorMessage } from '@components/common/ErrorMessage';
-import { GroupCard, JoinGroupCard } from './components';
+import { GroupCard, InviteCodeDialog, JoinGroupCard } from './components';
 import { useGroupsStore, GroupWithLeaderboard } from '@store/groupsStore';
 import { getErrorMessage } from '@utils/errorUtils';
 import { isAlphanumeric } from '@utils/stringUtils';
@@ -181,43 +181,15 @@ export default function GroupsListScreen() {
           />
         </Appbar.Header>
         <LoadingSpinner />
-        <Portal>
-          <Dialog visible={showInviteDialog} onDismiss={handleDismissDialog}>
-            <Dialog.Title>Join with Invite Code</Dialog.Title>
-            <Dialog.Content>
-              <TextInput
-                label="Enter Invite Code"
-                value={inviteCode}
-                onChangeText={handleInviteCodeChange}
-                mode="outlined"
-                error={!!inviteCodeError}
-                autoCapitalize="characters"
-                maxLength={INVITE_CODE.MAX_LENGTH}
-                testID="invite-code-input"
-                accessibilityLabel="Invite code input"
-              />
-              {inviteCodeError && (
-                <Text
-                  variant="bodySmall"
-                  style={[styles.dialogErrorText, { color: theme.colors.error }]}
-                >
-                  {inviteCodeError}
-                </Text>
-              )}
-            </Dialog.Content>
-            <Dialog.Actions>
-              <Button onPress={handleDismissDialog}>Cancel</Button>
-              <Button
-                onPress={handleJoinWithCode}
-                loading={isJoiningByCode}
-                disabled={isJoiningByCode || !inviteCode.trim()}
-                testID="join-with-code-button"
-              >
-                Join
-              </Button>
-            </Dialog.Actions>
-          </Dialog>
-        </Portal>
+        <InviteCodeDialog
+          visible={showInviteDialog}
+          inviteCode={inviteCode}
+          inviteCodeError={inviteCodeError}
+          isJoining={isJoiningByCode}
+          onChangeCode={handleInviteCodeChange}
+          onDismiss={handleDismissDialog}
+          onJoin={handleJoinWithCode}
+        />
       </View>
     );
   }
@@ -240,43 +212,15 @@ export default function GroupsListScreen() {
           />
         </Appbar.Header>
         <ErrorMessage message={groupsError} onRetry={handleRefresh} />
-        <Portal>
-          <Dialog visible={showInviteDialog} onDismiss={handleDismissDialog}>
-            <Dialog.Title>Join with Invite Code</Dialog.Title>
-            <Dialog.Content>
-              <TextInput
-                label="Enter Invite Code"
-                value={inviteCode}
-                onChangeText={handleInviteCodeChange}
-                mode="outlined"
-                error={!!inviteCodeError}
-                autoCapitalize="characters"
-                maxLength={INVITE_CODE.MAX_LENGTH}
-                testID="invite-code-input"
-                accessibilityLabel="Invite code input"
-              />
-              {inviteCodeError && (
-                <Text
-                  variant="bodySmall"
-                  style={[styles.dialogErrorText, { color: theme.colors.error }]}
-                >
-                  {inviteCodeError}
-                </Text>
-              )}
-            </Dialog.Content>
-            <Dialog.Actions>
-              <Button onPress={handleDismissDialog}>Cancel</Button>
-              <Button
-                onPress={handleJoinWithCode}
-                loading={isJoiningByCode}
-                disabled={isJoiningByCode || !inviteCode.trim()}
-                testID="join-with-code-button"
-              >
-                Join
-              </Button>
-            </Dialog.Actions>
-          </Dialog>
-        </Portal>
+        <InviteCodeDialog
+          visible={showInviteDialog}
+          inviteCode={inviteCode}
+          inviteCodeError={inviteCodeError}
+          isJoining={isJoiningByCode}
+          onChangeCode={handleInviteCodeChange}
+          onDismiss={handleDismissDialog}
+          onJoin={handleJoinWithCode}
+        />
       </View>
     );
   }
@@ -328,43 +272,15 @@ export default function GroupsListScreen() {
         testID="create-group-fab"
       />
 
-      <Portal>
-        <Dialog visible={showInviteDialog} onDismiss={handleDismissDialog}>
-          <Dialog.Title>Join with Invite Code</Dialog.Title>
-          <Dialog.Content>
-            <TextInput
-              label="Enter Invite Code"
-              value={inviteCode}
-              onChangeText={handleInviteCodeChange}
-              mode="outlined"
-              error={!!inviteCodeError}
-              autoCapitalize="characters"
-              maxLength={INVITE_CODE.MAX_LENGTH}
-              testID="invite-code-input"
-              accessibilityLabel="Invite code input"
-            />
-            {inviteCodeError && (
-              <Text
-                variant="bodySmall"
-                style={[styles.dialogErrorText, { color: theme.colors.error }]}
-              >
-                {inviteCodeError}
-              </Text>
-            )}
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={handleDismissDialog}>Cancel</Button>
-            <Button
-              onPress={handleJoinWithCode}
-              loading={isJoiningByCode}
-              disabled={isJoiningByCode || !inviteCode.trim()}
-              testID="join-with-code-button"
-            >
-              Join
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+      <InviteCodeDialog
+        visible={showInviteDialog}
+        inviteCode={inviteCode}
+        inviteCodeError={inviteCodeError}
+        isJoining={isJoiningByCode}
+        onChangeCode={handleInviteCodeChange}
+        onDismiss={handleDismissDialog}
+        onJoin={handleJoinWithCode}
+      />
     </View>
   );
 }
@@ -409,9 +325,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     bottom: 16,
-  },
-  dialogErrorText: {
-    marginTop: 4,
-    marginLeft: 4,
   },
 });

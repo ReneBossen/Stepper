@@ -173,7 +173,7 @@ export const groupsApi = {
           // The frontend store will handle the is_current_user flag based on auth context
         } catch {
           // If leaderboard fetch fails, continue with empty preview
-          console.warn(`Failed to fetch leaderboard for group ${group.id}`);
+          if (__DEV__) console.warn(`Failed to fetch leaderboard for group ${group.id}`);
         }
 
         return {

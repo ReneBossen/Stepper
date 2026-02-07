@@ -46,6 +46,30 @@ jest.mock('../components', () => ({
       </RN.TouchableOpacity>
     );
   },
+  InviteCodeDialog: ({ visible, inviteCode, inviteCodeError, isJoining, onChangeCode, onDismiss, onJoin }: any) => {
+    const RN = require('react-native');
+    if (!visible) return null;
+    return (
+      <RN.View testID="invite-code-dialog">
+        <RN.TextInput
+          testID="invite-code-input"
+          value={inviteCode}
+          onChangeText={onChangeCode}
+        />
+        {inviteCodeError && <RN.Text testID="invite-code-error">{inviteCodeError}</RN.Text>}
+        <RN.TouchableOpacity testID="dialog-cancel" onPress={onDismiss}>
+          <RN.Text>Cancel</RN.Text>
+        </RN.TouchableOpacity>
+        <RN.TouchableOpacity
+          testID="join-with-code-button"
+          onPress={onJoin}
+          disabled={isJoining || !inviteCode?.trim()}
+        >
+          <RN.Text>Join</RN.Text>
+        </RN.TouchableOpacity>
+      </RN.View>
+    );
+  },
   JoinGroupCard: ({ onPress, testID }: any) => {
     const RN = require('react-native');
     return (

@@ -140,15 +140,6 @@ export const friendsApi = {
   },
 
   /**
-   * Get all accepted friends with their today's step count.
-   * Note: Backend always includes steps, so this is the same as getFriends.
-   */
-  getFriendsWithSteps: async (): Promise<Friend[]> => {
-    const response = await apiClient.get<BackendFriendListResponse>('/friends');
-    return response.friends.map(mapBackendFriendToMobile);
-  },
-
-  /**
    * Get pending incoming friend requests (where current user is the recipient).
    * Returns the requester's information.
    */
@@ -239,7 +230,7 @@ export const friendsApi = {
       return mapBackendSearchResultToMobile(result);
     } catch (error) {
       // Return null if user not found
-      if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 404) {
+      if (error && typeof error === 'object' && 'statusCode' in error && (error as { statusCode: number }).statusCode === 404) {
         return null;
       }
       throw error;

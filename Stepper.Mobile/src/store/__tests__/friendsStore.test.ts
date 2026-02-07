@@ -139,8 +139,8 @@ describe('friendsStore', () => {
   });
 
   describe('fetchFriendsWithSteps', () => {
-    it('should fetch friends with steps successfully', async () => {
-      mockFriendsApi.getFriendsWithSteps.mockResolvedValue(mockFriends);
+    it('should fetch friends with steps successfully (calls getFriends)', async () => {
+      mockFriendsApi.getFriends.mockResolvedValue(mockFriends);
 
       const { result } = renderHook(() => useFriendsStore());
 
@@ -148,14 +148,14 @@ describe('friendsStore', () => {
         await result.current.fetchFriendsWithSteps();
       });
 
-      expect(mockFriendsApi.getFriendsWithSteps).toHaveBeenCalled();
+      expect(mockFriendsApi.getFriends).toHaveBeenCalled();
       expect(result.current.friends).toEqual(mockFriends);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
     });
 
     it('should handle empty friends list', async () => {
-      mockFriendsApi.getFriendsWithSteps.mockResolvedValue([]);
+      mockFriendsApi.getFriends.mockResolvedValue([]);
 
       const { result } = renderHook(() => useFriendsStore());
 
@@ -168,7 +168,7 @@ describe('friendsStore', () => {
 
     it('should handle fetch error', async () => {
       const error = new Error('Failed to fetch friends with steps');
-      mockFriendsApi.getFriendsWithSteps.mockRejectedValue(error);
+      mockFriendsApi.getFriends.mockRejectedValue(error);
 
       const { result } = renderHook(() => useFriendsStore());
 
@@ -183,7 +183,7 @@ describe('friendsStore', () => {
     });
 
     it('should set loading state during fetch', async () => {
-      mockFriendsApi.getFriendsWithSteps.mockImplementation(() =>
+      mockFriendsApi.getFriends.mockImplementation(() =>
         new Promise((resolve) => setTimeout(() => resolve(mockFriends), 100))
       );
 
@@ -201,7 +201,7 @@ describe('friendsStore', () => {
     });
 
     it('should clear previous errors on fetch', async () => {
-      mockFriendsApi.getFriendsWithSteps.mockResolvedValue(mockFriends);
+      mockFriendsApi.getFriends.mockResolvedValue(mockFriends);
 
       const { result } = renderHook(() => useFriendsStore());
 
@@ -219,7 +219,7 @@ describe('friendsStore', () => {
         { ...mockFriends[0], today_steps: 5000 },
         { ...mockFriends[1], today_steps: 12000 },
       ];
-      mockFriendsApi.getFriendsWithSteps.mockResolvedValue(friendsWithSteps);
+      mockFriendsApi.getFriends.mockResolvedValue(friendsWithSteps);
 
       const { result } = renderHook(() => useFriendsStore());
 
