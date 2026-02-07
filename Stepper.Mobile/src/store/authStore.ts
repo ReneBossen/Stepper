@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { authApi } from '@services/api/authApi';
+import { setOnSessionExpired } from '@services/api/client';
 import { tokenStorage } from '@services/tokenStorage';
 import { getErrorMessage } from '@utils/errorUtils';
 import { track, identify, reset as resetAnalytics, setUserProperties } from '@services/analytics';
@@ -271,3 +272,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   clearError: () => set({ error: null }),
 }));
+
+// Register the session-expired callback so the API client can notify
+// the auth store without importing it directly (decouples layers).
+setOnSessionExpired(() => {
+  useAuthStore.getState().setUser(null);
+});

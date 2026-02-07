@@ -4,9 +4,20 @@ import { authApi } from '@services/api/authApi';
 import { tokenStorage } from '@services/tokenStorage';
 import type { AuthResponse, AuthUser } from '../../types/auth';
 
-// Mock the auth API and token storage
+// Mock the auth API, token storage, and API client
 jest.mock('@services/api/authApi');
 jest.mock('@services/tokenStorage');
+jest.mock('@services/api/client', () => ({
+  setOnSessionExpired: jest.fn(),
+  apiClient: {
+    get: jest.fn(),
+    post: jest.fn(),
+    put: jest.fn(),
+    patch: jest.fn(),
+    delete: jest.fn(),
+    upload: jest.fn(),
+  },
+}));
 
 const mockAuthApi = authApi as jest.Mocked<typeof authApi>;
 const mockTokenStorage = tokenStorage as jest.Mocked<typeof tokenStorage>;
