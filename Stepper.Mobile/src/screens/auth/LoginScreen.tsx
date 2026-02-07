@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { TextInput, Button, Text, Divider } from 'react-native-paper';
 import { AuthStackScreenProps } from '@navigation/types';
+import { AUTH_ROUTES } from '@navigation/routes';
 import { useAppTheme } from '@hooks/useAppTheme';
 import { signInWithGoogleOAuth, supabase } from '@services/supabase';
 import { tokenStorage } from '@services/tokenStorage';
@@ -182,7 +183,7 @@ export default function LoginScreen({ navigation }: Props) {
         />
 
         <TouchableOpacity
-          onPress={() => navigation.navigate('ForgotPassword')}
+          onPress={() => navigation.navigate(AUTH_ROUTES.ForgotPassword)}
           disabled={isLoading || isGoogleLoading}
           style={styles.forgotPassword}
         >
@@ -230,7 +231,7 @@ export default function LoginScreen({ navigation }: Props) {
         <View style={styles.footer}>
           <Text variant="bodyMedium">Don't have an account? </Text>
           <TouchableOpacity
-            onPress={() => navigation.navigate('Register')}
+            onPress={() => navigation.navigate(AUTH_ROUTES.Register)}
             disabled={isLoading || isGoogleLoading}
           >
             <Text

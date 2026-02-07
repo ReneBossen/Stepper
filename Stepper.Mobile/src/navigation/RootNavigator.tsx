@@ -7,6 +7,7 @@ import OnboardingNavigator from './OnboardingNavigator';
 import { useAuthStore } from '@store/authStore';
 import { useUserStore } from '@store/userStore';
 import { RootStackParamList } from './types';
+import { ROOT_ROUTES } from './routes';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -38,11 +39,11 @@ export default function RootNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {!isAuthenticated ? (
-        <Stack.Screen name="Auth" component={AuthNavigator} />
+        <Stack.Screen name={ROOT_ROUTES.Auth} component={AuthNavigator} />
       ) : needsOnboarding ? (
-        <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
+        <Stack.Screen name={ROOT_ROUTES.Onboarding} component={OnboardingNavigator} />
       ) : (
-        <Stack.Screen name="Main" component={MainNavigator} />
+        <Stack.Screen name={ROOT_ROUTES.Main} component={MainNavigator} />
       )}
     </Stack.Navigator>
   );

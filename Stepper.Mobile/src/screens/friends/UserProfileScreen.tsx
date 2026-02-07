@@ -379,17 +379,20 @@ export default function UserProfileScreen({ route }: Props) {
             <View style={styles.statsRow}>
               <StatCard
                 value={stats.friends_count}
-                label="Friends"
+                title="Friends"
+                variant="flat"
                 testID="stat-friends"
               />
               <StatCard
                 value={stats.groups_count}
-                label="Groups"
+                title="Groups"
+                variant="flat"
                 testID="stat-groups"
               />
               <StatCard
                 value={stats.badges_count}
-                label="Badges"
+                title="Badges"
+                variant="flat"
                 testID="stat-badges"
               />
             </View>

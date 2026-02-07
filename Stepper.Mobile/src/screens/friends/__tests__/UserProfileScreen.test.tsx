@@ -91,12 +91,12 @@ jest.mock('@components/common/ErrorMessage', () => ({
 }));
 
 jest.mock('@screens/profile/components/StatCard', () => ({
-  StatCard: ({ value, label, testID }: any) => {
+  StatCard: ({ value, title, testID }: any) => {
     const RN = require('react-native');
     return (
       <RN.View testID={testID}>
         <RN.Text testID={`${testID}-value`}>{value}</RN.Text>
-        <RN.Text testID={`${testID}-label`}>{label}</RN.Text>
+        <RN.Text testID={`${testID}-label`}>{title}</RN.Text>
       </RN.View>
     );
   },

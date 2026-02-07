@@ -27,6 +27,7 @@ import { useUserStore } from '@store/userStore';
 import { getErrorMessage } from '@utils/errorUtils';
 import { getInitials } from '@utils/stringUtils';
 import type { GroupsStackScreenProps, GroupsStackParamList } from '@navigation/types';
+import { GROUPS_ROUTES } from '@navigation/routes';
 
 type Props = GroupsStackScreenProps<'ManageMembers'>;
 type NavigationProp = NativeStackNavigationProp<GroupsStackParamList, 'ManageMembers'>;
@@ -270,7 +271,7 @@ export default function ManageMembersScreen({ route }: Props) {
   }, [navigation]);
 
   const handleAddMember = useCallback(() => {
-    navigation.navigate('InviteMembers', { groupId });
+    navigation.navigate(GROUPS_ROUTES.InviteMembers, { groupId });
   }, [groupId, navigation]);
 
   const handlePromote = useCallback(

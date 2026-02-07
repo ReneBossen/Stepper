@@ -4,6 +4,7 @@ import { TextInput, Button, Text, Surface } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { AuthStackScreenProps } from '@navigation/types';
+import { AUTH_ROUTES } from '@navigation/routes';
 import { useAppTheme } from '@hooks/useAppTheme';
 import AuthLayout from './components/AuthLayout';
 import AuthErrorMessage from './components/AuthErrorMessage';
@@ -102,7 +103,7 @@ export default function RegisterScreen({ navigation }: Props) {
 
         <Button
           mode="contained"
-          onPress={() => navigation.navigate('Login')}
+          onPress={() => navigation.navigate(AUTH_ROUTES.Login)}
           style={styles.button}
         >
           Back to Login
@@ -250,7 +251,7 @@ export default function RegisterScreen({ navigation }: Props) {
         <View style={styles.footer}>
           <Text variant="bodyMedium">Already have an account? </Text>
           <TouchableOpacity
-            onPress={() => navigation.navigate('Login')}
+            onPress={() => navigation.navigate(AUTH_ROUTES.Login)}
             disabled={isLoading}
           >
             <Text

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { TextInput, Button, Text, Surface } from 'react-native-paper';
 import { AuthStackScreenProps } from '@navigation/types';
+import { AUTH_ROUTES } from '@navigation/routes';
 import { useAppTheme } from '@hooks/useAppTheme';
 import AuthLayout from './components/AuthLayout';
 import AuthErrorMessage from './components/AuthErrorMessage';
@@ -44,7 +45,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
 
         <Button
           mode="contained"
-          onPress={() => navigation.navigate('Login')}
+          onPress={() => navigation.navigate(AUTH_ROUTES.Login)}
           style={styles.button}
         >
           Back to Login
@@ -106,7 +107,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
         <View style={styles.footer}>
           <Text variant="bodyMedium">Remember it? </Text>
           <TouchableOpacity
-            onPress={() => navigation.navigate('Login')}
+            onPress={() => navigation.navigate(AUTH_ROUTES.Login)}
             disabled={isLoading}
           >
             <Text

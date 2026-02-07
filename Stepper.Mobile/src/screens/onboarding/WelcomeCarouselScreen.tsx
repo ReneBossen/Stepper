@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, FlatList, Dimensions, TouchableOpacity, ListRenderItem } from 'react-native';
 import { Text, Button, Icon } from 'react-native-paper';
 import { OnboardingStackScreenProps } from '@navigation/types';
+import { ONBOARDING_ROUTES } from '@navigation/routes';
 import { useAppTheme } from '@hooks/useAppTheme';
 import { track } from '@services/analytics';
 import OnboardingLayout from './components/OnboardingLayout';
@@ -53,7 +54,7 @@ export default function WelcomeCarouselScreen({ navigation }: Props) {
   const handleSkip = () => {
     // Track onboarding skipped event
     track('onboarding_skipped', {});
-    navigation.navigate('AnalyticsConsent');
+    navigation.navigate(ONBOARDING_ROUTES.AnalyticsConsent);
   };
 
   const handleNext = () => {
@@ -62,7 +63,7 @@ export default function WelcomeCarouselScreen({ navigation }: Props) {
       flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
       setCurrentIndex(nextIndex);
     } else {
-      navigation.navigate('AnalyticsConsent');
+      navigation.navigate(ONBOARDING_ROUTES.AnalyticsConsent);
     }
   };
 

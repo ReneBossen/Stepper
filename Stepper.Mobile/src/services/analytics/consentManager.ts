@@ -156,7 +156,7 @@ export async function grantConsent(): Promise<void> {
       version: CONSENT_VERSION,
     };
 
-    console.log('[ConsentManager] Consent granted');
+    if (__DEV__) console.log('[ConsentManager] Consent granted');
   } catch (error) {
     console.error('[ConsentManager] Failed to save consent:', error);
     throw error;
@@ -183,7 +183,7 @@ export async function revokeConsent(): Promise<void> {
       version: CONSENT_VERSION,
     };
 
-    console.log('[ConsentManager] Consent revoked');
+    if (__DEV__) console.log('[ConsentManager] Consent revoked');
   } catch (error) {
     console.error('[ConsentManager] Failed to save consent revocation:', error);
     throw error;
@@ -204,7 +204,7 @@ export async function clearConsentData(): Promise<void> {
 
     cachedConsentState = DEFAULT_CONSENT_STATE;
 
-    console.log('[ConsentManager] Consent data cleared');
+    if (__DEV__) console.log('[ConsentManager] Consent data cleared');
   } catch (error) {
     console.error('[ConsentManager] Failed to clear consent data:', error);
     throw error;

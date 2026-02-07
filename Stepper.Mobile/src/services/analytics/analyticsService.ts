@@ -106,11 +106,11 @@ function processEventQueue(): void {
     return;
   }
 
-  console.log(`[Analytics] Processing ${eventQueue.length} queued events`);
+  if (__DEV__) console.log(`[Analytics] Processing ${eventQueue.length} queued events`);
 
   // Check consent before processing
   if (!hasConsentSync()) {
-    console.log('[Analytics] Consent not granted, discarding queued events');
+    if (__DEV__) console.log('[Analytics] Consent not granted, discarding queued events');
     eventQueue = [];
     return;
   }
@@ -148,18 +148,18 @@ function queueEvent(event: string, properties?: Record<string, unknown>): void {
  */
 export async function initialize(): Promise<void> {
   if (isInitialized) {
-    console.log('[Analytics] Already initialized');
+    if (__DEV__) console.log('[Analytics] Already initialized');
     return;
   }
 
   try {
     // Load consent state
     const consentState = await initializeConsentManager();
-    console.log('[Analytics] Consent state:', consentState.status);
+    if (__DEV__) console.log('[Analytics] Consent state:', consentState.status);
 
     // Skip PostHog initialization if analytics is disabled
     if (!analyticsConfig.isEnabled) {
-      console.log('[Analytics] Analytics disabled (no API key)');
+      if (__DEV__) console.log('[Analytics] Analytics disabled (no API key)');
       isInitialized = true;
       return;
     }
@@ -184,7 +184,7 @@ export async function initialize(): Promise<void> {
     });
 
     isInitialized = true;
-    console.log('[Analytics] Service initialized');
+    if (__DEV__) console.log('[Analytics] Service initialized');
   } catch (error) {
     console.error('[Analytics] Failed to initialize:', error);
     // Mark as initialized anyway to prevent repeated init attempts
@@ -263,7 +263,7 @@ export function reset(): void {
   }
 
   resetUser();
-  console.log('[Analytics] User reset');
+  if (__DEV__) console.log('[Analytics] User reset');
 }
 
 /**
@@ -344,7 +344,7 @@ export async function shutdown(): Promise<void> {
 
   await shutdownPostHog();
   isInitialized = false;
-  console.log('[Analytics] Service shutdown');
+  if (__DEV__) console.log('[Analytics] Service shutdown');
 }
 
 /**
@@ -417,7 +417,7 @@ export async function deleteAnalyticsData(): Promise<void> {
     // Clear the event queue
     eventQueue = [];
 
-    console.log('[Analytics] User analytics data deleted');
+    if (__DEV__) console.log('[Analytics] User analytics data deleted');
   } catch (error) {
     console.error('[Analytics] Failed to delete analytics data:', error);
     throw error;

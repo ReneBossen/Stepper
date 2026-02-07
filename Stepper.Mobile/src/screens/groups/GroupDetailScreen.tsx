@@ -20,6 +20,7 @@ import { groupsApi } from '@services/api/groupsApi';
 import { getCompetitionTypeLabelFull, getPeriodLabel } from '@utils/groupUtils';
 import { track } from '@services/analytics';
 import type { GroupsStackScreenProps, GroupsStackParamList } from '@navigation/types';
+import { GROUPS_ROUTES } from '@navigation/routes';
 
 type Props = GroupsStackScreenProps<'GroupDetail'>;
 type NavigationProp = NativeStackNavigationProp<GroupsStackParamList, 'GroupDetail'>;
@@ -97,7 +98,7 @@ export default function GroupDetailScreen({ route }: Props) {
   }, [loadData]);
 
   const handleSettingsPress = useCallback(() => {
-    navigation.navigate('GroupManagement', { groupId });
+    navigation.navigate(GROUPS_ROUTES.GroupManagement, { groupId });
   }, [navigation, groupId]);
 
   const handleMenuOpen = useCallback(() => {
@@ -149,7 +150,7 @@ export default function GroupDetailScreen({ route }: Props) {
 
   const handleInviteMembers = useCallback(() => {
     // Navigate to invite members screen
-    navigation.navigate('InviteMembers', { groupId });
+    navigation.navigate(GROUPS_ROUTES.InviteMembers, { groupId });
   }, [navigation, groupId]);
 
   const handleMemberPress = useCallback((entry: LeaderboardEntry) => {
