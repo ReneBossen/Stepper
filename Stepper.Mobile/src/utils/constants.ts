@@ -33,3 +33,8 @@ export const DEBOUNCE = {
   /** Search input debounce time */
   SEARCH: 300,
 } as const;
+
+/**
+ * Sentinel date used to request all history from the very beginning.
+ */
+export const EARLIEST_HISTORY_DATE = '1970-01-01';
