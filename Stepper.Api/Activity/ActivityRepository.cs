@@ -62,11 +62,11 @@ public class ActivityRepository : IActivityRepository
         int limit,
         int offset)
     {
-        var userIdStrings = userIds.Select(id => id.ToString()).ToList();
+        var userIdString = string.Join(",", userIds);
 
         var response = await client
             .From<ActivityItemEntity>()
-            .Filter("user_id", Supabase.Postgrest.Constants.Operator.In, userIdStrings)
+            .Filter("user_id", Supabase.Postgrest.Constants.Operator.In, $"({userIdString})")
             .Order("created_at", Supabase.Postgrest.Constants.Ordering.Descending)
             .Range(offset, offset + limit - 1)
             .Get();
@@ -76,7 +76,7 @@ public class ActivityRepository : IActivityRepository
 
     private static async Task<int> CountActivitiesAsync(Client client, List<Guid> userIds)
     {
-        var userIdStrings = userIds.Select(id => id.ToString()).ToList();
+        var userIdString = string.Join(",", userIds);
 
         // Fetch all matching activities with just the ID to count
         // Note: In a production system with large datasets, you would use
@@ -84,7 +84,7 @@ public class ActivityRepository : IActivityRepository
         var response = await client
             .From<ActivityItemEntity>()
             .Select("id")
-            .Filter("user_id", Supabase.Postgrest.Constants.Operator.In, userIdStrings)
+            .Filter("user_id", Supabase.Postgrest.Constants.Operator.In, $"({userIdString})")
             .Get();
 
         return response.Models.Count;
