@@ -81,7 +81,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
   fetchFriendsWithSteps: async () => {
     set({ isLoading: true, error: null });
     try {
-      const friends = await friendsApi.getFriendsWithSteps();
+      const friends = await friendsApi.getFriends();
       set({ friends, isLoading: false });
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });

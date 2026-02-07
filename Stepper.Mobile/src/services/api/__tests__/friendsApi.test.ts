@@ -102,30 +102,6 @@ describe('friendsApi', () => {
     });
   });
 
-  describe('getFriendsWithSteps', () => {
-    it('should fetch friends with steps (same as getFriends)', async () => {
-      const mockResponse = {
-        friends: [
-          {
-            userId: 'user-1',
-            displayName: 'John Doe',
-            avatarUrl: null,
-            friendsSince: '2024-01-01T00:00:00Z',
-            todaySteps: 5500,
-          },
-        ],
-        totalCount: 1,
-      };
-
-      mockApiClient.get.mockResolvedValue(mockResponse);
-
-      const result = await friendsApi.getFriendsWithSteps();
-
-      expect(mockApiClient.get).toHaveBeenCalledWith('/friends');
-      expect(result[0].today_steps).toBe(5500);
-    });
-  });
-
   describe('getIncomingRequests', () => {
     it('should fetch incoming requests and map to mobile format', async () => {
       const mockRequests = [
