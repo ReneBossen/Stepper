@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Stepper",
-    "slug": "stepper",
+    "slug": "walkingapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -71,7 +71,8 @@
         "expo-build-properties",
         {
           "android": {
-            "minSdkVersion": 26
+            "minSdkVersion": 26,
+            "usesCleartextTraffic": true
           }
         }
       ],
@@ -90,6 +91,7 @@
           "requestPermissionsRationale": "Stepper needs access to your health data to automatically track your daily steps."
         }
       ],
+      "./plugins/withHealthConnectPermissions",
       "@react-native-community/datetimepicker",
       "expo-background-task",
       "expo-localization"
