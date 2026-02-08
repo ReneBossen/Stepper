@@ -73,7 +73,7 @@ export default function SettingsScreen() {
   const [showPrivacyPolicyModal, setShowPrivacyPolicyModal] = useState(false);
 
   // Health tracking state
-  const { isEnabled: isHealthTrackingEnabled } = useStepTracking();
+  const { isEnabled: isHealthTrackingEnabled, refresh: refreshStepTracking } = useStepTracking();
 
   // Privacy modal state
   const [activePrivacySetting, setActivePrivacySetting] = useState<PrivacySettingType>('profile_visibility');
@@ -650,7 +650,10 @@ export default function SettingsScreen() {
 
       <HealthDataModal
         visible={showHealthDataModal}
-        onDismiss={() => setShowHealthDataModal(false)}
+        onDismiss={() => {
+          setShowHealthDataModal(false);
+          refreshStepTracking();
+        }}
       />
 
       <AnalyticsSettingsModal
