@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Stepper",
-    "slug": "walkingapp",
+    "slug": "stepper",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -71,8 +71,7 @@
         "expo-build-properties",
         {
           "android": {
-            "minSdkVersion": 26,
-            "usesCleartextTraffic": true
+            "minSdkVersion": 26
           }
         }
       ],
