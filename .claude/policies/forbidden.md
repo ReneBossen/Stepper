@@ -17,10 +17,9 @@ These actions are strictly prohibited for all agents. Violations must trigger an
 - Use descriptive branch names reflecting the feature or plan being implemented
 
 **Allowed Operations**:
-- The Implementer and Tester Agents MAY commit changes following the Conventional Commits specification
+- Agents MAY commit changes following the Conventional Commits specification
 - Agents MAY push commits to feature branches after committing
 - Push commits immediately after creating them for backup and collaboration
-- See `.claude/agents/implementer.md` and `.claude/agents/tester.md` for commit guidelines
 
 ## Code Modifications
 
