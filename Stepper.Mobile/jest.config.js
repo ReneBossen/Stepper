@@ -25,7 +25,6 @@ module.exports = {
     '^@types/(.*)$': '<rootDir>/src/types/$1',
     '^@utils/(.*)$': '<rootDir>/src/utils/$1',
     '^@config/(.*)$': '<rootDir>/src/config/$1',
-    '^@env$': '<rootDir>/__mocks__/env.ts',
     '^react-native$': '<rootDir>/__mocks__/react-native.ts',
     '^react-native-paper$': '<rootDir>/__mocks__/react-native-paper.js',
     '^expo-secure-store$': '<rootDir>/__mocks__/expo-secure-store.ts',

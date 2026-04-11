@@ -1,4 +1,4 @@
-import { POSTHOG_API_KEY, POSTHOG_HOST } from '@env';
+import { POSTHOG_API_KEY, POSTHOG_HOST } from '@config/env';
 import Constants from 'expo-constants';
 
 /**

@@ -126,3 +126,5 @@ Thumbs.db
 
 # Claude Code
 .claude/settings.local.json
+/Stepper.Api/Properties/PublishProfiles
+/Stepper.Mobile/.env.development
