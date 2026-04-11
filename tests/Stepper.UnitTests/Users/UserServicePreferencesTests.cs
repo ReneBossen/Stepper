@@ -144,7 +144,7 @@ public class UserServicePreferencesTests
         result.Should().NotBeNull();
         _mockRepository.Verify(x => x.GetByIdAsync(userId), Times.Once);
         _mockRepository.Verify(x => x.CreateAsync(It.IsAny<User>()), Times.Once);
-        _mockPreferencesRepository.Verify(x => x.GetByUserIdAsync(userId), Times.Once);
+        _mockPreferencesRepository.Verify(x => x.GetByUserIdAsync(userId), Times.Exactly(2));
         _mockPreferencesRepository.Verify(x => x.CreateAsync(userId), Times.Exactly(2));
     }
 

@@ -1,3 +1,5 @@
+using System.Net.Http.Headers;
+using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Supabase.Gotrue;
 using Stepper.Api.Common.Configuration;
@@ -12,15 +14,19 @@ namespace Stepper.Api.Auth;
 public class AuthRepository : IAuthRepository
 {
     private readonly SupabaseSettings _settings;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AuthRepository"/> class.
     /// </summary>
     /// <param name="settings">The Supabase configuration settings.</param>
-    public AuthRepository(IOptions<SupabaseSettings> settings)
+    /// <param name="httpClientFactory">HTTP client factory for direct Supabase API calls.</param>
+    public AuthRepository(IOptions<SupabaseSettings> settings, IHttpClientFactory httpClientFactory)
     {
         ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(httpClientFactory);
         _settings = settings.Value;
+        _httpClientFactory = httpClientFactory;
     }
 
     /// <inheritdoc />
@@ -45,8 +51,12 @@ public class AuthRepository : IAuthRepository
     /// <inheritdoc />
     public async Task SignOutAsync(string accessToken)
     {
-        var client = await CreateAuthenticatedClientAsync(accessToken);
-        await client.Auth.SignOut();
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        httpClient.DefaultRequestHeaders.Add("apikey", _settings.AnonKey);
+
+        var response = await httpClient.PostAsync($"{_settings.Url}/auth/v1/logout", null);
+        response.EnsureSuccessStatusCode();
     }
 
     /// <inheritdoc />
@@ -74,18 +84,34 @@ public class AuthRepository : IAuthRepository
     /// <inheritdoc />
     public async Task UpdateUserPasswordAsync(string accessToken, string newPassword)
     {
-        var client = await CreateAuthenticatedClientAsync(accessToken);
-        await client.Auth.Update(new UserAttributes
-        {
-            Password = newPassword
-        });
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        httpClient.DefaultRequestHeaders.Add("apikey", _settings.AnonKey);
+
+        var content = new StringContent(
+            JsonSerializer.Serialize(new { password = newPassword }),
+            System.Text.Encoding.UTF8,
+            "application/json");
+
+        var response = await httpClient.PutAsync($"{_settings.Url}/auth/v1/user", content);
+        response.EnsureSuccessStatusCode();
     }
 
     /// <inheritdoc />
     public async Task<string?> GetUserEmailAsync(string accessToken)
     {
-        var client = await CreateAuthenticatedClientAsync(accessToken);
-        return client.Auth.CurrentUser?.Email;
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        httpClient.DefaultRequestHeaders.Add("apikey", _settings.AnonKey);
+
+        var response = await httpClient.GetAsync($"{_settings.Url}/auth/v1/user");
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        return doc.RootElement.TryGetProperty("email", out var emailProp)
+            ? emailProp.GetString()
+            : null;
     }
 
     private async Task<SupabaseClient> CreateClientAsync()
@@ -101,22 +127,4 @@ public class AuthRepository : IAuthRepository
         return client;
     }
 
-    private async Task<SupabaseClient> CreateAuthenticatedClientAsync(string accessToken)
-    {
-        var options = new Supabase.SupabaseOptions
-        {
-            AutoConnectRealtime = false,
-            Headers = new Dictionary<string, string>
-            {
-                { "Authorization", $"Bearer {accessToken}" }
-            }
-        };
-
-        var client = new SupabaseClient(_settings.Url, _settings.AnonKey, options);
-        await client.InitializeAsync();
-
-        await client.Auth.SetSession(accessToken, string.Empty);
-
-        return client;
-    }
 }
