@@ -29,19 +29,32 @@ jest.mock('expo-application', () => ({
 }));
 
 // Mock expo-constants
-jest.mock('expo-constants', () => ({
-  default: {
+jest.mock('expo-constants', () => {
+  const constants = {
     expoConfig: {
-      extra: {},
+      extra: {
+        supabaseUrl: 'https://test.supabase.co',
+        supabaseAnonKey: 'test-anon-key',
+        apiBaseUrl: 'http://localhost:5000',
+        googleWebClientId: 'test-google-client-id',
+        posthogApiKey: '',
+        posthogHost: 'https://us.i.posthog.com',
+      },
     },
     executionEnvironment: 'storeClient',
-  },
-  ExecutionEnvironment: {
-    Bare: 'bare',
-    Standalone: 'standalone',
-    StoreClient: 'storeClient',
-  },
-}));
+    appOwnership: null,
+  };
+  return {
+    __esModule: true,
+    default: constants,
+    ...constants,
+    ExecutionEnvironment: {
+      Bare: 'bare',
+      Standalone: 'standalone',
+      StoreClient: 'storeClient',
+    },
+  };
+});
 
 // Mock react-native-health (Apple HealthKit)
 jest.mock('react-native-health', () => ({

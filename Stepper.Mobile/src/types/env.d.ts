@@ -1,8 +1,3 @@
-declare module '@env' {
-  export const SUPABASE_URL: string;
-  export const SUPABASE_ANON_KEY: string;
-  export const API_BASE_URL: string;
-  export const GOOGLE_WEB_CLIENT_ID: string;
-  export const POSTHOG_API_KEY: string;
-  export const POSTHOG_HOST: string;
-}
+// Environment variables are now provided via expo-constants extra config.
+// See src/config/env.ts for the centralized env var exports.
+// See app.config.ts for how process.env is injected at build time.

@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '@env';
+import { API_BASE_URL } from '@config/env';
 
 /**
  * Normalizes the base URL by removing trailing slashes and /api suffix if present.

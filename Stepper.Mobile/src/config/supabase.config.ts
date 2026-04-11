@@ -1,4 +1,4 @@
-import { SUPABASE_URL, SUPABASE_ANON_KEY, API_BASE_URL } from '@env';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, API_BASE_URL } from '@config/env';
 
 export const supabaseConfig = {
   url: SUPABASE_URL,
