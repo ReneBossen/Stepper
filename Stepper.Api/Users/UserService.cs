@@ -742,7 +742,7 @@ public class UserService : IUserService
     {
         var client = await GetAuthenticatedClientAsync();
         var extension = Path.GetExtension(fileName);
-        var storagePath = $"{userId}{extension}";
+        var storagePath = $"{userId}/avatar{extension}";
 
         var fileBytes = await ReadStreamToBytesAsync(fileStream);
 
