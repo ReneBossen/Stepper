@@ -56,19 +56,12 @@ jest.mock('expo-constants', () => {
   };
 });
 
-// Mock react-native-health (Apple HealthKit)
-jest.mock('react-native-health', () => ({
-  default: {
-    initHealthKit: jest.fn(),
-    isAvailable: jest.fn(),
-    getLatestWeight: jest.fn(),
-  },
-  AppleHealthKit: {
-    initHealthKit: jest.fn(),
-    isAvailable: jest.fn(),
-    getLatestWeight: jest.fn(),
-  },
-}));
+// Mock @kingstinct/react-native-healthkit (Apple HealthKit via Nitro Modules)
+jest.mock('@kingstinct/react-native-healthkit', () => ({
+  isHealthDataAvailable: jest.fn(() => false),
+  requestAuthorization: jest.fn(() => Promise.resolve(false)),
+  queryStatisticsCollectionForQuantity: jest.fn(() => Promise.resolve([])),
+}), { virtual: true });
 
 // Mock @kingstinct/react-native-healthconnect (Android Health Connect)
 jest.mock('@kingstinct/react-native-healthconnect', () => ({

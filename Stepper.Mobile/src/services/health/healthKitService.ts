@@ -1,9 +1,9 @@
-import AppleHealthKit, {
-  HealthValue,
-  HealthKitPermissions,
-  HealthInputOptions,
-  HealthUnit,
-} from 'react-native-health';
+import {
+  isHealthDataAvailable,
+  requestAuthorization,
+  queryStatisticsCollectionForQuantity,
+  type QueryStatisticsResponse,
+} from '@kingstinct/react-native-healthkit';
 import {
   HealthDataProvider,
   AuthorizationStatus,
@@ -11,21 +11,19 @@ import {
 } from './types';
 import { getErrorMessage } from '../../utils/errorUtils';
 
-/**
- * HealthKit permissions configuration for step and distance tracking.
- */
-const permissions: HealthKitPermissions = {
-  permissions: {
-    read: [
-      AppleHealthKit.Constants.Permissions.StepCount,
-      AppleHealthKit.Constants.Permissions.DistanceWalkingRunning,
-    ],
-    write: [],
-  },
-};
+const STEP_COUNT_IDENTIFIER = 'HKQuantityTypeIdentifierStepCount' as const;
+const DISTANCE_WALKING_RUNNING_IDENTIFIER =
+  'HKQuantityTypeIdentifierDistanceWalkingRunning' as const;
+
+const READ_IDENTIFIERS = [
+  STEP_COUNT_IDENTIFIER,
+  DISTANCE_WALKING_RUNNING_IDENTIFIER,
+] as const;
+
+const DAILY_INTERVAL = { day: 1 } as const;
 
 /**
- * Formats a Date object to YYYY-MM-DD string format.
+ * Formats a Date object to YYYY-MM-DD string format in local time.
  */
 function formatDateToYYYYMMDD(date: Date): string {
   const year = date.getFullYear();
@@ -35,39 +33,33 @@ function formatDateToYYYYMMDD(date: Date): string {
 }
 
 /**
- * Extracts the date portion (YYYY-MM-DD) from an ISO timestamp.
+ * Returns the start of the day (midnight local time) for a given Date.
+ * Used as the anchor date for HealthKit's daily statistics collection.
  */
-function extractDateFromISO(isoString: string): string {
-  return isoString.split('T')[0];
+function startOfDay(date: Date): Date {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
 }
 
 /**
  * HealthKit service implementation for iOS.
- * Provides access to Apple Health step and distance data.
+ * Provides access to Apple Health step and distance data via
+ * @kingstinct/react-native-healthkit (Nitro Modules, New Architecture compatible).
  */
 export class HealthKitService implements HealthDataProvider {
   private isInitialized = false;
 
-  /**
-   * Checks if HealthKit is available on this device.
-   * HealthKit is only available on iOS devices.
-   */
   async isAvailable(): Promise<boolean> {
-    return new Promise((resolve) => {
-      try {
-        AppleHealthKit.isAvailable((error: unknown, available: boolean) => {
-          if (error) {
-            console.warn('[HealthKitService] isAvailable error:', getErrorMessage(error));
-            resolve(false);
-            return;
-          }
-          resolve(available);
-        });
-      } catch (error) {
-        console.warn('[HealthKitService] isAvailable exception:', getErrorMessage(error));
-        resolve(false);
-      }
-    });
+    try {
+      return isHealthDataAvailable();
+    } catch (error) {
+      console.warn(
+        '[HealthKitService] isAvailable exception:',
+        getErrorMessage(error)
+      );
+      return false;
+    }
   }
 
   /**
@@ -85,26 +77,28 @@ export class HealthKitService implements HealthDataProvider {
         return 'not_available';
       }
 
-      // Apple doesn't allow checking read permission status directly
-      // We can only know if we've successfully initialized before
       if (this.isInitialized) {
         return 'authorized';
       }
 
       return 'not_determined';
     } catch (error) {
-      console.warn('[HealthKitService] getAuthorizationStatus error:', getErrorMessage(error));
+      console.warn(
+        '[HealthKitService] getAuthorizationStatus error:',
+        getErrorMessage(error)
+      );
       return 'not_available';
     }
   }
 
   /**
    * Requests user authorization to access HealthKit data.
-   * This will display the iOS HealthKit permission prompt.
+   * Displays the iOS HealthKit permission prompt on first call.
    *
-   * Note: Due to Apple's privacy model, we cannot determine if the user
-   * actually granted read permissions. initHealthKit succeeds even if
-   * the user denies all permissions - the data will just be empty.
+   * Note: Apple's privacy model does not expose whether the user actually
+   * granted read permissions — requestAuthorization resolves to true as long
+   * as the prompt was shown, even if everything was denied. Denied reads
+   * simply return empty results.
    */
   async requestAuthorization(): Promise<AuthorizationStatus> {
     try {
@@ -113,23 +107,22 @@ export class HealthKitService implements HealthDataProvider {
         return 'not_available';
       }
 
-      return new Promise((resolve) => {
-        AppleHealthKit.initHealthKit(permissions, (error: string) => {
-          if (error) {
-            console.warn('[HealthKitService] initHealthKit error:', error);
-            // Apple doesn't distinguish between denied and other errors
-            // We assume not_available as the safe fallback
-            this.isInitialized = false;
-            resolve('not_available');
-            return;
-          }
-
-          this.isInitialized = true;
-          resolve('authorized');
-        });
+      const granted = await requestAuthorization({
+        toRead: READ_IDENTIFIERS,
       });
+
+      if (!granted) {
+        this.isInitialized = false;
+        return 'not_available';
+      }
+
+      this.isInitialized = true;
+      return 'authorized';
     } catch (error) {
-      console.warn('[HealthKitService] requestAuthorization exception:', getErrorMessage(error));
+      console.warn(
+        '[HealthKitService] requestAuthorization exception:',
+        getErrorMessage(error)
+      );
       return 'not_available';
     }
   }
@@ -144,7 +137,6 @@ export class HealthKitService implements HealthDataProvider {
    */
   async getStepData(startDate: Date, endDate: Date): Promise<DailyStepData[]> {
     try {
-      // Ensure we're initialized
       if (!this.isInitialized) {
         const status = await this.requestAuthorization();
         if (status !== 'authorized') {
@@ -153,19 +145,16 @@ export class HealthKitService implements HealthDataProvider {
         }
       }
 
-      // Fetch steps and distance in parallel
       const [steps, distances] = await Promise.all([
         this.fetchDailySteps(startDate, endDate),
         this.fetchDailyDistance(startDate, endDate),
       ]);
 
-      // Create a map of distances by date for easy lookup
       const distanceByDate = new Map<string, number>();
       for (const distance of distances) {
         distanceByDate.set(distance.date, distance.value);
       }
 
-      // Combine steps with distances
       const result: DailyStepData[] = steps.map((step) => ({
         date: step.date,
         stepCount: Math.round(step.value),
@@ -175,7 +164,10 @@ export class HealthKitService implements HealthDataProvider {
 
       return result;
     } catch (error) {
-      console.error('[HealthKitService] getStepData error:', getErrorMessage(error));
+      console.error(
+        '[HealthKitService] getStepData error:',
+        getErrorMessage(error)
+      );
       return [];
     }
   }
@@ -189,106 +181,79 @@ export class HealthKitService implements HealthDataProvider {
    */
   async disconnect(): Promise<void> {
     this.isInitialized = false;
-    // No actual disconnect needed - permissions managed via iOS Settings
   }
 
-  /**
-   * Fetches daily step count samples from HealthKit.
-   */
-  private fetchDailySteps(
+  private async fetchDailySteps(
     startDate: Date,
     endDate: Date
   ): Promise<Array<{ date: string; value: number }>> {
-    return new Promise((resolve) => {
-      const options: HealthInputOptions = {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        includeManuallyAdded: true,
-      };
-
-      AppleHealthKit.getDailyStepCountSamples(
-        options,
-        (error: string, results: HealthValue[]) => {
-          if (error) {
-            console.warn('[HealthKitService] getDailyStepCountSamples error:', error);
-            resolve([]);
-            return;
-          }
-
-          if (!results || !Array.isArray(results)) {
-            resolve([]);
-            return;
-          }
-
-          // Aggregate by date (HealthKit may return multiple samples per day)
-          const stepsByDate = new Map<string, number>();
-
-          for (const sample of results) {
-            const date = extractDateFromISO(sample.startDate);
-            const currentSteps = stepsByDate.get(date) ?? 0;
-            stepsByDate.set(date, currentSteps + (sample.value ?? 0));
-          }
-
-          const dailySteps = Array.from(stepsByDate.entries()).map(
-            ([date, value]) => ({ date, value })
-          );
-
-          resolve(dailySteps);
+    try {
+      const results = await queryStatisticsCollectionForQuantity(
+        STEP_COUNT_IDENTIFIER,
+        ['cumulativeSum'],
+        startOfDay(startDate),
+        DAILY_INTERVAL,
+        {
+          filter: { date: { startDate, endDate } },
+          unit: 'count',
         }
       );
-    });
+
+      return this.mapBucketsToDaily(results);
+    } catch (error) {
+      console.warn(
+        '[HealthKitService] fetchDailySteps error:',
+        getErrorMessage(error)
+      );
+      return [];
+    }
   }
 
-  /**
-   * Fetches daily distance samples from HealthKit.
-   * Returns distance in meters.
-   */
-  private fetchDailyDistance(
+  private async fetchDailyDistance(
     startDate: Date,
     endDate: Date
   ): Promise<Array<{ date: string; value: number }>> {
-    return new Promise((resolve) => {
-      const options: HealthInputOptions = {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        unit: HealthUnit.meter,
-        includeManuallyAdded: true,
-      };
-
-      AppleHealthKit.getDailyDistanceWalkingRunningSamples(
-        options,
-        (error: string, results: HealthValue[]) => {
-          if (error) {
-            console.warn(
-              '[HealthKitService] getDailyDistanceWalkingRunningSamples error:',
-              error
-            );
-            resolve([]);
-            return;
-          }
-
-          if (!results || !Array.isArray(results)) {
-            resolve([]);
-            return;
-          }
-
-          // Aggregate by date
-          const distanceByDate = new Map<string, number>();
-
-          for (const sample of results) {
-            const date = extractDateFromISO(sample.startDate);
-            const currentDistance = distanceByDate.get(date) ?? 0;
-            distanceByDate.set(date, currentDistance + (sample.value ?? 0));
-          }
-
-          const dailyDistances = Array.from(distanceByDate.entries()).map(
-            ([date, value]) => ({ date, value })
-          );
-
-          resolve(dailyDistances);
+    try {
+      const results = await queryStatisticsCollectionForQuantity(
+        DISTANCE_WALKING_RUNNING_IDENTIFIER,
+        ['cumulativeSum'],
+        startOfDay(startDate),
+        DAILY_INTERVAL,
+        {
+          filter: { date: { startDate, endDate } },
+          unit: 'm',
         }
       );
-    });
+
+      return this.mapBucketsToDaily(results);
+    } catch (error) {
+      console.warn(
+        '[HealthKitService] fetchDailyDistance error:',
+        getErrorMessage(error)
+      );
+      return [];
+    }
+  }
+
+  private mapBucketsToDaily(
+    buckets: readonly QueryStatisticsResponse[]
+  ): Array<{ date: string; value: number }> {
+    const totals = new Map<string, number>();
+
+    for (const bucket of buckets) {
+      const anchor = bucket.startDate;
+      if (!anchor) {
+        continue;
+      }
+      const date = formatDateToYYYYMMDD(anchor);
+      const value = bucket.sumQuantity?.quantity ?? 0;
+      totals.set(date, (totals.get(date) ?? 0) + value);
+    }
+
+    return Array.from(totals.entries()).map(([date, value]) => ({
+      date,
+      value,
+    }));
   }
 }
 
