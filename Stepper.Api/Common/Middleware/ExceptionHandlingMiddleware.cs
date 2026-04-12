@@ -3,6 +3,7 @@ using System.Text.Json;
 using Stepper.Api.Common.Models;
 using Supabase.Gotrue.Exceptions;
 using Supabase.Postgrest.Exceptions;
+using Supabase.Storage.Exceptions;
 
 namespace Stepper.Api.Common.Middleware;
 
@@ -45,6 +46,7 @@ public class ExceptionHandlingMiddleware
             HttpRequestException => (HttpStatusCode.BadGateway, "An external service error occurred."),
             GotrueException => (HttpStatusCode.BadGateway, "An authentication service error occurred."),
             PostgrestException => (HttpStatusCode.BadGateway, "A database error occurred."),
+            SupabaseStorageException => (HttpStatusCode.BadGateway, "A storage service error occurred."),
             _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
         };
     }
@@ -72,6 +74,16 @@ public class ExceptionHandlingMiddleware
             return string.IsNullOrEmpty(detail)
                 ? $"PostgrestException (StatusCode: {postgrestEx.StatusCode})"
                 : detail;
+        }
+
+        if (exception is SupabaseStorageException storageEx)
+        {
+            var parts = new[] { storageEx.Message, storageEx.Content }
+                .Where(s => !string.IsNullOrWhiteSpace(s));
+            var detail = string.Join(" | ", parts);
+            return string.IsNullOrEmpty(detail)
+                ? $"SupabaseStorageException (StatusCode: {storageEx.StatusCode}, Reason: {storageEx.Reason})"
+                : $"{detail} (StatusCode: {storageEx.StatusCode}, Reason: {storageEx.Reason})";
         }
 
         if (exception is GotrueException gotrueEx)
