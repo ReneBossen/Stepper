@@ -1,5 +1,6 @@
 using QRCoder;
 using System.Security.Cryptography;
+using System.Text.Json;
 using Stepper.Api.Common.Database;
 using Stepper.Api.Friends.Discovery.DTOs;
 using Stepper.Api.Users;
@@ -16,6 +17,12 @@ public class FriendDiscoveryService : IFriendDiscoveryService
     private readonly IUserRepository _userRepository;
     private readonly IInviteCodeRepository _inviteCodeRepository;
     private readonly IFriendService _friendService;
+
+    private static readonly JsonSerializerOptions RpcJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+    };
 
     public FriendDiscoveryService(
         ISupabaseClientFactory clientFactory,
@@ -64,9 +71,9 @@ public class FriendDiscoveryService : IFriendDiscoveryService
         }
 
         // Parse the result
-        var users = System.Text.Json.JsonSerializer.Deserialize<List<UserSearchResult>>(
+        var users = JsonSerializer.Deserialize<List<UserSearchResult>>(
             result.Content,
-            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+            RpcJsonOptions
         ) ?? new List<UserSearchResult>();
 
         return new SearchUsersResponse
@@ -126,9 +133,9 @@ public class FriendDiscoveryService : IFriendDiscoveryService
         }
 
         // Parse the result (returns a single user as an array with one element)
-        var users = System.Text.Json.JsonSerializer.Deserialize<List<UserSearchResult>>(
+        var users = JsonSerializer.Deserialize<List<UserSearchResult>>(
             result.Content,
-            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+            RpcJsonOptions
         );
 
         var user = users?.FirstOrDefault();
@@ -214,9 +221,9 @@ public class FriendDiscoveryService : IFriendDiscoveryService
         }
 
         // Parse the result
-        var validationResults = System.Text.Json.JsonSerializer.Deserialize<List<InviteCodeValidationResult>>(
+        var validationResults = JsonSerializer.Deserialize<List<InviteCodeValidationResult>>(
             result.Content,
-            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+            RpcJsonOptions
         );
 
         var validation = validationResults?.FirstOrDefault();
