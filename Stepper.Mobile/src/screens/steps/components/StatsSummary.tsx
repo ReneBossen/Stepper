@@ -8,21 +8,25 @@ export interface ChartStats {
   distanceMeters: number;  // Total distance in meters
 }
 
+type SummaryViewMode = 'daily' | 'weekly' | 'monthly';
+
 interface StatsSummaryProps {
   stats: ChartStats;
   periodLabel: string;     // e.g., "Jan 1 - Jan 7, 2026"
   units: 'metric' | 'imperial';
+  viewMode: SummaryViewMode;
   testID?: string;
 }
 
 /**
  * Displays aggregated statistics summary card.
- * Shows total steps, average steps per day, and total distance.
+ * Shows total steps, period-appropriate average, and total distance.
  */
 export function StatsSummary({
   stats,
   periodLabel,
   units,
+  viewMode,
   testID,
 }: StatsSummaryProps) {
   const theme = useTheme();
@@ -33,11 +37,25 @@ export function StatsSummary({
       ? `${(stats.distanceMeters / 1000).toFixed(1)} km`
       : `${(stats.distanceMeters / 1609.344).toFixed(1)} mi`;
 
+  const averageLabel =
+    viewMode === 'daily'
+      ? 'Daily average'
+      : viewMode === 'weekly'
+        ? 'Weekly average'
+        : 'Monthly average';
+
+  const averageAccessibilityUnit =
+    viewMode === 'daily'
+      ? 'steps per day'
+      : viewMode === 'weekly'
+        ? 'steps per week'
+        : 'steps per month';
+
   return (
     <Card
       style={[styles.card, { backgroundColor: theme.colors.surface }]}
       testID={testID}
-      accessibilityLabel={`Period: ${periodLabel}. Total: ${stats.total.toLocaleString()} steps. Average: ${stats.average.toLocaleString()} steps per day. Distance: ${formattedDistance}`}
+      accessibilityLabel={`Period: ${periodLabel}. Total: ${stats.total.toLocaleString()} steps. Average: ${stats.average.toLocaleString()} ${averageAccessibilityUnit}. Distance: ${formattedDistance}`}
       accessibilityRole="text"
     >
       <Card.Content>
@@ -75,7 +93,7 @@ export function StatsSummary({
               variant="bodySmall"
               style={{ color: theme.colors.onSurfaceVariant }}
             >
-              Daily average
+              {averageLabel}
             </Text>
           </View>
 

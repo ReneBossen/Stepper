@@ -381,8 +381,10 @@ function calculateStats(
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  // Calculate average based on number of data points in the chart
-  const average = chartData.length > 0 ? Math.round(total / chartData.length) : 0;
+  // Average only across periods that actually contain step data, so unsynced
+  // days/weeks/months do not drag the average toward zero.
+  const periodsWithData = chartData.filter((bucket) => bucket.value > 0).length;
+  const average = periodsWithData > 0 ? Math.round(total / periodsWithData) : 0;
 
   return {
     total,
