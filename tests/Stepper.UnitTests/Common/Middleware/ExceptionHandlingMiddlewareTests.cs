@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Stepper.Api.Common.Middleware;
 using Stepper.Api.Common.Models;
+using Supabase.Storage.Exceptions;
 
 namespace Stepper.UnitTests.Common.Middleware;
 
@@ -144,6 +145,32 @@ public class ExceptionHandlingMiddlewareTests
         response.Should().NotBeNull();
         response!.Success.Should().BeFalse();
         response.Errors.Should().Contain("An external service error occurred.");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WithSupabaseStorageException_Returns502()
+    {
+        // Arrange
+        RequestDelegate next = (HttpContext ctx) =>
+        {
+            throw new SupabaseStorageException("new row violates row-level security policy");
+        };
+
+        var middleware = new ExceptionHandlingMiddleware(next, _loggerMock.Object);
+        var context = new DefaultHttpContext();
+        context.Response.Body = new MemoryStream();
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert
+        context.Response.StatusCode.Should().Be((int)HttpStatusCode.BadGateway);
+        context.Response.ContentType.Should().Be("application/json");
+
+        var response = await GetResponseBody<ApiResponse<object>>(context);
+        response.Should().NotBeNull();
+        response!.Success.Should().BeFalse();
+        response.Errors.Should().Contain("A storage service error occurred.");
     }
 
     [Fact]
