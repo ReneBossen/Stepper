@@ -251,6 +251,7 @@ export function StepsChart({
             showScrollIndicator={false}
             rulesColor={theme.colors.outlineVariant}
             rulesType="solid"
+            rulesLength={chartWidth - yAxisWidth}
             dashGap={0}
             dashWidth={0}
             hideRules={false}
@@ -278,6 +279,7 @@ const styles = StyleSheet.create({
   },
   chartWrapper: {
     position: 'relative',
+    overflow: 'hidden',
   },
   tooltip: {
     position: 'absolute',

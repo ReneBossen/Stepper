@@ -243,6 +243,7 @@ export default function StepsHistoryScreen() {
             stats={displayStats}
             periodLabel={displayPeriodLabel}
             units={units}
+            viewMode={isCustomMode ? 'daily' : viewMode}
             testID="stats-summary"
           />
         </View>

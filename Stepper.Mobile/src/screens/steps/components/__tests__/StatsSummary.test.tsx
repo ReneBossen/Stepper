@@ -51,6 +51,7 @@ describe('StatsSummary', () => {
     stats: createMockStats(),
     periodLabel: 'Jan 9 - Jan 15, 2024',
     units: 'metric' as const,
+    viewMode: 'daily' as const,
   };
 
   describe('rendering', () => {
