@@ -146,10 +146,10 @@ public class UserService : IUserService
         try
         {
             var createdUser = await _userRepository.CreateAsync(newUser);
-            await _preferencesRepository.CreateAsync(userId);
+            await EnsureUserPreferencesExistAsync(userId);
             return MapToGetProfileResponse(createdUser);
         }
-        catch (PostgrestException ex) when (ex.Message.Contains("23505") || ex.Message.Contains("duplicate key"))
+        catch (PostgrestException ex) when (IsDuplicateKeyException(ex))
         {
             // Race condition: user was created between our check and insert
             // Fetch the existing user
@@ -549,11 +549,17 @@ public class UserService : IUserService
             {
                 await _preferencesRepository.CreateAsync(userId);
             }
-            catch (PostgrestException ex) when (ex.Message.Contains("23505") || ex.Message.Contains("duplicate key"))
+            catch (PostgrestException ex) when (IsDuplicateKeyException(ex))
             {
                 // Race condition: preferences were created between our check and insert - that's fine
             }
         }
+    }
+
+    private static bool IsDuplicateKeyException(PostgrestException ex)
+    {
+        var text = $"{ex.Message} {ex.Content}";
+        return text.Contains("23505") || text.Contains("duplicate key");
     }
 
     private static User CreateDefaultUser(Guid userId)

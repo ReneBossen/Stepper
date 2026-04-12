@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Options;
+using Moq;
 using Stepper.Api.Auth;
 using Stepper.Api.Common.Configuration;
 
@@ -18,7 +19,7 @@ public class AuthRepositoryTests
     public void Constructor_WithNullSettings_ThrowsArgumentNullException()
     {
         // Arrange & Act
-        var act = () => new AuthRepository(null!);
+        var act = () => new AuthRepository(null!, Mock.Of<IHttpClientFactory>());
 
         // Assert
         act.Should().Throw<ArgumentNullException>();
@@ -39,7 +40,7 @@ public class AuthRepositoryTests
         });
 
         // Act
-        var repository = new AuthRepository(settings);
+        var repository = new AuthRepository(settings, Mock.Of<IHttpClientFactory>());
 
         // Assert
         repository.Should().NotBeNull();

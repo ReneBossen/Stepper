@@ -28,10 +28,14 @@ public class SupabaseClientFactory : ISupabaseClientFactory
 
         var options = new SupabaseOptions
         {
-            AutoConnectRealtime = false
+            AutoConnectRealtime = false,
+            Headers = new Dictionary<string, string>
+            {
+                { "Authorization", $"Bearer {jwtToken}" }
+            }
         };
 
-        var client = new Client(_settings.Url, _settings.ServiceRoleKey, options);
+        var client = new Client(_settings.Url, _settings.AnonKey, options);
         await client.InitializeAsync();
 
         return client;
