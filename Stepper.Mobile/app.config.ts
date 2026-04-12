@@ -73,12 +73,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-secure-store',
     'expo-web-browser',
     [
-      'react-native-health',
+      '@kingstinct/react-native-healthkit',
       {
-        healthSharePermission:
+        NSHealthShareUsageDescription:
           'Stepper needs access to your health data to automatically track your daily steps from Apple Health.',
-        healthUpdatePermission:
+        NSHealthUpdateUsageDescription:
           'Stepper needs permission to save step data.',
+        background: true,
       },
     ],
     [
