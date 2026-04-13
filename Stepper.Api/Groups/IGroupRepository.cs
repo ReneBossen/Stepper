@@ -15,6 +15,17 @@ public interface IGroupRepository
     Task<Group> CreateAsync(Group group);
 
     /// <summary>
+    /// Atomically creates a group, its owner membership, and its join code via
+    /// the <c>create_group_with_owner</c> Supabase RPC. Required because the
+    /// RLS policies on <c>group_memberships</c> and <c>group_join_codes</c>
+    /// prevent the authenticated client from performing the three inserts
+    /// separately.
+    /// </summary>
+    /// <param name="group">The group to create.</param>
+    /// <returns>The ID of the newly created group.</returns>
+    Task<Guid> CreateGroupWithOwnerAsync(Group group);
+
+    /// <summary>
     /// Gets a group by ID.
     /// </summary>
     /// <param name="groupId">The group ID.</param>

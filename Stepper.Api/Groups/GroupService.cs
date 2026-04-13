@@ -51,7 +51,9 @@ public class GroupService : IGroupService
 
         ValidateMaxMembers(request.MaxMembers);
 
-        // Create the group
+        // Build the group to create. Id/CreatedById/CreatedAt are assigned
+        // server-side by the create_group_with_owner RPC; they are populated
+        // here only to satisfy the domain model.
         var group = new Group
         {
             Id = Guid.NewGuid(),
@@ -66,29 +68,12 @@ public class GroupService : IGroupService
             MaxMembers = request.MaxMembers
         };
 
-        var createdGroup = await _groupRepository.CreateAsync(group);
+        // Atomic create: group + owner membership + join code row, via
+        // SECURITY DEFINER RPC. Three separate inserts from the authenticated
+        // client fail RLS on group_memberships and group_join_codes.
+        var newGroupId = await _groupRepository.CreateGroupWithOwnerAsync(group);
 
-        // Add the creator as owner before inserting the join code so the
-        // group_join_codes RLS policy (is_group_owner) passes.
-        var membership = new GroupMembership
-        {
-            Id = Guid.NewGuid(),
-            GroupId = createdGroup.Id,
-            UserId = userId,
-            Role = MemberRole.Owner,
-            JoinedAt = DateTime.UtcNow
-        };
-
-        await _groupRepository.AddMemberAsync(membership);
-
-        // Store join code in separate table
-        if (!string.IsNullOrEmpty(group.JoinCode))
-        {
-            await _groupRepository.CreateJoinCodeAsync(createdGroup.Id, group.JoinCode);
-        }
-
-        // Refresh the group to get updated member count
-        var refreshedGroup = await _groupRepository.GetByIdAsync(createdGroup.Id);
+        var refreshedGroup = await _groupRepository.GetByIdAsync(newGroupId);
         if (refreshedGroup == null)
         {
             throw new InvalidOperationException("Failed to retrieve created group.");
