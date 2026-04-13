@@ -68,13 +68,8 @@ public class GroupService : IGroupService
 
         var createdGroup = await _groupRepository.CreateAsync(group);
 
-        // Store join code in separate table
-        if (!string.IsNullOrEmpty(group.JoinCode))
-        {
-            await _groupRepository.CreateJoinCodeAsync(createdGroup.Id, group.JoinCode);
-        }
-
-        // Add the creator as owner
+        // Add the creator as owner before inserting the join code so the
+        // group_join_codes RLS policy (is_group_owner) passes.
         var membership = new GroupMembership
         {
             Id = Guid.NewGuid(),
@@ -85,6 +80,12 @@ public class GroupService : IGroupService
         };
 
         await _groupRepository.AddMemberAsync(membership);
+
+        // Store join code in separate table
+        if (!string.IsNullOrEmpty(group.JoinCode))
+        {
+            await _groupRepository.CreateJoinCodeAsync(createdGroup.Id, group.JoinCode);
+        }
 
         // Refresh the group to get updated member count
         var refreshedGroup = await _groupRepository.GetByIdAsync(createdGroup.Id);
