@@ -21,9 +21,11 @@ Tables with RLS enabled (10 total):
 5. `groups` ✅ done on this branch
 6. `group_memberships` ✅ done on this branch
 7. `group_join_codes` ✅ done on this branch
-8. `invite_codes` — **next**
+8. `invite_codes` ✅ done on this branch
 9. `activity_feed`
 10. `notifications`
+
+Also done on this branch: **`users`** (table 1) ✅
 
 ---
 
@@ -96,39 +98,144 @@ Smoke-test after deploy:
 
 ---
 
+## Before shipping this branch — master checklist
+
+This is the consolidated list of everything that must happen before the whole RLS hardening branch is merged and deployed. It grows as each table is hardened. **Always re-read this section before cutting a release PR.**
+
+### Pre-deploy pre-checks (run against prod, must all return 0)
+
+Run these **before** applying any migration on this branch. If any return non-zero, resolve the underlying data before proceeding — do not force-apply.
+
+1. **`invite_codes` data shape** (migration `20260413140000_*` will add CHECK constraints):
+   ```sql
+   SELECT count(*) FROM invite_codes
+   WHERE usage_count < 0
+      OR (max_usages IS NOT NULL AND max_usages <= 0)
+      OR (expires_at IS NOT NULL AND expires_at <= created_at);
+   ```
+
+2. **`users` without a `user_preferences` row** (migration `20260413150000_*` will stop treating missing prefs as discoverable):
+   ```sql
+   SELECT count(*) FROM users u
+   LEFT JOIN user_preferences up ON up.id = u.id
+   WHERE up.id IS NULL;
+   ```
+   If non-zero, backfill **before** applying:
+   ```sql
+   INSERT INTO user_preferences (id)
+   SELECT u.id FROM users u
+   LEFT JOIN user_preferences up ON up.id = u.id
+   WHERE up.id IS NULL;
+   ```
+
+3. *(Add rows here as each remaining table is hardened.)*
+
+### Deployment ordering
+
+Apply in this order. Nothing else on the branch is order-sensitive between tables — each migration is independent within the branch, but everything must ship as a unit because the backend and mobile commits on the branch assume the migrations have been applied.
+
+1. **Apply all new `supabase/migrations/2026041313*` and later files.** `supabase db push` or run via the dashboard in timestamp order.
+2. **Deploy backend.** Old backend still does direct INSERTs into `group_memberships`, which the groups migration revokes. If the migration lands without the new backend, `InviteMember` and any legacy join path will 42501.
+3. **Deploy mobile last.** New mobile expects `{ groupId, status }` from the join endpoints. Older-mobile-with-newer-backend works (mobile just ignores the `status` field); the reverse breaks.
+
+### Post-deploy smoke tests
+
+Groups cluster (from the initial hardening):
+- Create a group → owner membership is `status='active'`.
+- Join a public group → `status='active'`.
+- Join a private group via code → `status='active'`.
+- Toggle `require_approval=true`, join via code → `status='pending'`, UI shows "request sent".
+- Admin approves the pending member → row flips to active.
+- Direct INSERT into `group_memberships` with a user's JWT → 42501.
+
+Invite codes:
+- Generate an invite code → row created with `usage_count=0`.
+- Redeem it → `validate_invite_code` increments atomically; second redeem past `max_usages` is rejected.
+- Direct `UPDATE invite_codes SET usage_count = 0 WHERE user_id = auth.uid()` → rejected (policy dropped).
+
+Users (table 1):
+- New signup → `user_preferences.privacy_find_me = 'private'`.
+- Friend search by a stranger → the new user does **not** appear.
+- New user sets `privacy_find_me = 'public'` → appears in search.
+- Accept a friend request → friend sees profile via the friends SELECT policy even while `'private'`.
+- `UPDATE users SET qr_code_id = '...' WHERE id = auth.uid()` as authenticated → raises `users.qr_code_id is immutable`.
+- `UPDATE users SET display_name = 'x' WHERE id = auth.uid()` → succeeds; `updated_at` bumps.
+- Existing user whose `privacy_find_me` was `'public'` before the migration → still discoverable (existing rows are not flipped).
+
+*(Append smoke tests as each remaining table is hardened.)*
+
+### Groups cluster follow-ups (must become commits on this branch before PR)
+
+See "Follow-ups on the groups cluster" section below. Neither blocks merging individually, but both should ship in the same PR so the hardening story is complete:
+- `group_memberships` DELETE for owner — either drop the policy + add `leave_group` RPC, or add a check constraint.
+- `group_join_codes.join_code` uniqueness — add `UNIQUE (join_code)` after resolving any existing collisions.
+
+### Test suite gate
+
+Before opening the PR:
+- `dotnet build` clean.
+- `dotnet test` — all unit + integration tests green.
+- `npx jest` from `Stepper.Mobile/` — all mobile tests green.
+
+### Rollback notes
+
+Every migration on this branch is written to be forward-only but safe to re-apply (`DROP POLICY IF EXISTS`, `CREATE OR REPLACE FUNCTION`). There is no dedicated down-migration script. To roll back a single table, write a new migration that restores the old policy + drops the new trigger/function. **Do not `supabase migration down`** — the hand-applied `docs/migrations/` baseline is not tracked by the Supabase CLI and down-migrations can corrupt state.
+
+---
+
 ## Remaining work on this branch
 
-### 1. Table 8: `invite_codes` (next in the dialog)
+### 1. Table 8: `invite_codes` ✅ done
 
-**Status:** User flagged this as a trouble area (part of tables "5, 6, 7, 8") but we ran out of time to dig in. The existing policies look reasonable on paper:
+Migration `supabase/migrations/20260413140000_harden_invite_codes_rls.sql` — audit-driven (no known bug), tightened to match the groups hardening pattern:
 
-- RLS enabled.
-- SELECT/INSERT/UPDATE/DELETE all scoped to `auth.uid() = user_id`.
-- Validation bypass via `validate_invite_code()` SECURITY DEFINER function (created in `docs/migrations/009_create_invite_codes_table.sql`).
+- **Dropped UPDATE policy.** Was `auth.uid() = user_id` with no column restriction, letting a user reset their own `usage_count` and bypass `max_usages`. No legitimate client update path — validation increments atomically inside `validate_invite_code`, regeneration is new-row + delete.
+- **Pinned `SET search_path = public`** on `validate_invite_code` (SECURITY DEFINER). Previously unpinned; now matches every SECURITY DEFINER in the groups migration.
+- **Locked EXECUTE grant**: `REVOKE EXECUTE ... FROM PUBLIC; GRANT EXECUTE ... TO authenticated`. The in-body `auth.uid() IS NULL` check stays as defence-in-depth.
+- **CHECK constraints** added: `usage_count >= 0`, `max_usages IS NULL OR max_usages > 0`, `expires_at IS NULL OR expires_at > created_at`.
 
-**Action for next agent:**
-1. **Ask the user what specific bug they're hitting on `invite_codes`.** Do not skip this step. The policies look correct, so either the bug is in the `validate_invite_code()` function body, in the API layer, or in the mobile client. Figure out which before proposing changes.
-2. If the user confirms the policies are fine and the bug is elsewhere, mark table 8 as verified and move to the remaining tables.
-3. Remember: the pattern for user-owned resources with controlled read access via SECURITY DEFINER is exactly what `invite_codes` already does. Don't break it without a specific reason.
+Backend cleanup in the same commit:
+- Removed dead `UpdateAsync` from `IInviteCodeRepository`, `InviteCodeRepository`, and `InviteCodeRepositoryTests`. `FriendDiscoveryService` already uses the `validate_invite_code` RPC; the repo update method had no callers.
 
-### 2. Follow-ups on the groups cluster (flagged but not fixed)
+Tests: 798 unit (was 799, −1 for the removed UpdateAsync token test) + 35 integration, all green.
+
+**Deployment ordering for this table:** migration-first is safe — old backend still works because the dropped UPDATE policy was unused. Add CHECK constraints may fail if prod has existing violating rows; run this pre-check before applying: `SELECT count(*) FROM invite_codes WHERE usage_count < 0 OR (max_usages IS NOT NULL AND max_usages <= 0) OR (expires_at IS NOT NULL AND expires_at <= created_at);` — must be 0.
+
+### 2. Table 1: `users` ✅ done
+
+Migration `supabase/migrations/20260413150000_harden_users_rls.sql` — audit-driven (no known bug). Three gaps closed:
+
+- **Discovery was opt-out by default.** Old policy `"Anyone can discover users"` treated a missing `user_preferences` row as public, and the column default for `privacy_find_me` was `'public'`. Replaced with `"Discoverable users are findable"` which requires an explicit row with `privacy_find_me IN ('public','partial')`. Column default flipped to `'private'`. **Existing rows are not migrated** — explicit product decision: only new signups go private, current users keep whatever value they have.
+- **`search_users` RPC tightened to match.** Dropped the `up.id IS NULL` branch (legacy users without prefs are no longer returned). Signature unchanged, so the .NET caller in `Stepper.Api/Friends/Discovery/` needs no change. Added `REVOKE EXECUTE FROM PUBLIC; GRANT EXECUTE TO authenticated` to match the invite_codes pattern.
+- **Immutable column trigger.** New `trg_users_prevent_immutable_updates` rejects changes to `id`, `qr_code_id`, `created_at`. Mirrors `groups_prevent_immutable_column_updates` from the groups migration. `updated_at` stays mutable so `update_users_updated_at` can keep setting it. Backend never touches these columns today; trigger is pure defense-in-depth.
+- **Index cleanup.** Dropped `idx_user_preferences_privacy_private` — it was a partial index on `privacy_find_me = 'private'` used by the old "NOT EXISTS private" policy, no longer referenced.
+
+Decisions already made (do not re-litigate):
+- Friends SELECT policy (`docs/migrations/004`) stays — it's how a private user remains visible to accepted friends. Not redundant with the new discovery policy.
+- INSERT policy stays — `EnsureProfileExistsAsync` creates the row using the user's own JWT, and `WITH CHECK auth.uid() = id` is correct. Not routing through an RPC.
+- UPDATE policy stays open at RLS level; immutability is enforced by the trigger, not by revoking UPDATE. Backend still uses `UserRepository.UpdateAsync` unchanged.
+- `qr_code_id` is set-once — never regenerates through any path. If a regen feature is ever added, it must go through a SECURITY DEFINER RPC.
+
+No backend or mobile code changes. Tests were not re-run because no C# or TS changed; the trigger can only fire on write paths the existing backend doesn't exercise.
+
+**Deployment ordering for this table:** migration-first is safe. The ordering gotcha is the discovery policy change — see the `users` entry in the pre-deploy checklist below for the required prod pre-check.
+
+### 3. Follow-ups on the groups cluster (flagged but not fixed)
 
 Neither blocks merging this branch but both should become their own commits on this branch before it's PR'd:
 
 - **`group_memberships` DELETE for owner.** Current policy lets an owner `DELETE` their own membership row even if the group has other members, orphaning the group. The service-layer `LeaveGroupAsync` already blocks this, but the DB policy should match. Fix: either drop the `user_id = auth.uid()` DELETE policy and route leave through a `leave_group` RPC, or add a check constraint. The user already agreed "owners cannot leave without transferring ownership" semantics are desired.
 - **`group_join_codes.join_code` uniqueness.** The table has `UNIQUE (group_id)` but not `UNIQUE (join_code)`. `join_group_by_code` picks one with `LIMIT 1` if there's a collision — silently unreachable for the loser. Add `UNIQUE (join_code)` in a migration. Need to check for existing duplicates first and resolve them.
 
-### 3. Remaining tables (dialog-driven)
+### 4. Remaining tables (dialog-driven)
 
 The user explicitly wants to work through each remaining table in a conversation, not have an agent draft all policies at once. Order suggestion:
 
-1. **`invite_codes`** (table 8) — highest priority per the initial scope
-2. **`users`** (table 1) — high impact, many policies
-3. **`user_preferences`** (table 2)
-4. **`step_entries`** (table 3)
-5. **`friendships`** (table 4)
-6. **`activity_feed`** (table 9)
-7. **`notifications`** (table 10)
+1. **`user_preferences`** (table 2)
+2. **`step_entries`** (table 3)
+3. **`friendships`** (table 4)
+4. **`activity_feed`** (table 9)
+5. **`notifications`** (table 10)
 
 For each table, the template that worked in the initial dialog:
 1. Read the latest state from migrations (check both `supabase/migrations/` and `docs/migrations/` for overrides).
@@ -157,7 +264,7 @@ For each table, the template that worked in the initial dialog:
 ## Things to avoid
 
 - Don't consolidate `docs/migrations/` into `supabase/migrations/` on this branch.
-- Don't touch tables 1–4, 9, 10 without first running the dialog.
+- Don't touch tables 2–4, 9, 10 without first running the dialog.
 - Don't add backwards-compatibility shims for the dropped direct-INSERT policies on `groups` and `group_memberships`. The RPCs are the only path now, and that's intentional.
 - Don't rewrite `is_group_member` back to "any status". It used to mean that, and callers relied on active-only semantics. `has_group_membership` is the explicit "any status" variant.
 - Don't introduce a second membership table for pending requests. The user chose `status` on the existing table; that decision is made.
