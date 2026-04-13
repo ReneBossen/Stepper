@@ -33,11 +33,11 @@ public interface IGroupRepository
     Task<Group?> GetByIdAsync(Guid groupId);
 
     /// <summary>
-    /// Gets all groups a user is a member of.
+    /// Gets all groups a user is a member of, including pending-approval rows.
     /// </summary>
     /// <param name="userId">The user ID.</param>
-    /// <returns>List of groups with the user's role in each.</returns>
-    Task<List<(Group Group, MemberRole Role)>> GetUserGroupsAsync(Guid userId);
+    /// <returns>List of groups with the user's role and membership status in each.</returns>
+    Task<List<(Group Group, MemberRole Role, MembershipStatus Status)>> GetUserGroupsAsync(Guid userId);
 
     /// <summary>
     /// Updates a group.
@@ -166,4 +166,49 @@ public interface IGroupRepository
     /// <param name="userId">The user ID.</param>
     /// <returns>List of tuples containing group, role, and join date.</returns>
     Task<List<(Group Group, MemberRole Role, DateTime JoinedAt)>> GetUserGroupMembershipsWithDetailsAsync(Guid userId);
+
+    /// <summary>
+    /// Joins the caller to a group identified by an invite code via the
+    /// <c>join_group_by_code</c> SECURITY DEFINER RPC. The RPC enforces
+    /// already-member, max_members, and require_approval.
+    /// </summary>
+    /// <param name="code">The invite code.</param>
+    /// <returns>The joined group ID and the resulting membership status.</returns>
+    Task<(Guid GroupId, MembershipStatus Status)> JoinGroupByCodeAsync(string code);
+
+    /// <summary>
+    /// Joins the caller to a public group via the <c>join_public_group</c>
+    /// SECURITY DEFINER RPC. Rejects private groups and enforces max_members
+    /// and require_approval.
+    /// </summary>
+    /// <param name="groupId">The group ID.</param>
+    /// <returns>The joined group ID and the resulting membership status.</returns>
+    Task<(Guid GroupId, MembershipStatus Status)> JoinPublicGroupAsync(Guid groupId);
+
+    /// <summary>
+    /// Promotes a pending membership row to active. Authorized via RLS:
+    /// only owners and admins of the group can perform the UPDATE.
+    /// </summary>
+    /// <param name="groupId">The group ID.</param>
+    /// <param name="userId">The pending user ID.</param>
+    /// <returns>The updated membership.</returns>
+    Task<GroupMembership> ApproveMembershipAsync(Guid groupId, Guid userId);
+
+    /// <summary>
+    /// Gets all members of a group, optionally filtered by membership status.
+    /// </summary>
+    /// <param name="groupId">The group ID.</param>
+    /// <param name="status">Optional status filter. Pass null to return all.</param>
+    /// <returns>List of group memberships.</returns>
+    Task<List<GroupMembership>> GetMembersAsync(Guid groupId, MembershipStatus? status);
+
+    /// <summary>
+    /// Admin-only direct add of a user to a group via the <c>admin_add_member</c>
+    /// SECURITY DEFINER RPC. Caller must be an active owner/admin of the group.
+    /// Enforces max_members and already-member server-side.
+    /// </summary>
+    /// <param name="groupId">The group ID.</param>
+    /// <param name="userId">The user to add.</param>
+    /// <returns>The new membership id.</returns>
+    Task<Guid> AdminAddMemberAsync(Guid groupId, Guid userId);
 }

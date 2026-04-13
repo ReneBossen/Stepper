@@ -445,7 +445,7 @@ describe('groupsStore', () => {
 
   describe('joinGroup', () => {
     it('should join group successfully', async () => {
-      mockGroupsApi.joinGroup.mockResolvedValue(undefined);
+      mockGroupsApi.joinGroup.mockResolvedValue({ groupId: 'group-1', status: 'active' });
       mockGroupsApi.getMyGroups.mockResolvedValue([]);
 
       const { result } = renderHook(() => useGroupsStore());
@@ -480,7 +480,7 @@ describe('groupsStore', () => {
 
     it('should set loading state during join', async () => {
       mockGroupsApi.joinGroup.mockImplementation(() =>
-        new Promise((resolve) => setTimeout(() => resolve(undefined), 100))
+        new Promise((resolve) => setTimeout(() => resolve({ groupId: 'group-1', status: 'active' }), 100))
       );
       mockGroupsApi.getMyGroups.mockResolvedValue([]);
 
@@ -500,19 +500,20 @@ describe('groupsStore', () => {
 
   describe('joinGroupByCode', () => {
     it('should join group by code successfully', async () => {
-      mockGroupsApi.joinGroupByCode.mockResolvedValue('group-1');
+      mockGroupsApi.joinGroupByCode.mockResolvedValue({ groupId: 'group-1', status: 'active' });
       mockGroupsApi.getMyGroups.mockResolvedValue([]);
 
       const { result } = renderHook(() => useGroupsStore());
 
-      let groupId: string | undefined;
+      let joinResult: { groupId: string; status: 'active' | 'pending' } | undefined;
 
       await act(async () => {
-        groupId = await result.current.joinGroupByCode('ABC123');
+        joinResult = await result.current.joinGroupByCode('ABC123');
       });
 
       expect(mockGroupsApi.joinGroupByCode).toHaveBeenCalledWith('ABC123');
-      expect(groupId).toBe('group-1');
+      expect(joinResult?.groupId).toBe('group-1');
+      expect(joinResult?.status).toBe('active');
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
     });

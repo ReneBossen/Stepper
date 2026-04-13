@@ -6,7 +6,9 @@ using Stepper.Api.Users;
 namespace Stepper.UnitTests.Groups;
 
 /// <summary>
-/// Unit tests for GroupService.JoinByCodeAsync method.
+/// Unit tests for GroupService.JoinByCodeAsync, which now delegates to the
+/// join_group_by_code SECURITY DEFINER RPC via
+/// IGroupRepository.JoinGroupByCodeAsync.
 /// </summary>
 public class GroupServiceJoinByCodeTests
 {
@@ -21,117 +23,73 @@ public class GroupServiceJoinByCodeTests
         _sut = new GroupService(_mockGroupRepository.Object, _mockUserRepository.Object);
     }
 
-    #region JoinByCodeAsync Tests
-
     [Fact]
-    public async Task JoinByCodeAsync_WithValidCode_JoinsGroupSuccessfully()
+    public async Task JoinByCodeAsync_WithValidCode_ReturnsGroupWithActiveStatus()
     {
-        // Arrange
         var userId = Guid.NewGuid();
         var joinCode = "ABC12345";
         var groupId = Guid.NewGuid();
-        var group = CreateTestGroup(groupId, "Private Group", false, joinCode, 5);
-        var groupAfterJoin = CreateTestGroup(groupId, "Private Group", false, joinCode, 6);
+        var groupAfterJoin = CreateTestGroup(groupId, "Private Group", false, null, 6);
 
-        _mockGroupRepository.Setup(x => x.GetByJoinCodeAsync(joinCode))
-            .ReturnsAsync(group);
-        _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
-            .ReturnsAsync((GroupMembership?)null);
-        _mockGroupRepository.Setup(x => x.AddMemberAsync(It.IsAny<GroupMembership>()))
-            .ReturnsAsync(new GroupMembership
-            {
-                Id = Guid.NewGuid(),
-                GroupId = groupId,
-                UserId = userId,
-                Role = MemberRole.Member,
-                JoinedAt = DateTime.UtcNow
-            });
+        _mockGroupRepository.Setup(x => x.JoinGroupByCodeAsync(joinCode))
+            .ReturnsAsync((groupId, MembershipStatus.Active));
         _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
             .ReturnsAsync(groupAfterJoin);
 
-        // Act
         var result = await _sut.JoinByCodeAsync(userId, joinCode);
 
-        // Assert
         result.Should().NotBeNull();
         result.Id.Should().Be(groupId);
         result.Name.Should().Be("Private Group");
         result.Role.Should().Be(MemberRole.Member);
+        result.Status.Should().Be(MembershipStatus.Active);
         result.MemberCount.Should().Be(6);
-        _mockGroupRepository.Verify(x => x.GetByJoinCodeAsync(joinCode), Times.Once);
-        _mockGroupRepository.Verify(x => x.AddMemberAsync(It.Is<GroupMembership>(m =>
-            m.UserId == userId &&
-            m.GroupId == groupId &&
-            m.Role == MemberRole.Member
-        )), Times.Once);
+        _mockGroupRepository.Verify(x => x.JoinGroupByCodeAsync(joinCode), Times.Once);
     }
 
     [Fact]
-    public async Task JoinByCodeAsync_WithInvalidCode_ThrowsKeyNotFoundException()
+    public async Task JoinByCodeAsync_WithApprovalRequired_ReturnsPendingStatus()
     {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var invalidCode = "INVALID1";
-
-        _mockGroupRepository.Setup(x => x.GetByJoinCodeAsync(invalidCode))
-            .ReturnsAsync((Group?)null);
-
-        // Act
-        var act = async () => await _sut.JoinByCodeAsync(userId, invalidCode);
-
-        // Assert
-        await act.Should().ThrowAsync<KeyNotFoundException>()
-            .WithMessage("Invalid join code. Group not found.");
-        _mockGroupRepository.Verify(x => x.GetByJoinCodeAsync(invalidCode), Times.Once);
-        _mockGroupRepository.Verify(x => x.AddMemberAsync(It.IsAny<GroupMembership>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task JoinByCodeAsync_WhenAlreadyMember_ThrowsInvalidOperationException()
-    {
-        // Arrange
         var userId = Guid.NewGuid();
         var joinCode = "ABC12345";
         var groupId = Guid.NewGuid();
-        var group = CreateTestGroup(groupId, "Private Group", false, joinCode, 5);
-        var existingMembership = new GroupMembership
-        {
-            Id = Guid.NewGuid(),
-            GroupId = groupId,
-            UserId = userId,
-            Role = MemberRole.Member,
-            JoinedAt = DateTime.UtcNow.AddDays(-5)
-        };
+        var groupAfterJoin = CreateTestGroup(groupId, "Gated Group", false, null, 5);
 
-        _mockGroupRepository.Setup(x => x.GetByJoinCodeAsync(joinCode))
-            .ReturnsAsync(group);
-        _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
-            .ReturnsAsync(existingMembership);
+        _mockGroupRepository.Setup(x => x.JoinGroupByCodeAsync(joinCode))
+            .ReturnsAsync((groupId, MembershipStatus.Pending));
+        _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
+            .ReturnsAsync(groupAfterJoin);
 
-        // Act
+        var result = await _sut.JoinByCodeAsync(userId, joinCode);
+
+        result.Status.Should().Be(MembershipStatus.Pending);
+        result.Role.Should().Be(MemberRole.Member);
+        result.JoinCode.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task JoinByCodeAsync_RpcThrows_BubblesUp()
+    {
+        var userId = Guid.NewGuid();
+        var joinCode = "INVALID1";
+
+        _mockGroupRepository.Setup(x => x.JoinGroupByCodeAsync(joinCode))
+            .ThrowsAsync(new InvalidOperationException("Invalid join code"));
+
         var act = async () => await _sut.JoinByCodeAsync(userId, joinCode);
 
-        // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("You are already a member of this group.");
-        _mockGroupRepository.Verify(x => x.GetByJoinCodeAsync(joinCode), Times.Once);
-        _mockGroupRepository.Verify(x => x.GetMembershipAsync(groupId, userId), Times.Once);
-        _mockGroupRepository.Verify(x => x.AddMemberAsync(It.IsAny<GroupMembership>()), Times.Never);
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _mockGroupRepository.Verify(x => x.JoinGroupByCodeAsync(joinCode), Times.Once);
     }
 
     [Fact]
     public async Task JoinByCodeAsync_WithEmptyUserId_ThrowsArgumentException()
     {
-        // Arrange
-        var joinCode = "ABC12345";
+        var act = async () => await _sut.JoinByCodeAsync(Guid.Empty, "ABC12345");
 
-        // Act
-        var act = async () => await _sut.JoinByCodeAsync(Guid.Empty, joinCode);
-
-        // Assert
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("User ID cannot be empty.*");
-        _mockGroupRepository.Verify(x => x.GetByJoinCodeAsync(It.IsAny<string>()), Times.Never);
+        _mockGroupRepository.Verify(x => x.JoinGroupByCodeAsync(It.IsAny<string>()), Times.Never);
     }
 
     [Theory]
@@ -141,178 +99,14 @@ public class GroupServiceJoinByCodeTests
     [InlineData(null)]
     public async Task JoinByCodeAsync_WithEmptyOrWhitespaceCode_ThrowsArgumentException(string? code)
     {
-        // Arrange
         var userId = Guid.NewGuid();
 
-        // Act
         var act = async () => await _sut.JoinByCodeAsync(userId, code!);
 
-        // Assert
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("Join code cannot be empty.*");
-        _mockGroupRepository.Verify(x => x.GetByJoinCodeAsync(It.IsAny<string>()), Times.Never);
+        _mockGroupRepository.Verify(x => x.JoinGroupByCodeAsync(It.IsAny<string>()), Times.Never);
     }
-
-    [Fact]
-    public async Task JoinByCodeAsync_ReturnsGroupResponseWithCorrectRole()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var joinCode = "XYZ99999";
-        var groupId = Guid.NewGuid();
-        var group = CreateTestGroup(groupId, "Test Group", false, joinCode, 10);
-        var groupAfterJoin = CreateTestGroup(groupId, "Test Group", false, joinCode, 11);
-
-        _mockGroupRepository.Setup(x => x.GetByJoinCodeAsync(joinCode))
-            .ReturnsAsync(group);
-        _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
-            .ReturnsAsync((GroupMembership?)null);
-        _mockGroupRepository.Setup(x => x.AddMemberAsync(It.IsAny<GroupMembership>()))
-            .ReturnsAsync(new GroupMembership
-            {
-                Id = Guid.NewGuid(),
-                GroupId = groupId,
-                UserId = userId,
-                Role = MemberRole.Member,
-                JoinedAt = DateTime.UtcNow
-            });
-        _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
-            .ReturnsAsync(groupAfterJoin);
-
-        // Act
-        var result = await _sut.JoinByCodeAsync(userId, joinCode);
-
-        // Assert
-        result.Role.Should().Be(MemberRole.Member);
-        // New members shouldn't see join code (only owners/admins)
-        result.JoinCode.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task JoinByCodeAsync_WhenAlreadyOwner_ThrowsInvalidOperationException()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var joinCode = "ABC12345";
-        var groupId = Guid.NewGuid();
-        var group = CreateTestGroup(groupId, "Private Group", false, joinCode, 5);
-        var existingMembership = new GroupMembership
-        {
-            Id = Guid.NewGuid(),
-            GroupId = groupId,
-            UserId = userId,
-            Role = MemberRole.Owner,
-            JoinedAt = DateTime.UtcNow.AddDays(-10)
-        };
-
-        _mockGroupRepository.Setup(x => x.GetByJoinCodeAsync(joinCode))
-            .ReturnsAsync(group);
-        _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
-            .ReturnsAsync(existingMembership);
-
-        // Act
-        var act = async () => await _sut.JoinByCodeAsync(userId, joinCode);
-
-        // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("You are already a member of this group.");
-        _mockGroupRepository.Verify(x => x.AddMemberAsync(It.IsAny<GroupMembership>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task JoinByCodeAsync_WhenAlreadyAdmin_ThrowsInvalidOperationException()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var joinCode = "ABC12345";
-        var groupId = Guid.NewGuid();
-        var group = CreateTestGroup(groupId, "Private Group", false, joinCode, 5);
-        var existingMembership = new GroupMembership
-        {
-            Id = Guid.NewGuid(),
-            GroupId = groupId,
-            UserId = userId,
-            Role = MemberRole.Admin,
-            JoinedAt = DateTime.UtcNow.AddDays(-3)
-        };
-
-        _mockGroupRepository.Setup(x => x.GetByJoinCodeAsync(joinCode))
-            .ReturnsAsync(group);
-        _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
-            .ReturnsAsync(existingMembership);
-
-        // Act
-        var act = async () => await _sut.JoinByCodeAsync(userId, joinCode);
-
-        // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("You are already a member of this group.");
-    }
-
-    [Fact]
-    public async Task JoinByCodeAsync_CreatesMembershipWithCorrectTimestamp()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var joinCode = "ABC12345";
-        var groupId = Guid.NewGuid();
-        var group = CreateTestGroup(groupId, "Test Group", false, joinCode, 5);
-        var groupAfterJoin = CreateTestGroup(groupId, "Test Group", false, joinCode, 6);
-        var beforeTest = DateTime.UtcNow;
-
-        GroupMembership? capturedMembership = null;
-        _mockGroupRepository.Setup(x => x.GetByJoinCodeAsync(joinCode))
-            .ReturnsAsync(group);
-        _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
-            .ReturnsAsync((GroupMembership?)null);
-        _mockGroupRepository.Setup(x => x.AddMemberAsync(It.IsAny<GroupMembership>()))
-            .Callback<GroupMembership>(m => capturedMembership = m)
-            .ReturnsAsync((GroupMembership m) => m);
-        _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
-            .ReturnsAsync(groupAfterJoin);
-
-        // Act
-        await _sut.JoinByCodeAsync(userId, joinCode);
-        var afterTest = DateTime.UtcNow;
-
-        // Assert
-        capturedMembership.Should().NotBeNull();
-        capturedMembership!.JoinedAt.Should().BeOnOrAfter(beforeTest);
-        capturedMembership.JoinedAt.Should().BeOnOrBefore(afterTest);
-    }
-
-    [Fact]
-    public async Task JoinByCodeAsync_GeneratesNewMembershipId()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var joinCode = "ABC12345";
-        var groupId = Guid.NewGuid();
-        var group = CreateTestGroup(groupId, "Test Group", false, joinCode, 5);
-        var groupAfterJoin = CreateTestGroup(groupId, "Test Group", false, joinCode, 6);
-
-        GroupMembership? capturedMembership = null;
-        _mockGroupRepository.Setup(x => x.GetByJoinCodeAsync(joinCode))
-            .ReturnsAsync(group);
-        _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
-            .ReturnsAsync((GroupMembership?)null);
-        _mockGroupRepository.Setup(x => x.AddMemberAsync(It.IsAny<GroupMembership>()))
-            .Callback<GroupMembership>(m => capturedMembership = m)
-            .ReturnsAsync((GroupMembership m) => m);
-        _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
-            .ReturnsAsync(groupAfterJoin);
-
-        // Act
-        await _sut.JoinByCodeAsync(userId, joinCode);
-
-        // Assert
-        capturedMembership.Should().NotBeNull();
-        capturedMembership!.Id.Should().NotBe(Guid.Empty);
-    }
-
-    #endregion
-
-    #region Helper Methods
 
     private static Group CreateTestGroup(Guid id, string name, bool isPublic, string? joinCode, int memberCount)
     {
@@ -329,6 +123,4 @@ public class GroupServiceJoinByCodeTests
             MemberCount = memberCount
         };
     }
-
-    #endregion
 }

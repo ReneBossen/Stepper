@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 import { apiClient } from './client';
-import { Group, GroupMember, CreateGroupData, GroupWithLeaderboard, LeaderboardEntry, GroupManagementDetail, GroupDetail } from '@store/groupsStore';
+import { Group, GroupMember, CreateGroupData, GroupWithLeaderboard, LeaderboardEntry, GroupManagementDetail, GroupDetail, JoinGroupResult, MembershipStatus } from '@store/groupsStore';
 
 /**
  * Backend API response types (camelCase from .NET backend)
@@ -15,6 +15,7 @@ interface GroupResponse {
   maxMembers: number;
   joinCode?: string;
   role: 'Owner' | 'Admin' | 'Member';
+  status?: 'Active' | 'Pending';
   createdAt: string;
 }
 
@@ -36,7 +37,12 @@ interface GroupMemberResponse {
   displayName: string;
   avatarUrl?: string;
   role: 'Owner' | 'Admin' | 'Member';
+  status?: 'Active' | 'Pending';
   joinedAt: string;
+}
+
+function mapStatus(status: 'Active' | 'Pending' | undefined): MembershipStatus {
+  return status?.toLowerCase() === 'pending' ? 'pending' : 'active';
 }
 
 interface LeaderboardEntryResponse {
@@ -128,6 +134,7 @@ function mapMemberResponseToMember(response: GroupMemberResponse, index: number)
     username: response.displayName, // Use display_name as username fallback
     avatar_url: response.avatarUrl,
     role: mapRole(response.role),
+    status: mapStatus(response.status),
     joined_at: response.joinedAt,
     steps: 0, // Will be populated from leaderboard if needed
     rank: index + 1, // Default rank based on position
@@ -295,22 +302,26 @@ export const groupsApi = {
   },
 
   /**
-   * Join a group (public or with join code).
+   * Join a group (public or with join code). Returns the group id and the
+   * resulting membership status so callers can surface a "pending approval"
+   * message for approval-gated groups.
    * Uses backend API: POST /api/v1/groups/{id}/join
    */
-  joinGroup: async (groupId: string, joinCode?: string): Promise<void> => {
-    await apiClient.post<GroupResponse>(`/groups/${groupId}/join`, { joinCode });
+  joinGroup: async (groupId: string, joinCode?: string): Promise<JoinGroupResult> => {
+    const response = await apiClient.post<GroupResponse>(`/groups/${groupId}/join`, { joinCode });
+    return { groupId: response.id, status: mapStatus(response.status) };
   },
 
   /**
-   * Join a group by join code.
+   * Join a group by join code. Returns the group id and the resulting
+   * membership status.
    * Uses backend API: POST /api/v1/groups/join-by-code
    */
-  joinGroupByCode: async (joinCode: string): Promise<string> => {
+  joinGroupByCode: async (joinCode: string): Promise<JoinGroupResult> => {
     const response = await apiClient.post<GroupResponse>('/groups/join-by-code', {
       code: joinCode.toUpperCase(),
     });
-    return response.id;
+    return { groupId: response.id, status: mapStatus(response.status) };
   },
 
   /**

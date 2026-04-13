@@ -40,7 +40,7 @@ public class GroupServiceSearchTests
         _mockGroupRepository.Setup(x => x.SearchPublicGroupsAsync(query, limit))
             .ReturnsAsync(groups);
         _mockGroupRepository.Setup(x => x.GetUserGroupsAsync(_testUserId))
-            .ReturnsAsync(new List<(Group, MemberRole)>());
+            .ReturnsAsync(new List<(Group, MemberRole, MembershipStatus)>());
 
         // Act
         var result = await _sut.SearchPublicGroupsAsync(_testUserId, query, limit);
@@ -66,7 +66,7 @@ public class GroupServiceSearchTests
         _mockGroupRepository.Setup(x => x.SearchPublicGroupsAsync(query, limit))
             .ReturnsAsync(new List<Group>());
         _mockGroupRepository.Setup(x => x.GetUserGroupsAsync(_testUserId))
-            .ReturnsAsync(new List<(Group, MemberRole)>());
+            .ReturnsAsync(new List<(Group, MemberRole, MembershipStatus)>());
 
         // Act
         var result = await _sut.SearchPublicGroupsAsync(_testUserId, query, limit);
@@ -144,7 +144,7 @@ public class GroupServiceSearchTests
         _mockGroupRepository.Setup(x => x.SearchPublicGroupsAsync(query, limit))
             .ReturnsAsync(new List<Group>());
         _mockGroupRepository.Setup(x => x.GetUserGroupsAsync(_testUserId))
-            .ReturnsAsync(new List<(Group, MemberRole)>());
+            .ReturnsAsync(new List<(Group, MemberRole, MembershipStatus)>());
 
         // Act
         await _sut.SearchPublicGroupsAsync(_testUserId, query, limit);
@@ -163,7 +163,7 @@ public class GroupServiceSearchTests
         _mockGroupRepository.Setup(x => x.SearchPublicGroupsAsync(query, limit))
             .ReturnsAsync(new List<Group>());
         _mockGroupRepository.Setup(x => x.GetUserGroupsAsync(_testUserId))
-            .ReturnsAsync(new List<(Group, MemberRole)>());
+            .ReturnsAsync(new List<(Group, MemberRole, MembershipStatus)>());
 
         // Act
         await _sut.SearchPublicGroupsAsync(_testUserId, query, limit);
@@ -187,7 +187,7 @@ public class GroupServiceSearchTests
         _mockGroupRepository.Setup(x => x.SearchPublicGroupsAsync(query, limit))
             .ReturnsAsync(groups);
         _mockGroupRepository.Setup(x => x.GetUserGroupsAsync(_testUserId))
-            .ReturnsAsync(new List<(Group, MemberRole)>());
+            .ReturnsAsync(new List<(Group, MemberRole, MembershipStatus)>());
 
         // Act
         var result = await _sut.SearchPublicGroupsAsync(_testUserId, query, limit);
@@ -216,7 +216,7 @@ public class GroupServiceSearchTests
         _mockGroupRepository.Setup(x => x.SearchPublicGroupsAsync(query, limit))
             .ReturnsAsync(groups);
         _mockGroupRepository.Setup(x => x.GetUserGroupsAsync(_testUserId))
-            .ReturnsAsync(new List<(Group, MemberRole)>());
+            .ReturnsAsync(new List<(Group, MemberRole, MembershipStatus)>());
 
         // Act
         var result = await _sut.SearchPublicGroupsAsync(_testUserId, query, limit);

@@ -29,4 +29,9 @@ public class GroupMembership
     /// When the user joined the group.
     /// </summary>
     public DateTime JoinedAt { get; set; }
+
+    /// <summary>
+    /// Lifecycle status of the membership (active or pending approval).
+    /// </summary>
+    public MembershipStatus Status { get; set; } = MembershipStatus.Active;
 }

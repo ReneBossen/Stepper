@@ -199,8 +199,16 @@ export default function JoinGroupScreen({ route }: Props) {
     async (groupId: string) => {
       setIsJoiningGroup(groupId);
       try {
-        await joinGroup(groupId);
-        navigation.replace('GroupDetail', { groupId });
+        const result = await joinGroup(groupId);
+        if (result.status === 'pending') {
+          Alert.alert(
+            'Request sent',
+            'Your request to join is waiting for a group admin to approve it.'
+          );
+          navigation.goBack();
+        } else {
+          navigation.replace('GroupDetail', { groupId: result.groupId });
+        }
       } catch (error) {
         Alert.alert('Error', getErrorMessage(error));
       } finally {
@@ -232,9 +240,17 @@ export default function JoinGroupScreen({ route }: Props) {
     setInviteCodeError(null);
 
     try {
-      const groupId = await joinGroupByCode(trimmedCode);
+      const result = await joinGroupByCode(trimmedCode);
       setShowInviteDialog(false);
-      navigation.replace('GroupDetail', { groupId });
+      if (result.status === 'pending') {
+        Alert.alert(
+          'Request sent',
+          'Your request to join is waiting for a group admin to approve it.'
+        );
+        navigation.goBack();
+      } else {
+        navigation.replace('GroupDetail', { groupId: result.groupId });
+      }
     } catch (error) {
       setInviteCodeError(getErrorMessage(error));
     } finally {
