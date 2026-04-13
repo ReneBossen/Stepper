@@ -51,35 +51,23 @@ public class GroupService : IGroupService
 
         ValidateMaxMembers(request.MaxMembers);
 
-        // Build the group to create. Id/CreatedById/CreatedAt are assigned
-        // server-side by the create_group_with_owner RPC; they are populated
-        // here only to satisfy the domain model.
-        var group = new Group
-        {
-            Id = Guid.NewGuid(),
-            Name = request.Name.Trim(),
-            Description = request.Description?.Trim(),
-            CreatedById = userId,
-            IsPublic = request.IsPublic,
-            JoinCode = GenerateJoinCode(),
-            PeriodType = request.PeriodType,
-            CreatedAt = DateTime.UtcNow,
-            MemberCount = 0,
-            MaxMembers = request.MaxMembers
-        };
-
         // Atomic create: group + owner membership + join code row, via
-        // SECURITY DEFINER RPC. Three separate inserts from the authenticated
-        // client fail RLS on group_memberships and group_join_codes.
-        var newGroupId = await _groupRepository.CreateGroupWithOwnerAsync(group);
+        // SECURITY DEFINER RPC. Id, CreatedById, and CreatedAt are assigned
+        // server-side (auth.uid() and NOW()).
+        var input = new CreateGroupInput(
+            Name: request.Name.Trim(),
+            Description: request.Description?.Trim(),
+            IsPublic: request.IsPublic,
+            PeriodType: request.PeriodType,
+            MaxMembers: request.MaxMembers,
+            JoinCode: GenerateJoinCode());
 
-        var refreshedGroup = await _groupRepository.GetByIdAsync(newGroupId);
-        if (refreshedGroup == null)
-        {
-            throw new InvalidOperationException("Failed to retrieve created group.");
-        }
+        var newGroupId = await _groupRepository.CreateGroupWithOwnerAsync(input);
 
-        return await MapToGroupResponseAsync(refreshedGroup, MemberRole.Owner);
+        var createdGroup = await _groupRepository.GetByIdAsync(newGroupId)
+            ?? throw new InvalidOperationException("Failed to retrieve created group.");
+
+        return await MapToGroupResponseAsync(createdGroup, MemberRole.Owner);
     }
 
     /// <inheritdoc />

@@ -47,20 +47,20 @@ public class GroupRepository : IGroupRepository
     }
 
     /// <inheritdoc />
-    public async Task<Guid> CreateGroupWithOwnerAsync(Group group)
+    public async Task<Guid> CreateGroupWithOwnerAsync(CreateGroupInput input)
     {
-        ArgumentNullException.ThrowIfNull(group);
+        ArgumentNullException.ThrowIfNull(input);
 
         var client = await GetAuthenticatedClientAsync();
 
         var response = await client.Rpc("create_group_with_owner", new Dictionary<string, object?>
         {
-            { "p_name", group.Name },
-            { "p_description", group.Description },
-            { "p_is_public", group.IsPublic },
-            { "p_period_type", group.PeriodType.ToString().ToLowerInvariant() },
-            { "p_max_members", group.MaxMembers },
-            { "p_join_code", group.JoinCode }
+            { "p_name", input.Name },
+            { "p_description", input.Description },
+            { "p_is_public", input.IsPublic },
+            { "p_period_type", input.PeriodType.ToString().ToLowerInvariant() },
+            { "p_max_members", input.MaxMembers },
+            { "p_join_code", input.JoinCode }
         });
 
         var content = response.Content;

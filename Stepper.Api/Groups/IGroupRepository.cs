@@ -19,11 +19,11 @@ public interface IGroupRepository
     /// the <c>create_group_with_owner</c> Supabase RPC. Required because the
     /// RLS policies on <c>group_memberships</c> and <c>group_join_codes</c>
     /// prevent the authenticated client from performing the three inserts
-    /// separately.
+    /// separately. The caller is identified server-side via <c>auth.uid()</c>.
     /// </summary>
-    /// <param name="group">The group to create.</param>
+    /// <param name="input">The group fields supplied by the caller.</param>
     /// <returns>The ID of the newly created group.</returns>
-    Task<Guid> CreateGroupWithOwnerAsync(Group group);
+    Task<Guid> CreateGroupWithOwnerAsync(CreateGroupInput input);
 
     /// <summary>
     /// Gets a group by ID.
