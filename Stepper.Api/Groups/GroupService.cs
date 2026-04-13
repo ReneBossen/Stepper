@@ -51,49 +51,23 @@ public class GroupService : IGroupService
 
         ValidateMaxMembers(request.MaxMembers);
 
-        // Create the group
-        var group = new Group
-        {
-            Id = Guid.NewGuid(),
-            Name = request.Name.Trim(),
-            Description = request.Description?.Trim(),
-            CreatedById = userId,
-            IsPublic = request.IsPublic,
-            JoinCode = GenerateJoinCode(),
-            PeriodType = request.PeriodType,
-            CreatedAt = DateTime.UtcNow,
-            MemberCount = 0,
-            MaxMembers = request.MaxMembers
-        };
+        // Atomic create: group + owner membership + join code row, via
+        // SECURITY DEFINER RPC. Id, CreatedById, and CreatedAt are assigned
+        // server-side (auth.uid() and NOW()).
+        var input = new CreateGroupInput(
+            Name: request.Name.Trim(),
+            Description: request.Description?.Trim(),
+            IsPublic: request.IsPublic,
+            PeriodType: request.PeriodType,
+            MaxMembers: request.MaxMembers,
+            JoinCode: GenerateJoinCode());
 
-        var createdGroup = await _groupRepository.CreateAsync(group);
+        var newGroupId = await _groupRepository.CreateGroupWithOwnerAsync(input);
 
-        // Store join code in separate table
-        if (!string.IsNullOrEmpty(group.JoinCode))
-        {
-            await _groupRepository.CreateJoinCodeAsync(createdGroup.Id, group.JoinCode);
-        }
+        var createdGroup = await _groupRepository.GetByIdAsync(newGroupId)
+            ?? throw new InvalidOperationException("Failed to retrieve created group.");
 
-        // Add the creator as owner
-        var membership = new GroupMembership
-        {
-            Id = Guid.NewGuid(),
-            GroupId = createdGroup.Id,
-            UserId = userId,
-            Role = MemberRole.Owner,
-            JoinedAt = DateTime.UtcNow
-        };
-
-        await _groupRepository.AddMemberAsync(membership);
-
-        // Refresh the group to get updated member count
-        var refreshedGroup = await _groupRepository.GetByIdAsync(createdGroup.Id);
-        if (refreshedGroup == null)
-        {
-            throw new InvalidOperationException("Failed to retrieve created group.");
-        }
-
-        return await MapToGroupResponseAsync(refreshedGroup, MemberRole.Owner);
+        return await MapToGroupResponseAsync(createdGroup, MemberRole.Owner);
     }
 
     /// <inheritdoc />

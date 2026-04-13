@@ -59,18 +59,14 @@ public class GroupServiceTests
             PeriodType = CompetitionPeriodType.Weekly
         };
 
-        var createdGroup = CreateTestGroup(Guid.NewGuid(), "Test Group", userId, true, null, CompetitionPeriodType.Weekly, 0);
-        var groupWithOwner = CreateTestGroup(createdGroup.Id, "Test Group", userId, true, null, CompetitionPeriodType.Weekly, 1);
+        var newGroupId = Guid.NewGuid();
+        var groupWithOwner = CreateTestGroup(newGroupId, "Test Group", userId, true, null, CompetitionPeriodType.Weekly, 1);
 
-        _mockGroupRepository.Setup(x => x.CreateAsync(It.IsAny<Group>()))
-            .ReturnsAsync(createdGroup);
-        _mockGroupRepository.Setup(x => x.CreateJoinCodeAsync(createdGroup.Id, It.IsAny<string>()))
-            .Returns(Task.CompletedTask);
-        _mockGroupRepository.Setup(x => x.AddMemberAsync(It.IsAny<GroupMembership>()))
-            .ReturnsAsync(new GroupMembership { Id = Guid.NewGuid(), GroupId = createdGroup.Id, UserId = userId, Role = MemberRole.Owner, JoinedAt = DateTime.UtcNow });
-        _mockGroupRepository.Setup(x => x.GetByIdAsync(createdGroup.Id))
+        _mockGroupRepository.Setup(x => x.CreateGroupWithOwnerAsync(It.IsAny<CreateGroupInput>()))
+            .ReturnsAsync(newGroupId);
+        _mockGroupRepository.Setup(x => x.GetByIdAsync(newGroupId))
             .ReturnsAsync(groupWithOwner);
-        _mockGroupRepository.Setup(x => x.GetJoinCodeAsync(createdGroup.Id))
+        _mockGroupRepository.Setup(x => x.GetJoinCodeAsync(newGroupId))
             .ReturnsAsync("ABC12345");
 
         // Act
@@ -83,18 +79,14 @@ public class GroupServiceTests
         result.PeriodType.Should().Be(CompetitionPeriodType.Weekly);
         result.Role.Should().Be(MemberRole.Owner);
         result.MemberCount.Should().Be(1);
-        _mockGroupRepository.Verify(x => x.CreateAsync(It.Is<Group>(g =>
-            g.Name == "Test Group" &&
-            g.Description == "Test Description" &&
-            g.IsPublic == true &&
-            g.CreatedById == userId &&
-            !string.IsNullOrEmpty(g.JoinCode)
+        _mockGroupRepository.Verify(x => x.CreateGroupWithOwnerAsync(It.Is<CreateGroupInput>(i =>
+            i.Name == "Test Group" &&
+            i.Description == "Test Description" &&
+            i.IsPublic == true &&
+            !string.IsNullOrEmpty(i.JoinCode)
         )), Times.Once);
-        _mockGroupRepository.Verify(x => x.AddMemberAsync(It.Is<GroupMembership>(m =>
-            m.UserId == userId &&
-            m.GroupId == createdGroup.Id &&
-            m.Role == MemberRole.Owner
-        )), Times.Once);
+        _mockGroupRepository.Verify(x => x.AddMemberAsync(It.IsAny<GroupMembership>()), Times.Never);
+        _mockGroupRepository.Verify(x => x.CreateJoinCodeAsync(It.IsAny<Guid>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -109,18 +101,14 @@ public class GroupServiceTests
             PeriodType = CompetitionPeriodType.Weekly
         };
 
-        var createdGroup = CreateTestGroup(Guid.NewGuid(), "Private Group", userId, false, null, CompetitionPeriodType.Weekly, 0);
-        var groupWithOwner = CreateTestGroup(createdGroup.Id, "Private Group", userId, false, null, CompetitionPeriodType.Weekly, 1);
+        var newGroupId = Guid.NewGuid();
+        var groupWithOwner = CreateTestGroup(newGroupId, "Private Group", userId, false, null, CompetitionPeriodType.Weekly, 1);
 
-        _mockGroupRepository.Setup(x => x.CreateAsync(It.IsAny<Group>()))
-            .ReturnsAsync(createdGroup);
-        _mockGroupRepository.Setup(x => x.CreateJoinCodeAsync(createdGroup.Id, It.IsAny<string>()))
-            .Returns(Task.CompletedTask);
-        _mockGroupRepository.Setup(x => x.AddMemberAsync(It.IsAny<GroupMembership>()))
-            .ReturnsAsync(new GroupMembership { Id = Guid.NewGuid(), GroupId = createdGroup.Id, UserId = userId, Role = MemberRole.Owner, JoinedAt = DateTime.UtcNow });
-        _mockGroupRepository.Setup(x => x.GetByIdAsync(createdGroup.Id))
+        _mockGroupRepository.Setup(x => x.CreateGroupWithOwnerAsync(It.IsAny<CreateGroupInput>()))
+            .ReturnsAsync(newGroupId);
+        _mockGroupRepository.Setup(x => x.GetByIdAsync(newGroupId))
             .ReturnsAsync(groupWithOwner);
-        _mockGroupRepository.Setup(x => x.GetJoinCodeAsync(createdGroup.Id))
+        _mockGroupRepository.Setup(x => x.GetJoinCodeAsync(newGroupId))
             .ReturnsAsync("ABC12345");
 
         // Act
@@ -131,11 +119,10 @@ public class GroupServiceTests
         result.IsPublic.Should().BeFalse();
         result.JoinCode.Should().NotBeNullOrEmpty();
         result.JoinCode.Should().HaveLength(8);
-        _mockGroupRepository.Verify(x => x.CreateAsync(It.Is<Group>(g =>
-            g.IsPublic == false &&
-            !string.IsNullOrEmpty(g.JoinCode)
+        _mockGroupRepository.Verify(x => x.CreateGroupWithOwnerAsync(It.Is<CreateGroupInput>(i =>
+            i.IsPublic == false &&
+            !string.IsNullOrEmpty(i.JoinCode)
         )), Times.Once);
-        _mockGroupRepository.Verify(x => x.CreateJoinCodeAsync(createdGroup.Id, It.IsAny<string>()), Times.Once);
     }
 
     [Fact]
@@ -150,7 +137,7 @@ public class GroupServiceTests
         // Assert
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("User ID cannot be empty.*");
-        _mockGroupRepository.Verify(x => x.CreateAsync(It.IsAny<Group>()), Times.Never);
+        _mockGroupRepository.Verify(x => x.CreateGroupWithOwnerAsync(It.IsAny<CreateGroupInput>()), Times.Never);
     }
 
     [Fact]
@@ -164,7 +151,7 @@ public class GroupServiceTests
 
         // Assert
         await act.Should().ThrowAsync<ArgumentNullException>();
-        _mockGroupRepository.Verify(x => x.CreateAsync(It.IsAny<Group>()), Times.Never);
+        _mockGroupRepository.Verify(x => x.CreateGroupWithOwnerAsync(It.IsAny<CreateGroupInput>()), Times.Never);
     }
 
     [Theory]
@@ -183,7 +170,7 @@ public class GroupServiceTests
         // Assert
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("Group name cannot be empty.");
-        _mockGroupRepository.Verify(x => x.CreateAsync(It.IsAny<Group>()), Times.Never);
+        _mockGroupRepository.Verify(x => x.CreateGroupWithOwnerAsync(It.IsAny<CreateGroupInput>()), Times.Never);
     }
 
     [Fact]
@@ -199,7 +186,7 @@ public class GroupServiceTests
         // Assert
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("Group name must be between 2 and 50 characters.");
-        _mockGroupRepository.Verify(x => x.CreateAsync(It.IsAny<Group>()), Times.Never);
+        _mockGroupRepository.Verify(x => x.CreateGroupWithOwnerAsync(It.IsAny<CreateGroupInput>()), Times.Never);
     }
 
     [Fact]
@@ -215,7 +202,7 @@ public class GroupServiceTests
         // Assert
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("Group name must be between 2 and 50 characters.");
-        _mockGroupRepository.Verify(x => x.CreateAsync(It.IsAny<Group>()), Times.Never);
+        _mockGroupRepository.Verify(x => x.CreateGroupWithOwnerAsync(It.IsAny<CreateGroupInput>()), Times.Never);
     }
 
     [Fact]
@@ -225,14 +212,12 @@ public class GroupServiceTests
         var userId = Guid.NewGuid();
         var request = new CreateGroupRequest { Name = "  Test Group  ", IsPublic = true, PeriodType = CompetitionPeriodType.Weekly };
 
-        var createdGroup = CreateTestGroup(Guid.NewGuid(), "Test Group", userId, true, null, CompetitionPeriodType.Weekly, 0);
-        var groupWithOwner = CreateTestGroup(createdGroup.Id, "Test Group", userId, true, null, CompetitionPeriodType.Weekly, 1);
+        var newGroupId = Guid.NewGuid();
+        var groupWithOwner = CreateTestGroup(newGroupId, "Test Group", userId, true, null, CompetitionPeriodType.Weekly, 1);
 
-        _mockGroupRepository.Setup(x => x.CreateAsync(It.IsAny<Group>()))
-            .ReturnsAsync(createdGroup);
-        _mockGroupRepository.Setup(x => x.AddMemberAsync(It.IsAny<GroupMembership>()))
-            .ReturnsAsync(new GroupMembership { Id = Guid.NewGuid(), GroupId = createdGroup.Id, UserId = userId, Role = MemberRole.Owner, JoinedAt = DateTime.UtcNow });
-        _mockGroupRepository.Setup(x => x.GetByIdAsync(createdGroup.Id))
+        _mockGroupRepository.Setup(x => x.CreateGroupWithOwnerAsync(It.IsAny<CreateGroupInput>()))
+            .ReturnsAsync(newGroupId);
+        _mockGroupRepository.Setup(x => x.GetByIdAsync(newGroupId))
             .ReturnsAsync(groupWithOwner);
 
         // Act
@@ -240,7 +225,7 @@ public class GroupServiceTests
 
         // Assert
         result.Name.Should().Be("Test Group");
-        _mockGroupRepository.Verify(x => x.CreateAsync(It.Is<Group>(g => g.Name == "Test Group")), Times.Once);
+        _mockGroupRepository.Verify(x => x.CreateGroupWithOwnerAsync(It.Is<CreateGroupInput>(i => i.Name == "Test Group")), Times.Once);
     }
 
     #endregion

@@ -47,6 +47,39 @@ public class GroupRepository : IGroupRepository
     }
 
     /// <inheritdoc />
+    public async Task<Guid> CreateGroupWithOwnerAsync(CreateGroupInput input)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+
+        var client = await GetAuthenticatedClientAsync();
+
+        var response = await client.Rpc("create_group_with_owner", new Dictionary<string, object?>
+        {
+            { "p_name", input.Name },
+            { "p_description", input.Description },
+            { "p_is_public", input.IsPublic },
+            { "p_period_type", input.PeriodType.ToString().ToLowerInvariant() },
+            { "p_max_members", input.MaxMembers },
+            { "p_join_code", input.JoinCode }
+        });
+
+        var content = response.Content;
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            throw new InvalidOperationException("create_group_with_owner returned no group id.");
+        }
+
+        // Supabase returns the scalar UUID as a JSON string, e.g. "\"guid\"".
+        var parsed = System.Text.Json.JsonSerializer.Deserialize<Guid>(content);
+        if (parsed == Guid.Empty)
+        {
+            throw new InvalidOperationException("create_group_with_owner returned an empty group id.");
+        }
+
+        return parsed;
+    }
+
+    /// <inheritdoc />
     public async Task<Group?> GetByIdAsync(Guid groupId)
     {
         var client = await GetAuthenticatedClientAsync();
