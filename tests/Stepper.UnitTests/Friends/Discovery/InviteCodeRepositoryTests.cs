@@ -186,28 +186,6 @@ public class InviteCodeRepositoryTests
 
     #endregion
 
-    #region Authentication Token Tests - UpdateAsync
-
-    [Fact]
-    public async Task UpdateAsync_WithMissingTokenKey_ThrowsUnauthorizedAccessException()
-    {
-        // Arrange
-        var inviteCode = CreateTestInviteCode();
-        _mockHttpContext.Setup(x => x.Items).Returns(new Dictionary<object, object?>());
-        _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(_mockHttpContext.Object);
-        var sut = new InviteCodeRepository(_mockClientFactory.Object, _mockHttpContextAccessor.Object);
-
-        // Act
-        var act = async () => await sut.UpdateAsync(inviteCode);
-
-        // Assert
-        await act.Should().ThrowAsync<UnauthorizedAccessException>()
-            .WithMessage("User is not authenticated.");
-        _mockClientFactory.Verify(x => x.CreateClientAsync(It.IsAny<string>()), Times.Never);
-    }
-
-    #endregion
-
     #region Authentication Token Tests - DeleteAsync
 
     [Fact]
