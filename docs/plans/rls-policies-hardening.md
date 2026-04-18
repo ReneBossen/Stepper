@@ -239,11 +239,11 @@ Notifications (table 10):
 - Mark all as read via API (`PUT /api/v1/notifications/read-all`) → succeeds.
 - Delete via API (`DELETE /api/v1/notifications/{id}`) → succeeds.
 
-### Groups cluster follow-ups (must become commits on this branch before PR)
+### Groups cluster follow-ups ✅ done
 
-See "Follow-ups on the groups cluster" section below. Neither blocks merging individually, but both should ship in the same PR so the hardening story is complete:
-- `group_memberships` DELETE for owner — either drop the policy + add `leave_group` RPC, or add a check constraint.
-- `group_join_codes.join_code` uniqueness — add `UNIQUE (join_code)` after resolving any existing collisions.
+Both follow-ups are now committed on this branch:
+- ✅ `group_memberships` DELETE for owner — dropped "Users can leave groups" policy, added `leave_group` SECURITY DEFINER RPC. Migration `20260418150000_groups_leave_rpc.sql`.
+- ✅ `group_join_codes.join_code` uniqueness — resolves duplicates, drops redundant index, adds `UNIQUE (join_code)`. Migration `20260418160000_unique_join_code.sql`.
 
 ### Test suite gate
 
@@ -369,12 +369,10 @@ No backend or mobile code changes. The backend's `MarkAsReadAsync` only changes 
 
 **Deployment ordering for this table:** migration-first is safe — no backend changes. No pre-check required.
 
-### 8. Follow-ups on the groups cluster (flagged but not fixed)
+### 8. Follow-ups on the groups cluster ✅ done
 
-Neither blocks merging this branch but both should become their own commits on this branch before it's PR'd:
-
-- **`group_memberships` DELETE for owner.** Current policy lets an owner `DELETE` their own membership row even if the group has other members, orphaning the group. The service-layer `LeaveGroupAsync` already blocks this, but the DB policy should match. Fix: either drop the `user_id = auth.uid()` DELETE policy and route leave through a `leave_group` RPC, or add a check constraint. The user already agreed "owners cannot leave without transferring ownership" semantics are desired.
-- **`group_join_codes.join_code` uniqueness.** The table has `UNIQUE (group_id)` but not `UNIQUE (join_code)`. `join_group_by_code` picks one with `LIMIT 1` if there's a collision — silently unreachable for the loser. Add `UNIQUE (join_code)` in a migration. Need to check for existing duplicates first and resolve them.
+- **`group_memberships` DELETE for owner.** ✅ Dropped "Users can leave groups" DELETE policy. Added `leave_group(p_group_id)` SECURITY DEFINER RPC that enforces: caller must be a member; if owner, must be the only active member. Backend updated to call the RPC. Migration `20260418150000_groups_leave_rpc.sql`.
+- **`group_join_codes.join_code` uniqueness.** ✅ Added duplicate resolution + `UNIQUE (join_code)` constraint. Dropped redundant `idx_group_join_codes_code` index. Migration `20260418160000_unique_join_code.sql`.
 
 ### All 10 tables hardened ✅
 
@@ -384,7 +382,7 @@ All RLS-enabled tables have been hardened on this branch:
 5. ~~`groups`~~ ✅  6. ~~`group_memberships`~~ ✅  7. ~~`group_join_codes`~~ ✅  8. ~~`invite_codes`~~ ✅
 9. ~~`activity_feed`~~ ✅  10. ~~`notifications`~~ ✅
 
-Remaining work before PR: groups cluster follow-ups (section 8 above).
+All work complete — branch is ready for PR.
 
 ---
 
