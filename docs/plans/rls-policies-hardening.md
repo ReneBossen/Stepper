@@ -17,7 +17,7 @@ Tables with RLS enabled (10 total):
 1. `users` ✅ done on this branch
 2. `user_preferences` ✅ done on this branch
 3. `step_entries` ✅ done on this branch
-4. `friendships`
+4. `friendships` ✅ done on this branch
 5. `groups` ✅ done on this branch
 6. `group_memberships` ✅ done on this branch
 7. `group_join_codes` ✅ done on this branch
@@ -139,7 +139,12 @@ Run these **before** applying any migration on this branch. If any return non-ze
    SELECT count(*) FROM step_entries WHERE step_count > 200000;
    ```
 
-5. *(Add rows here as each remaining table is hardened.)*
+5. **`friendships` blocked rows** (migration `20260418120000_*` will drop the blocking UPDATE policy):
+   ```sql
+   SELECT count(*) FROM friendships WHERE status = 'blocked';
+   ```
+
+6. *(Add rows here as each remaining table is hardened.)*
 
 ### Deployment ordering
 
@@ -192,6 +197,21 @@ Step entries (table 3):
 - SELECT as user A (NOT friend of user C) → returns only A's own steps.
 - Sync endpoint (`PUT /api/v1/steps/sync`) with valid data → creates/updates as before.
 - Delete by source (`DELETE /api/v1/steps/source/{source}`) → still works.
+
+Friendships (table 4):
+- `INSERT INTO friendships (requester_id, addressee_id, status) VALUES (auth.uid(), '<other-id>', 'pending')` → succeeds.
+- `INSERT INTO friendships (requester_id, addressee_id, status) VALUES (auth.uid(), '<other-id>', 'blocked')` → denied by INSERT policy (status must be 'pending').
+- `INSERT INTO friendships (requester_id, addressee_id, status) VALUES ('<other-id>', auth.uid(), 'pending')` → denied by INSERT policy (requester must be self).
+- As addressee, `UPDATE friendships SET status = 'accepted' WHERE id = '<request-id>'` → succeeds, `accepted_at` auto-set to NOW().
+- As addressee, `UPDATE friendships SET status = 'rejected' WHERE id = '<request-id>'` → succeeds.
+- As addressee, `UPDATE friendships SET status = 'blocked' WHERE id = '<request-id>'` → denied by WITH CHECK (status must be 'accepted' or 'rejected').
+- As requester, `UPDATE friendships SET status = 'accepted' WHERE id = '<request-id>'` → denied by USING (only addressee can respond).
+- `UPDATE friendships SET requester_id = '<other-id>' WHERE id = '<own-request>'` → raises `friendships.requester_id is immutable`.
+- `UPDATE friendships SET addressee_id = '<other-id>' WHERE id = '<own-request>'` → raises `friendships.addressee_id is immutable`.
+- `UPDATE friendships SET created_at = '2020-01-01' WHERE id = '<own-request>'` → raises `friendships.created_at is immutable`.
+- `DELETE FROM friendships WHERE id = '<friendship-id>'` as either party → succeeds (unchanged).
+- Accept via API, read back → `accepted_at` is populated and close to NOW().
+- Reject via API, read back → `accepted_at` is NULL.
 
 *(Append smoke tests as each remaining table is hardened.)*
 
@@ -276,7 +296,26 @@ No backend or mobile code changes. All write paths only modify mutable columns (
 
 **Deployment ordering for this table:** migration-first is safe — backend is unchanged and continues to use the same Supabase client calls. CHECK constraint may fail if prod has rows with `step_count > 200000`; run the pre-check before applying.
 
-### 5. Follow-ups on the groups cluster (flagged but not fixed)
+### 5. Table 4: `friendships` ✅ done
+
+Migration `supabase/migrations/20260418120000_harden_friendships_rls.sql` — audit-driven (no known bug). Five gaps closed:
+
+- **Tightened INSERT policy.** Old policy (from `docs/migrations/005`) allowed `status = 'pending' OR status = 'blocked'`. Backend only ever inserts `'pending'`. Removed the `'blocked'` branch so a direct Supabase client cannot pre-block someone without a request flow.
+- **Tightened UPDATE "respond" policy.** Old WITH CHECK only verified `uid() = addressee_id` with no status constraint — addressee could set any value. New WITH CHECK constrains `status IN ('accepted', 'rejected')`, matching the two valid responses the backend uses.
+- **Dropped blocking UPDATE policy (dead code).** `"Users can block friendships"` had no backend endpoint. Its USING clause had no status restriction, letting either party transition from ANY status to `'blocked'`. Removed entirely — if blocking is implemented later, it should go through a SECURITY DEFINER RPC.
+- **Immutable column trigger.** New `trg_friendships_prevent_immutable_updates` rejects changes to `id`, `requester_id`, `addressee_id`, `created_at`. `requester_id` change = request forgery; `addressee_id` change = request redirection. Mirrors the pattern from users, user_preferences, and step_entries.
+- **Auto-set `accepted_at` via trigger.** New `trg_friendships_manage_accepted_at` auto-sets `accepted_at = NOW()` when status transitions to `'accepted'`, and NULLs it when transitioning away. The backend's explicit `AcceptedAt = DateTime.UtcNow` is harmlessly overwritten — same result, more accurate (DB server clock eliminates clock-skew).
+
+Design decisions:
+- **`'blocked'` kept in status CHECK constraint** for forward-compatibility. After this migration, no RLS-guarded path can write it — only the service role can.
+- **Re-requests after rejection allowed.** Either party can DELETE a rejected row; the requester can then INSERT a new pending request. Rate limiting is a service-layer concern.
+- **DELETE and SELECT policies unchanged.** Both are correctly scoped (either party can see/delete their own friendships).
+
+No backend or mobile code changes. Trigger ordering is correct: `trg_friendships_manage_accepted_at` fires before `trg_friendships_prevent_immutable_updates` (alphabetical); `accepted_at` is not in the immutable list, so no conflict.
+
+**Deployment ordering for this table:** migration-first is safe — backend is unchanged. Run the pre-check for blocked rows before applying.
+
+### 6. Follow-ups on the groups cluster (flagged but not fixed)
 
 Neither blocks merging this branch but both should become their own commits on this branch before it's PR'd:
 
@@ -289,7 +328,7 @@ The user explicitly wants to work through each remaining table in a conversation
 
 1. ~~**`user_preferences`** (table 2)~~ ✅ done
 2. ~~**`step_entries`** (table 3)~~ ✅ done
-3. **`friendships`** (table 4)
+3. ~~**`friendships`** (table 4)~~ ✅ done
 4. **`activity_feed`** (table 9)
 5. **`notifications`** (table 10)
 
