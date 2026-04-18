@@ -628,6 +628,17 @@ public class GroupRepository : IGroupRepository
         return parsed;
     }
 
+    /// <inheritdoc />
+    public async Task LeaveGroupAsync(Guid groupId)
+    {
+        var client = await GetAuthenticatedClientAsync();
+
+        await client.Rpc("leave_group", new Dictionary<string, object?>
+        {
+            { "p_group_id", groupId }
+        });
+    }
+
     private static (Guid GroupId, MembershipStatus Status) ParseJoinRpcResponse(string? content, string rpcName)
     {
         if (string.IsNullOrWhiteSpace(content))

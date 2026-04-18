@@ -228,7 +228,7 @@ public class GroupService : IGroupService
             }
         }
 
-        await _groupRepository.RemoveMemberAsync(groupId, userId);
+        await _groupRepository.LeaveGroupAsync(groupId);
     }
 
     /// <inheritdoc />

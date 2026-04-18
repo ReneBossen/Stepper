@@ -742,14 +742,14 @@ public class GroupServiceTests
             .ReturnsAsync(group);
         _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
             .ReturnsAsync(membership);
-        _mockGroupRepository.Setup(x => x.RemoveMemberAsync(groupId, userId))
-            .ReturnsAsync(true);
+        _mockGroupRepository.Setup(x => x.LeaveGroupAsync(groupId))
+            .Returns(Task.CompletedTask);
 
         // Act
         await _sut.LeaveGroupAsync(userId, groupId);
 
         // Assert
-        _mockGroupRepository.Verify(x => x.RemoveMemberAsync(groupId, userId), Times.Once);
+        _mockGroupRepository.Verify(x => x.LeaveGroupAsync(groupId), Times.Once);
     }
 
     [Fact]
@@ -779,7 +779,7 @@ public class GroupServiceTests
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Group owner cannot leave. Transfer ownership to another member first or delete the group.");
-        _mockGroupRepository.Verify(x => x.RemoveMemberAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
+        _mockGroupRepository.Verify(x => x.LeaveGroupAsync(It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]
@@ -797,14 +797,14 @@ public class GroupServiceTests
             .ReturnsAsync(membership);
         _mockGroupRepository.Setup(x => x.GetMembersAsync(groupId, MembershipStatus.Active))
             .ReturnsAsync(new List<GroupMembership> { membership });
-        _mockGroupRepository.Setup(x => x.RemoveMemberAsync(groupId, userId))
-            .ReturnsAsync(true);
+        _mockGroupRepository.Setup(x => x.LeaveGroupAsync(groupId))
+            .Returns(Task.CompletedTask);
 
         // Act
         await _sut.LeaveGroupAsync(userId, groupId);
 
         // Assert
-        _mockGroupRepository.Verify(x => x.RemoveMemberAsync(groupId, userId), Times.Once);
+        _mockGroupRepository.Verify(x => x.LeaveGroupAsync(groupId), Times.Once);
     }
 
     [Fact]
@@ -826,7 +826,7 @@ public class GroupServiceTests
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("You are not a member of this group.");
-        _mockGroupRepository.Verify(x => x.RemoveMemberAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
+        _mockGroupRepository.Verify(x => x.LeaveGroupAsync(It.IsAny<Guid>()), Times.Never);
     }
 
     #endregion

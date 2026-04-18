@@ -211,4 +211,12 @@ public interface IGroupRepository
     /// <param name="userId">The user to add.</param>
     /// <returns>The new membership id.</returns>
     Task<Guid> AdminAddMemberAsync(Guid groupId, Guid userId);
+
+    /// <summary>
+    /// Removes the caller from a group via the <c>leave_group</c> SECURITY
+    /// DEFINER RPC. Enforces: caller must be a member; if owner, must be the
+    /// only active member (prevents orphaning groups).
+    /// </summary>
+    /// <param name="groupId">The group ID.</param>
+    Task LeaveGroupAsync(Guid groupId);
 }
