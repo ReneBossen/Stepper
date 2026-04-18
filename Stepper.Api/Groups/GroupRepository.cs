@@ -1,5 +1,6 @@
 using System.Net;
 using Supabase;
+using Supabase.Postgrest.Exceptions;
 using Stepper.Api.Common.Database;
 using Stepper.Api.Common.Models;
 
@@ -529,12 +530,19 @@ public class GroupRepository : IGroupRepository
 
         var client = await GetAuthenticatedClientAsync();
 
-        var response = await client.Rpc("join_group_by_code", new Dictionary<string, object?>
+        try
         {
-            { "p_code", code }
-        });
+            var response = await client.Rpc("join_group_by_code", new Dictionary<string, object?>
+            {
+                { "p_code", code }
+            });
 
-        return ParseJoinRpcResponse(response.Content, "join_group_by_code");
+            return ParseJoinRpcResponse(response.Content, "join_group_by_code");
+        }
+        catch (PostgrestException ex)
+        {
+            throw TranslateRpcException(ex);
+        }
     }
 
     /// <inheritdoc />
@@ -542,12 +550,19 @@ public class GroupRepository : IGroupRepository
     {
         var client = await GetAuthenticatedClientAsync();
 
-        var response = await client.Rpc("join_public_group", new Dictionary<string, object?>
+        try
         {
-            { "p_group_id", groupId }
-        });
+            var response = await client.Rpc("join_public_group", new Dictionary<string, object?>
+            {
+                { "p_group_id", groupId }
+            });
 
-        return ParseJoinRpcResponse(response.Content, "join_public_group");
+            return ParseJoinRpcResponse(response.Content, "join_public_group");
+        }
+        catch (PostgrestException ex)
+        {
+            throw TranslateRpcException(ex);
+        }
     }
 
     /// <inheritdoc />
@@ -607,25 +622,32 @@ public class GroupRepository : IGroupRepository
     {
         var client = await GetAuthenticatedClientAsync();
 
-        var response = await client.Rpc("admin_add_member", new Dictionary<string, object?>
+        try
         {
-            { "p_group_id", groupId },
-            { "p_user_id", userId }
-        });
+            var response = await client.Rpc("admin_add_member", new Dictionary<string, object?>
+            {
+                { "p_group_id", groupId },
+                { "p_user_id", userId }
+            });
 
-        var content = response.Content;
-        if (string.IsNullOrWhiteSpace(content))
-        {
-            throw new InvalidOperationException("admin_add_member returned no membership id.");
+            var content = response.Content;
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                throw new InvalidOperationException("admin_add_member returned no membership id.");
+            }
+
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<Guid>(content);
+            if (parsed == Guid.Empty)
+            {
+                throw new InvalidOperationException("admin_add_member returned an empty membership id.");
+            }
+
+            return parsed;
         }
-
-        var parsed = System.Text.Json.JsonSerializer.Deserialize<Guid>(content);
-        if (parsed == Guid.Empty)
+        catch (PostgrestException ex)
         {
-            throw new InvalidOperationException("admin_add_member returned an empty membership id.");
+            throw TranslateRpcException(ex);
         }
-
-        return parsed;
     }
 
     /// <inheritdoc />
@@ -633,10 +655,17 @@ public class GroupRepository : IGroupRepository
     {
         var client = await GetAuthenticatedClientAsync();
 
-        await client.Rpc("leave_group", new Dictionary<string, object?>
+        try
         {
-            { "p_group_id", groupId }
-        });
+            await client.Rpc("leave_group", new Dictionary<string, object?>
+            {
+                { "p_group_id", groupId }
+            });
+        }
+        catch (PostgrestException ex)
+        {
+            throw TranslateRpcException(ex);
+        }
     }
 
     private static (Guid GroupId, MembershipStatus Status) ParseJoinRpcResponse(string? content, string rpcName)
@@ -669,6 +698,74 @@ public class GroupRepository : IGroupRepository
         };
 
         return (groupId, status);
+    }
+
+    /// <summary>
+    /// Translates a PostgrestException from a SECURITY DEFINER RPC into the
+    /// semantic .NET exception type the middleware already handles, preserving
+    /// the PostgreSQL error message for the API consumer.
+    /// </summary>
+    private static Exception TranslateRpcException(PostgrestException ex)
+    {
+        var text = $"{ex.Message} {ex.Content}";
+
+        // ERRCODE 23505 — unique violation / "already a member"
+        if (text.Contains("23505"))
+            return new InvalidOperationException(ExtractRpcMessage(text), ex);
+
+        // ERRCODE 23514 — check constraint violation / "group is full"
+        if (text.Contains("23514"))
+            return new InvalidOperationException(ExtractRpcMessage(text), ex);
+
+        // ERRCODE P0002 — no data found / "invalid join code", "not a member", "group not found"
+        if (text.Contains("P0002"))
+            return new KeyNotFoundException(ExtractRpcMessage(text), ex);
+
+        // ERRCODE 42501 — insufficient privilege / "not authenticated", "not admin", "owner cannot leave"
+        if (text.Contains("42501"))
+            return new UnauthorizedAccessException(ExtractRpcMessage(text));
+
+        // ERRCODE 22023 — invalid parameter value
+        if (text.Contains("22023"))
+            return new ArgumentException(ExtractRpcMessage(text));
+
+        // Unknown error code — re-throw as-is so the middleware's PostgrestException → 502 path
+        // still catches genuinely unexpected database errors.
+        return ex;
+    }
+
+    /// <summary>
+    /// Extracts the human-readable message from a PostgrestException's combined
+    /// message/content text. The Supabase client typically embeds the PostgreSQL
+    /// message in a JSON payload or as plain text.
+    /// </summary>
+    private static string ExtractRpcMessage(string text)
+    {
+        // Try to pull the "message" field from the JSON content the Supabase
+        // client returns (e.g. {"message":"Already a member ...","code":"23505"}).
+        try
+        {
+            // The text is "Message | Content" — try parsing the content part.
+            var jsonStart = text.IndexOf('{');
+            if (jsonStart >= 0)
+            {
+                var json = text[jsonStart..];
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("message", out var msg))
+                {
+                    var message = msg.GetString();
+                    if (!string.IsNullOrWhiteSpace(message))
+                        return message;
+                }
+            }
+        }
+        catch
+        {
+            // Fall through to raw text.
+        }
+
+        // Fallback: return the raw text, trimmed.
+        return text.Trim();
     }
 
     private async Task<Supabase.Client> GetAuthenticatedClientAsync()

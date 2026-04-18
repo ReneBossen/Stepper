@@ -735,13 +735,7 @@ public class GroupServiceTests
         // Arrange
         var userId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
-        var group = CreateTestGroup(groupId, "Test Group", Guid.NewGuid(), true, null, CompetitionPeriodType.Weekly, 5);
-        var membership = new GroupMembership { Id = Guid.NewGuid(), GroupId = groupId, UserId = userId, Role = MemberRole.Member, JoinedAt = DateTime.UtcNow };
 
-        _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
-            .ReturnsAsync(group);
-        _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
-            .ReturnsAsync(membership);
         _mockGroupRepository.Setup(x => x.LeaveGroupAsync(groupId))
             .Returns(Task.CompletedTask);
 
@@ -753,50 +747,33 @@ public class GroupServiceTests
     }
 
     [Fact]
-    public async Task LeaveGroupAsync_AsOwnerWithOtherMembers_ThrowsInvalidOperationException()
+    public async Task LeaveGroupAsync_AsOwnerWithOtherMembers_ThrowsUnauthorizedAccessException()
     {
-        // Arrange
+        // Arrange — the leave_group RPC raises ERRCODE 42501 when an owner
+        // tries to leave while other active members exist; the repository
+        // translates this to UnauthorizedAccessException.
         var userId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
-        var group = CreateTestGroup(groupId, "Test Group", userId, true, null, CompetitionPeriodType.Weekly, 5);
-        var membership = new GroupMembership { Id = Guid.NewGuid(), GroupId = groupId, UserId = userId, Role = MemberRole.Owner, JoinedAt = DateTime.UtcNow };
-        var members = new List<GroupMembership>
-        {
-            membership,
-            new GroupMembership { Id = Guid.NewGuid(), GroupId = groupId, UserId = Guid.NewGuid(), Role = MemberRole.Member, JoinedAt = DateTime.UtcNow }
-        };
 
-        _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
-            .ReturnsAsync(group);
-        _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
-            .ReturnsAsync(membership);
-        _mockGroupRepository.Setup(x => x.GetMembersAsync(groupId, MembershipStatus.Active))
-            .ReturnsAsync(members);
+        _mockGroupRepository.Setup(x => x.LeaveGroupAsync(groupId))
+            .ThrowsAsync(new UnauthorizedAccessException("Owner cannot leave without transferring ownership"));
 
         // Act
         var act = async () => await _sut.LeaveGroupAsync(userId, groupId);
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Group owner cannot leave. Transfer ownership to another member first or delete the group.");
-        _mockGroupRepository.Verify(x => x.LeaveGroupAsync(It.IsAny<Guid>()), Times.Never);
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("*Owner cannot leave*");
     }
 
     [Fact]
     public async Task LeaveGroupAsync_AsOwnerAlone_LeavesGroup()
     {
-        // Arrange
+        // Arrange — the leave_group RPC succeeds when the owner is the sole
+        // active member.
         var userId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
-        var group = CreateTestGroup(groupId, "Test Group", userId, true, null, CompetitionPeriodType.Weekly, 1);
-        var membership = new GroupMembership { Id = Guid.NewGuid(), GroupId = groupId, UserId = userId, Role = MemberRole.Owner, JoinedAt = DateTime.UtcNow };
 
-        _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
-            .ReturnsAsync(group);
-        _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
-            .ReturnsAsync(membership);
-        _mockGroupRepository.Setup(x => x.GetMembersAsync(groupId, MembershipStatus.Active))
-            .ReturnsAsync(new List<GroupMembership> { membership });
         _mockGroupRepository.Setup(x => x.LeaveGroupAsync(groupId))
             .Returns(Task.CompletedTask);
 
@@ -808,25 +785,22 @@ public class GroupServiceTests
     }
 
     [Fact]
-    public async Task LeaveGroupAsync_NotMember_ThrowsInvalidOperationException()
+    public async Task LeaveGroupAsync_NotMember_ThrowsKeyNotFoundException()
     {
-        // Arrange
+        // Arrange — the leave_group RPC raises ERRCODE P0002 when the caller
+        // is not a member; the repository translates to KeyNotFoundException.
         var userId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
-        var group = CreateTestGroup(groupId, "Test Group", Guid.NewGuid(), true, null, CompetitionPeriodType.Weekly, 5);
 
-        _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId))
-            .ReturnsAsync(group);
-        _mockGroupRepository.Setup(x => x.GetMembershipAsync(groupId, userId))
-            .ReturnsAsync((GroupMembership?)null);
+        _mockGroupRepository.Setup(x => x.LeaveGroupAsync(groupId))
+            .ThrowsAsync(new KeyNotFoundException("You are not a member of this group"));
 
         // Act
         var act = async () => await _sut.LeaveGroupAsync(userId, groupId);
 
         // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("You are not a member of this group.");
-        _mockGroupRepository.Verify(x => x.LeaveGroupAsync(It.IsAny<Guid>()), Times.Never);
+        await act.Should().ThrowAsync<KeyNotFoundException>()
+            .WithMessage("*not a member*");
     }
 
     #endregion

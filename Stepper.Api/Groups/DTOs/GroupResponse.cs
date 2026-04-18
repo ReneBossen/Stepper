@@ -56,9 +56,11 @@ public record GroupResponse
 
     /// <summary>
     /// The current user's membership status (active or pending approval).
+    /// Null when the user is not a member (e.g. viewing a public group).
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
-    public MembershipStatus Status { get; init; } = MembershipStatus.Active;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public MembershipStatus? Status { get; init; }
 
     /// <summary>
     /// When the group was created.

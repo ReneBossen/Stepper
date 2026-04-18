@@ -88,10 +88,13 @@ public class GroupService : IGroupService
             throw new UnauthorizedAccessException("You are not a member of this group.");
         }
 
-        var role = membership?.Role ?? MemberRole.Member;
-        var status = membership?.Status ?? MembershipStatus.Active;
+        if (membership == null)
+        {
+            // Non-member viewing a public group — no role/status to report.
+            return await MapToGroupResponseAsync(group, MemberRole.Member, status: null);
+        }
 
-        return await MapToGroupResponseAsync(group, role, status);
+        return await MapToGroupResponseAsync(group, membership.Role, membership.Status);
     }
 
     /// <inheritdoc />
@@ -210,24 +213,10 @@ public class GroupService : IGroupService
         ValidateUserId(userId);
         ValidateGroupId(groupId);
 
-        await GetGroupOrThrowAsync(groupId);
-
-        var membership = await _groupRepository.GetMembershipAsync(groupId, userId);
-        if (membership == null)
-        {
-            throw new InvalidOperationException("You are not a member of this group.");
-        }
-
-        // Owners cannot leave if there are other active members
-        if (membership.Role == MemberRole.Owner)
-        {
-            var activeMembers = await _groupRepository.GetMembersAsync(groupId, MembershipStatus.Active);
-            if (activeMembers.Count > 1)
-            {
-                throw new InvalidOperationException("Group owner cannot leave. Transfer ownership to another member first or delete the group.");
-            }
-        }
-
+        // The leave_group SECURITY DEFINER RPC enforces membership, owner
+        // check, and active-member count server-side. TranslateRpcException
+        // in the repository maps PostgreSQL error codes to the semantic .NET
+        // exception types the middleware expects.
         await _groupRepository.LeaveGroupAsync(groupId);
     }
 
@@ -347,11 +336,11 @@ public class GroupService : IGroupService
     private async Task<GroupResponse> MapToGroupResponseAsync(
         Group group,
         MemberRole role,
-        MembershipStatus status = MembershipStatus.Active)
+        MembershipStatus? status = MembershipStatus.Active)
     {
         // Fetch join code from separate table if not already on domain model.
-        // Pending members cannot read group_join_codes under RLS, so skip the
-        // lookup entirely for them.
+        // Pending members and non-members cannot read group_join_codes under
+        // RLS, so skip the lookup entirely for them.
         string? joinCode = null;
         if (status == MembershipStatus.Active && (role == MemberRole.Owner || role == MemberRole.Admin))
         {
