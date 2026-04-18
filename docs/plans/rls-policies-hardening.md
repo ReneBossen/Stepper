@@ -14,8 +14,8 @@ The Supabase schema is split across two locations:
 - `docs/migrations/` — the original hand-applied baseline (numbered `000_` through `023_`). These are **already applied** to prod and not tracked by the Supabase CLI. **Do not move or re-run them** without first marking them applied via `supabase migration repair`. A follow-up task to consolidate is out of scope for this branch.
 
 Tables with RLS enabled (10 total):
-1. `users`
-2. `user_preferences`
+1. `users` ✅ done on this branch
+2. `user_preferences` ✅ done on this branch
 3. `step_entries`
 4. `friendships`
 5. `groups` ✅ done on this branch
@@ -25,7 +25,7 @@ Tables with RLS enabled (10 total):
 9. `activity_feed`
 10. `notifications`
 
-Also done on this branch: **`users`** (table 1) ✅
+Also done on this branch: **`users`** (table 1) ✅, **`user_preferences`** (table 2) ✅
 
 ---
 
@@ -128,7 +128,13 @@ Run these **before** applying any migration on this branch. If any return non-ze
    WHERE up.id IS NULL;
    ```
 
-3. *(Add rows here as each remaining table is hardened.)*
+3. **`user_preferences` step goal range** (migration `20260418100000_*` will add CHECK constraint):
+   ```sql
+   SELECT count(*) FROM user_preferences
+   WHERE daily_step_goal < 1 OR daily_step_goal > 1000000;
+   ```
+
+4. *(Add rows here as each remaining table is hardened.)*
 
 ### Deployment ordering
 
@@ -161,6 +167,14 @@ Users (table 1):
 - `UPDATE users SET qr_code_id = '...' WHERE id = auth.uid()` as authenticated → raises `users.qr_code_id is immutable`.
 - `UPDATE users SET display_name = 'x' WHERE id = auth.uid()` → succeeds; `updated_at` bumps.
 - Existing user whose `privacy_find_me` was `'public'` before the migration → still discoverable (existing rows are not flipped).
+
+User preferences (table 2):
+- `INSERT INTO user_preferences (id) VALUES (auth.uid())` with user JWT → denied (INSERT policy dropped, grant revoked).
+- `UPDATE user_preferences SET created_at = '2020-01-01' WHERE id = auth.uid()` → raises `user_preferences.created_at is immutable`.
+- `UPDATE user_preferences SET daily_step_goal = 0 WHERE id = auth.uid()` → CHECK violation.
+- `UPDATE user_preferences SET daily_step_goal = 1000001 WHERE id = auth.uid()` → CHECK violation.
+- `UPDATE user_preferences SET daily_step_goal = 5000 WHERE id = auth.uid()` → succeeds.
+- `UPDATE user_preferences SET notifications_enabled = false WHERE id = auth.uid()` → succeeds.
 
 *(Append smoke tests as each remaining table is hardened.)*
 
@@ -220,7 +234,19 @@ No backend or mobile code changes. Tests were not re-run because no C# or TS cha
 
 **Deployment ordering for this table:** migration-first is safe. The ordering gotcha is the discovery policy change — see the `users` entry in the pre-deploy checklist below for the required prod pre-check.
 
-### 3. Follow-ups on the groups cluster (flagged but not fixed)
+### 3. Table 2: `user_preferences` ✅ done
+
+Migration `supabase/migrations/20260418100000_harden_user_preferences_rls.sql` — audit-driven (no known bug). Three gaps closed:
+
+- **Dropped INSERT policy and revoked INSERT grant.** Row creation is handled exclusively by the SECURITY DEFINER trigger `create_default_user_preferences()` (fires AFTER INSERT on `users`). Backend's `EnsureUserPreferencesExistAsync` uses the service role. No authenticated client path needs direct INSERT — allowing it was over-permissive.
+- **Immutable column trigger.** New `trg_user_preferences_prevent_immutable_updates` rejects changes to `id` and `created_at`. Mirrors `users_prevent_immutable_column_updates` and `groups_prevent_immutable_column_updates`. `updated_at` stays mutable so `update_user_preferences_updated_at` can keep setting it.
+- **CHECK constraint on `daily_step_goal`.** `BETWEEN 1 AND 1000000` — prevents negative, zero, or absurdly large values via direct client calls.
+
+No backend or mobile code changes. The backend's `UpdateAsync` only writes user-controlled fields; the service role bypasses RLS for `EnsureUserPreferencesExistAsync`.
+
+**Deployment ordering for this table:** migration-first is safe — old backend works because it never did direct INSERTs via user JWT. CHECK constraint may fail if prod has existing out-of-range rows; run the pre-check before applying.
+
+### 4. Follow-ups on the groups cluster (flagged but not fixed)
 
 Neither blocks merging this branch but both should become their own commits on this branch before it's PR'd:
 
@@ -231,7 +257,7 @@ Neither blocks merging this branch but both should become their own commits on t
 
 The user explicitly wants to work through each remaining table in a conversation, not have an agent draft all policies at once. Order suggestion:
 
-1. **`user_preferences`** (table 2)
+1. ~~**`user_preferences`** (table 2)~~ ✅ done
 2. **`step_entries`** (table 3)
 3. **`friendships`** (table 4)
 4. **`activity_feed`** (table 9)
