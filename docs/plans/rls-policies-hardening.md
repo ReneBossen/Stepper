@@ -22,8 +22,8 @@ Tables with RLS enabled (10 total):
 6. `group_memberships` ✅ done on this branch
 7. `group_join_codes` ✅ done on this branch
 8. `invite_codes` ✅ done on this branch
-9. `activity_feed`
-10. `notifications`
+9. `activity_feed` ✅ done on this branch
+10. `notifications` ✅ done on this branch
 
 Also done on this branch: **`users`** (table 1) ✅, **`user_preferences`** (table 2) ✅
 
@@ -144,7 +144,9 @@ Run these **before** applying any migration on this branch. If any return non-ze
    SELECT count(*) FROM friendships WHERE status = 'blocked';
    ```
 
-6. *(Add rows here as each remaining table is hardened.)*
+6. **`activity_feed`** (migration `20260418130000_*`): No pre-check required. Migration only drops/tightens policies and revokes grants.
+
+7. **`notifications`** (migration `20260418140000_*`): No pre-check required. Migration only adds an immutable column trigger.
 
 ### Deployment ordering
 
@@ -213,7 +215,29 @@ Friendships (table 4):
 - Accept via API, read back → `accepted_at` is populated and close to NOW().
 - Reject via API, read back → `accepted_at` is NULL.
 
-*(Append smoke tests as each remaining table is hardened.)*
+Activity feed (table 9):
+- `INSERT INTO activity_feed (user_id, type, message) VALUES (auth.uid(), 'milestone', 'test')` with user JWT → denied (INSERT policy dropped, grant revoked).
+- `UPDATE activity_feed SET message = 'changed' WHERE id = '<own-activity-id>'` with user JWT → denied (no UPDATE grant).
+- `DELETE FROM activity_feed WHERE id = '<own-activity-id>'` with user JWT → denied (no DELETE grant).
+- SELECT as user A (own activity) → returns own activity items.
+- SELECT as user A (friend of user B) → returns B's activity items via `get_friend_ids()`.
+- SELECT as user A (NOT friend of user C) → returns only A's own activities.
+- Insert a step entry that crosses a milestone threshold (e.g., 10000 steps) → `create_step_milestone_activity()` trigger fires and creates the activity row (SECURITY DEFINER bypasses RLS).
+- Real-time subscription on mobile → receives INSERT notification for new activity created by trigger.
+
+Notifications (table 10):
+- `INSERT INTO notifications (...) VALUES (...)` with user JWT → denied (service_role only INSERT policy).
+- `UPDATE notifications SET is_read = true WHERE id = '<own-notification-id>'` with user JWT → succeeds.
+- `UPDATE notifications SET type = 'general' WHERE id = '<own-notification-id>'` with user JWT → raises `notifications.type is immutable`.
+- `UPDATE notifications SET title = 'changed' WHERE id = '<own-notification-id>'` with user JWT → raises `notifications.title is immutable`.
+- `UPDATE notifications SET message = 'changed' WHERE id = '<own-notification-id>'` with user JWT → raises `notifications.message is immutable`.
+- `UPDATE notifications SET user_id = '<other-id>' WHERE id = '<own-notification-id>'` with user JWT → raises `notifications.user_id is immutable`.
+- `UPDATE notifications SET created_at = '2020-01-01' WHERE id = '<own-notification-id>'` with user JWT → raises `notifications.created_at is immutable`.
+- `UPDATE notifications SET data = '{"fake":true}' WHERE id = '<own-notification-id>'` with user JWT → raises `notifications.data is immutable`.
+- `DELETE FROM notifications WHERE id = '<own-notification-id>'` with user JWT → succeeds.
+- Mark as read via API (`PUT /api/v1/notifications/{id}/read`) → succeeds, `updated_at` bumps.
+- Mark all as read via API (`PUT /api/v1/notifications/read-all`) → succeeds.
+- Delete via API (`DELETE /api/v1/notifications/{id}`) → succeeds.
 
 ### Groups cluster follow-ups (must become commits on this branch before PR)
 
@@ -315,34 +339,52 @@ No backend or mobile code changes. Trigger ordering is correct: `trg_friendships
 
 **Deployment ordering for this table:** migration-first is safe — backend is unchanged. Run the pre-check for blocked rows before applying.
 
-### 6. Follow-ups on the groups cluster (flagged but not fixed)
+### 6. Table 9: `activity_feed` ✅ done
+
+Migration `supabase/migrations/20260418130000_harden_activity_feed_rls.sql` — audit-driven (no known bug). Five gaps closed:
+
+- **Dropped INSERT policy and revoked INSERT grant.** `"System can insert activity"` allowed any authenticated user to insert rows (`WITH CHECK (auth.uid() = user_id)`), but all legitimate inserts come from three SECURITY DEFINER triggers that bypass RLS. No backend or mobile code ever writes directly. Revoking closes pure attack surface.
+- **Revoked UPDATE/DELETE grants (defense-in-depth).** No UPDATE/DELETE policies existed, but explicitly revoking makes intent clear. Table is append-only and read-only from authenticated clients.
+- **Consolidated two SELECT policies into one using `get_friend_ids()`.** Old friends SELECT used an inline CASE/WHEN subquery duplicating the helper logic. Consolidated to match the step_entries pattern.
+- **Immutable column trigger.** New `trg_activity_feed_prevent_immutable_updates` rejects changes to all 8 columns (`id`, `user_id`, `type`, `message`, `metadata`, `created_at`, `related_user_id`, `related_group_id`). All columns are set-once by triggers — table is append-only.
+- **Hardened three SECURITY DEFINER trigger functions.** `create_step_milestone_activity()`, `create_group_join_activity()`, `create_friendship_activity()` now have `SET search_path = public` (prevents search-path hijacking) and `REVOKE FROM PUBLIC / GRANT TO authenticated`.
+
+No backend or mobile code changes. All read paths use the backend API (which relies on SELECT RLS). All write paths are SECURITY DEFINER triggers that bypass RLS.
+
+**Deployment ordering for this table:** migration-first is safe — no backend changes. No pre-check required (no new CHECK constraints).
+
+### 7. Table 10: `notifications` ✅ done
+
+Migration `supabase/migrations/20260418140000_harden_notifications_rls.sql` — audit-driven (no known bug). One gap closed:
+
+- **Immutable column trigger.** New `trg_notifications_prevent_immutable_updates` rejects changes to `id`, `user_id`, `type`, `title`, `message`, `data`, `created_at`. The only legitimately mutable column is `is_read` (toggled by `MarkAsReadAsync` / `MarkAllAsReadAsync`). `updated_at` stays mutable (auto-managed by `update_notifications_updated_at` trigger).
+
+Existing policies were already correctly scoped:
+- SELECT: `auth.uid() = user_id` — own notifications only.
+- INSERT: `service_role` only — users cannot create fake notifications.
+- UPDATE: `auth.uid() = user_id` — now column-restricted by the immutable trigger.
+- DELETE: `auth.uid() = user_id` — users can delete own notifications.
+
+No backend or mobile code changes. The backend's `MarkAsReadAsync` only changes `is_read`. `DeleteAsync` uses DELETE. Neither touches immutable columns.
+
+**Deployment ordering for this table:** migration-first is safe — no backend changes. No pre-check required.
+
+### 8. Follow-ups on the groups cluster (flagged but not fixed)
 
 Neither blocks merging this branch but both should become their own commits on this branch before it's PR'd:
 
 - **`group_memberships` DELETE for owner.** Current policy lets an owner `DELETE` their own membership row even if the group has other members, orphaning the group. The service-layer `LeaveGroupAsync` already blocks this, but the DB policy should match. Fix: either drop the `user_id = auth.uid()` DELETE policy and route leave through a `leave_group` RPC, or add a check constraint. The user already agreed "owners cannot leave without transferring ownership" semantics are desired.
 - **`group_join_codes.join_code` uniqueness.** The table has `UNIQUE (group_id)` but not `UNIQUE (join_code)`. `join_group_by_code` picks one with `LIMIT 1` if there's a collision — silently unreachable for the loser. Add `UNIQUE (join_code)` in a migration. Need to check for existing duplicates first and resolve them.
 
-### 6. Remaining tables (dialog-driven)
+### All 10 tables hardened ✅
 
-The user explicitly wants to work through each remaining table in a conversation, not have an agent draft all policies at once. Order suggestion:
+All RLS-enabled tables have been hardened on this branch:
 
-1. ~~**`user_preferences`** (table 2)~~ ✅ done
-2. ~~**`step_entries`** (table 3)~~ ✅ done
-3. ~~**`friendships`** (table 4)~~ ✅ done
-4. **`activity_feed`** (table 9)
-5. **`notifications`** (table 10)
+1. ~~`users`~~ ✅  2. ~~`user_preferences`~~ ✅  3. ~~`step_entries`~~ ✅  4. ~~`friendships`~~ ✅
+5. ~~`groups`~~ ✅  6. ~~`group_memberships`~~ ✅  7. ~~`group_join_codes`~~ ✅  8. ~~`invite_codes`~~ ✅
+9. ~~`activity_feed`~~ ✅  10. ~~`notifications`~~ ✅
 
-For each table, the template that worked in the initial dialog:
-1. Read the latest state from migrations (check both `supabase/migrations/` and `docs/migrations/` for overrides).
-2. Present current policies in a table + intended access model.
-3. List suspected gaps / over-permissive rules.
-4. Ask the user:
-   - What specific bug are you hitting here?
-   - Does the intended access model match reality?
-   - Confirm the policy edits before writing SQL.
-5. Write one migration per table (or one migration for multiple if they're tightly coupled), stacked after the existing `20260413130000_*` migration.
-6. Update backend service/repo code and mobile types as needed.
-7. Run full test suite (`dotnet test` + `npx jest` from `Stepper.Mobile/`).
+Remaining work before PR: groups cluster follow-ups (section 8 above).
 
 ---
 
