@@ -16,7 +16,7 @@ The Supabase schema is split across two locations:
 Tables with RLS enabled (10 total):
 1. `users` ✅ done on this branch
 2. `user_preferences` ✅ done on this branch
-3. `step_entries`
+3. `step_entries` ✅ done on this branch
 4. `friendships`
 5. `groups` ✅ done on this branch
 6. `group_memberships` ✅ done on this branch
@@ -134,7 +134,12 @@ Run these **before** applying any migration on this branch. If any return non-ze
    WHERE daily_step_goal < 1 OR daily_step_goal > 1000000;
    ```
 
-4. *(Add rows here as each remaining table is hardened.)*
+4. **`step_entries` step count upper bound** (migration `20260418110000_*` will add CHECK constraint):
+   ```sql
+   SELECT count(*) FROM step_entries WHERE step_count > 200000;
+   ```
+
+5. *(Add rows here as each remaining table is hardened.)*
 
 ### Deployment ordering
 
@@ -175,6 +180,18 @@ User preferences (table 2):
 - `UPDATE user_preferences SET daily_step_goal = 1000001 WHERE id = auth.uid()` → CHECK violation.
 - `UPDATE user_preferences SET daily_step_goal = 5000 WHERE id = auth.uid()` → succeeds.
 - `UPDATE user_preferences SET notifications_enabled = false WHERE id = auth.uid()` → succeeds.
+
+Step entries (table 3):
+- `INSERT INTO step_entries (...) VALUES (..., step_count=5000, ...)` with user JWT → succeeds.
+- `INSERT INTO step_entries (...) VALUES (..., step_count=200001, ...)` → CHECK violation (`chk_step_count_upper_bound`).
+- `UPDATE step_entries SET step_count = 8000 WHERE id = '<own-entry-id>'` → succeeds.
+- `UPDATE step_entries SET user_id = '<other-user-id>' WHERE id = '<own-entry-id>'` → raises `step_entries.user_id is immutable`.
+- `UPDATE step_entries SET date = '2026-01-01' WHERE id = '<own-entry-id>'` → raises `step_entries.date is immutable`.
+- `UPDATE step_entries SET source = 'fake' WHERE id = '<own-entry-id>'` → raises `step_entries.source is immutable`.
+- SELECT as user A (friend of user B) → returns B's steps via `get_friend_ids()`.
+- SELECT as user A (NOT friend of user C) → returns only A's own steps.
+- Sync endpoint (`PUT /api/v1/steps/sync`) with valid data → creates/updates as before.
+- Delete by source (`DELETE /api/v1/steps/source/{source}`) → still works.
 
 *(Append smoke tests as each remaining table is hardened.)*
 
@@ -246,19 +263,32 @@ No backend or mobile code changes. The backend's `UpdateAsync` only writes user-
 
 **Deployment ordering for this table:** migration-first is safe — old backend works because it never did direct INSERTs via user JWT. CHECK constraint may fail if prod has existing out-of-range rows; run the pre-check before applying.
 
-### 4. Follow-ups on the groups cluster (flagged but not fixed)
+### 4. Table 3: `step_entries` ✅ done
+
+Migration `supabase/migrations/20260418110000_harden_step_entries_rls.sql` — audit-driven (no known bug). Four gaps closed:
+
+- **Consolidated two SELECT policies into one using `get_friend_ids()`.** Was: separate "own steps" and "friends steps" policies, the latter using an inline CASE/WHEN subquery. Now: single policy `"Users can view own and friends steps"` that uses the existing `get_friend_ids()` helper. The `user_id = auth.uid()` branch short-circuits before the function call for own rows.
+- **Immutable column trigger.** New `trg_step_entries_prevent_immutable_updates` rejects changes to `id`, `user_id`, `date`, `source`. `user_id` change = data theft; `date`/`source` change = unique-constraint bypass. `recorded_at` stays mutable because the backend explicitly updates it during upsert.
+- **CHECK constraint on `step_count` upper bound.** `chk_step_count_upper_bound CHECK (step_count <= 200000)` matches `StepService.MaxStepCount`. Combined with existing `CHECK (step_count >= 0)`, enforces `0 <= step_count <= 200000`.
+- **Hardened three SECURITY DEFINER functions.** `get_friend_ids()`, `get_daily_step_summary()`, and `count_step_entries_in_range()` now have `SET search_path = public` (prevents search-path hijacking), `STABLE` where missing, and `REVOKE FROM PUBLIC / GRANT TO authenticated`.
+
+No backend or mobile code changes. All write paths only modify mutable columns (`step_count`, `distance_meters`, `recorded_at`). The SELECT consolidation returns the same result set.
+
+**Deployment ordering for this table:** migration-first is safe — backend is unchanged and continues to use the same Supabase client calls. CHECK constraint may fail if prod has rows with `step_count > 200000`; run the pre-check before applying.
+
+### 5. Follow-ups on the groups cluster (flagged but not fixed)
 
 Neither blocks merging this branch but both should become their own commits on this branch before it's PR'd:
 
 - **`group_memberships` DELETE for owner.** Current policy lets an owner `DELETE` their own membership row even if the group has other members, orphaning the group. The service-layer `LeaveGroupAsync` already blocks this, but the DB policy should match. Fix: either drop the `user_id = auth.uid()` DELETE policy and route leave through a `leave_group` RPC, or add a check constraint. The user already agreed "owners cannot leave without transferring ownership" semantics are desired.
 - **`group_join_codes.join_code` uniqueness.** The table has `UNIQUE (group_id)` but not `UNIQUE (join_code)`. `join_group_by_code` picks one with `LIMIT 1` if there's a collision — silently unreachable for the loser. Add `UNIQUE (join_code)` in a migration. Need to check for existing duplicates first and resolve them.
 
-### 4. Remaining tables (dialog-driven)
+### 6. Remaining tables (dialog-driven)
 
 The user explicitly wants to work through each remaining table in a conversation, not have an agent draft all policies at once. Order suggestion:
 
 1. ~~**`user_preferences`** (table 2)~~ ✅ done
-2. **`step_entries`** (table 3)
+2. ~~**`step_entries`** (table 3)~~ ✅ done
 3. **`friendships`** (table 4)
 4. **`activity_feed`** (table 9)
 5. **`notifications`** (table 10)
@@ -280,7 +310,7 @@ For each table, the template that worked in the initial dialog:
 ## How to pick this up
 
 1. Check you're on `fix/rls-policies-hardening` branched off `master`. If master has moved, rebase.
-2. Read this plan end-to-end, then read the latest migration (`supabase/migrations/20260413130000_harden_groups_rls_and_join_rpc.sql`) so you understand the pattern the initial work established.
+2. Read this plan end-to-end, then read the latest migration (`supabase/migrations/20260418110000_harden_step_entries_rls.sql`) so you understand the pattern the work established.
 3. Ask the user which table they want to tackle next and what bug they're seeing. **Do not start writing SQL until they answer.**
 4. For each table, keep migrations atomic: one file per logical unit of work, timestamped after the previous, documented with a top-of-file comment explaining why.
 5. Run tests after every backend change. The existing tests caught the tuple-shape regression in `GetUserGroupsAsync` during the initial session — trust them.
