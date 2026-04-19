@@ -62,6 +62,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     favicon: './assets/favicon.png',
   },
   scheme: 'stepper',
+  runtimeVersion: {
+    policy: 'fingerprint',
+  },
+  updates: {
+    url: 'https://u.expo.dev/c3cc51f2-9e6f-4840-9536-b013d859849e',
+    checkAutomatically: 'ON_LOAD',
+    fallbackToCacheTimeout: 0,
+  },
   plugins: [
     [
       'expo-build-properties',
