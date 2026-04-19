@@ -48,6 +48,7 @@ export default function UserProfileScreen({ route }: Props) {
   const { sendRequest, acceptRequest, declineRequest, removeFriend } = useFriendsStore();
 
   const [friendStatus, setFriendStatus] = useState<FriendStatus>('none');
+  const [friendshipId, setFriendshipId] = useState<string | undefined>(undefined);
   const [friendsSince, setFriendsSince] = useState<string | undefined>(undefined);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingFriendAction, setIsLoadingFriendAction] = useState(false);
@@ -56,22 +57,9 @@ export default function UserProfileScreen({ route }: Props) {
   // Load friend status
   const loadFriendStatus = useCallback(async () => {
     try {
-      const status = await friendsApi.checkFriendshipStatus(userId);
-      // Map API status to component status
-      const statusMap: Record<string, FriendStatus> = {
-        none: 'none',
-        pending_sent: 'pending_sent',
-        pending_received: 'pending_received',
-        accepted: 'accepted',
-      };
-      setFriendStatus(statusMap[status] || 'none');
-
-      // If friends, get the friendship date
-      if (status === 'accepted') {
-        // For now, we don't have easy access to accepted_at
-        // This would require an additional API call
-        // TODO: Add accepted_at to friendship status response
-      }
+      const { status, friendshipId: id } = await friendsApi.checkFriendshipStatus(userId);
+      setFriendStatus(status);
+      setFriendshipId(id);
     } catch {
       // Friend status check failed - will show default 'none' status
     }
@@ -111,12 +99,42 @@ export default function UserProfileScreen({ route }: Props) {
     try {
       await sendRequest(userId);
       setFriendStatus('pending_sent');
+      await loadFriendStatus();
     } catch (err: unknown) {
       Alert.alert('Error', getErrorMessage(err));
     } finally {
       setIsLoadingFriendAction(false);
     }
-  }, [userId, sendRequest]);
+  }, [userId, sendRequest, loadFriendStatus]);
+
+  const handleCancelRequest = useCallback(() => {
+    if (!friendshipId) {
+      return;
+    }
+    Alert.alert(
+      'Cancel Friend Request',
+      'Do you want to cancel your friend request?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes',
+          style: 'destructive',
+          onPress: async () => {
+            setIsLoadingFriendAction(true);
+            try {
+              await friendsApi.cancelRequest(friendshipId);
+              setFriendStatus('none');
+              setFriendshipId(undefined);
+            } catch (err: unknown) {
+              Alert.alert('Error', getErrorMessage(err));
+            } finally {
+              setIsLoadingFriendAction(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [friendshipId]);
 
   const handleAcceptRequest = useCallback(async () => {
     setIsLoadingFriendAction(true);
@@ -367,6 +385,7 @@ export default function UserProfileScreen({ route }: Props) {
               onAddFriend={handleAddFriend}
               onAcceptRequest={handleAcceptRequest}
               onDeclineRequest={handleDeclineRequest}
+              onCancelRequest={handleCancelRequest}
               onRemoveFriend={handleRemoveFriend}
               testID="friend-action"
             />

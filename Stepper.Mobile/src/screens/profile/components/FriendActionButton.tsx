@@ -12,6 +12,7 @@ interface FriendActionButtonProps {
   onAddFriend?: () => void;
   onAcceptRequest?: () => void;
   onDeclineRequest?: () => void;
+  onCancelRequest?: () => void;
   onRemoveFriend?: () => void;
   testID?: string;
 }
@@ -26,6 +27,7 @@ export function FriendActionButton({
   onAddFriend,
   onAcceptRequest,
   onDeclineRequest,
+  onCancelRequest,
   onRemoveFriend,
   testID,
 }: FriendActionButtonProps) {
@@ -53,12 +55,14 @@ export function FriendActionButton({
         <Button
           mode="outlined"
           icon="clock-outline"
-          disabled
+          onPress={onCancelRequest}
+          loading={isLoading}
+          disabled={isLoading}
           style={styles.button}
           testID={testID}
-          accessibilityLabel="Friend request sent"
+          accessibilityLabel="Friend request pending, tap to cancel"
         >
-          Friend Request Sent
+          Pending
         </Button>
       );
 

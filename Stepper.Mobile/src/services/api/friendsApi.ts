@@ -41,6 +41,15 @@ interface BackendUserSearchResult {
   friendshipStatus: string;
 }
 
+/** Response for the user-with-friendship-status discovery endpoint */
+interface BackendUserProfileWithStatus {
+  id: string;
+  displayName: string;
+  avatarUrl?: string;
+  friendshipStatus: string;
+  friendshipId?: string;
+}
+
 /** Response for search users endpoint */
 interface BackendSearchUsersResponse {
   users: BackendUserSearchResult[];
@@ -238,32 +247,34 @@ export const friendsApi = {
   },
 
   /**
-   * Check if a friendship or pending request already exists with a user.
-   * Note: This information is now included in search results via friendshipStatus.
-   * This method performs a search and checks the status.
+   * Look up a user's profile by ID along with the directional friendship
+   * status between the current user and the target user.
    * @param targetUserId - The user ID to check friendship status with
    */
-  checkFriendshipStatus: async (targetUserId: string): Promise<'none' | 'pending_sent' | 'pending_received' | 'accepted'> => {
+  checkFriendshipStatus: async (
+    targetUserId: string
+  ): Promise<{
+    status: 'none' | 'pending_sent' | 'pending_received' | 'accepted';
+    friendshipId?: string;
+  }> => {
     try {
-      // Use QR code endpoint to get user with friendship status
-      const result = await apiClient.get<BackendUserSearchResult>(
-        `/friends/discovery/qr-code/${targetUserId}`
+      const result = await apiClient.get<BackendUserProfileWithStatus>(
+        `/friends/discovery/users/${targetUserId}`
       );
 
-      // Map backend status to mobile status format
       const statusMap: Record<string, 'none' | 'pending_sent' | 'pending_received' | 'accepted'> = {
-        'none': 'none',
-        'pending_sent': 'pending_sent',
-        'pending_outgoing': 'pending_sent',
-        'pending_received': 'pending_received',
-        'pending_incoming': 'pending_received',
-        'accepted': 'accepted',
-        'friends': 'accepted',
+        none: 'none',
+        pending_sent: 'pending_sent',
+        pending_received: 'pending_received',
+        accepted: 'accepted',
       };
 
-      return statusMap[result.friendshipStatus] || 'none';
+      return {
+        status: statusMap[result.friendshipStatus] ?? 'none',
+        friendshipId: result.friendshipId,
+      };
     } catch {
-      return 'none';
+      return { status: 'none' };
     }
   },
 };

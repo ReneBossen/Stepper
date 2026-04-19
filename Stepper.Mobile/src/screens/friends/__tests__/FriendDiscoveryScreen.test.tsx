@@ -126,6 +126,15 @@ jest.mock('react-native-paper', () => {
     ActivityIndicator: ({ size, ...props }: any) => (
       <RN.View testID="activity-indicator" {...props} />
     ),
+    IconButton: ({ icon, onPress, accessibilityLabel, testID }: any) => (
+      <RN.TouchableOpacity
+        testID={testID}
+        onPress={onPress}
+        accessibilityLabel={accessibilityLabel}
+      >
+        <RN.Text>{icon}</RN.Text>
+      </RN.TouchableOpacity>
+    ),
     useTheme: () => ({
       colors: {
         primary: '#4CAF50',

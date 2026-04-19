@@ -79,7 +79,7 @@ export default function QRScannerScreen() {
         }
 
         // Check existing friendship status
-        const status = await friendsApi.checkFriendshipStatus(data);
+        const { status } = await friendsApi.checkFriendshipStatus(user.id);
 
         if (status === 'accepted') {
           Alert.alert(
