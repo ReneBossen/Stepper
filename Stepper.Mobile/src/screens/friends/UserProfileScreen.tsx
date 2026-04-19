@@ -97,6 +97,17 @@ export default function UserProfileScreen({ route }: Props) {
     }, [clearViewedUser])
   );
 
+  // Reset stack to root when the parent tab loses focus so returning to the
+  // tab starts on the list screen instead of this profile.
+  useEffect(() => {
+    const parent = navigation.getParent();
+    if (!parent) return;
+    const unsubscribe = parent.addListener('blur', () => {
+      navigation.popToTop();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     await loadData();
