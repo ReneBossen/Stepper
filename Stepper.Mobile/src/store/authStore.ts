@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { authApi } from '@services/api/authApi';
 import { setOnSessionExpired } from '@services/api/client';
+import { ApiError } from '@services/api/types';
 import { tokenStorage } from '@services/tokenStorage';
 import { getErrorMessage } from '@utils/errorUtils';
 import { track, identify, reset as resetAnalytics, setUserProperties } from '@services/analytics';
@@ -33,12 +34,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const response = await authApi.login({ email, password });
 
-      // Store tokens securely
+      // Store tokens and user info securely so the session survives app
+      // restarts without needing a network round-trip to rehydrate the user.
       await tokenStorage.setTokens(
         response.accessToken,
         response.refreshToken,
         response.expiresIn
       );
+      await tokenStorage.setUserInfo(response.user);
 
       // Identify user in analytics
       identify(response.user.id, {});
@@ -75,12 +78,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
 
-      // Store tokens securely
+      // Store tokens and user info securely so the session survives app
+      // restarts without needing a network round-trip to rehydrate the user.
       await tokenStorage.setTokens(
         response.accessToken,
         response.refreshToken,
         response.expiresIn
       );
+      await tokenStorage.setUserInfo(response.user);
 
       // Identify user in analytics
       identify(response.user.id, {});
@@ -162,103 +167,101 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   restoreSession: async () => {
     set({ isLoading: true, error: null });
     try {
-      // Check if we have stored tokens
       const accessToken = await tokenStorage.getAccessToken();
       const refreshToken = await tokenStorage.getRefreshToken();
 
-      if (!accessToken || !refreshToken) {
+      if (!accessToken) {
         // No tokens stored, user is not authenticated
         set({ isLoading: false });
         return;
       }
 
       const tokenType = await tokenStorage.getTokenType();
+      const storedUser = await tokenStorage.getUserInfo();
+      const isExpired = await tokenStorage.isAccessTokenExpired();
 
-      // Handle OAuth tokens - check expiry before restoring
+      // OAuth tokens cannot be refreshed via the backend. Only clear them
+      // when they have definitively expired.
       if (tokenType === 'oauth') {
-        const isExpired = await tokenStorage.isAccessTokenExpired();
         if (isExpired) {
           await tokenStorage.clearTokens();
           set({ user: null, isAuthenticated: false, isLoading: false });
           return;
         }
 
-        const storedUser = await tokenStorage.getUserInfo();
         if (storedUser) {
           set({ user: storedUser, isAuthenticated: true, isLoading: false });
         } else {
-          // No stored user - clear and require re-login
           await tokenStorage.clearTokens();
           set({ user: null, isAuthenticated: false, isLoading: false });
         }
         return;
       }
 
-      const isExpired = await tokenStorage.isAccessTokenExpired();
+      // Backend tokens: prefer an offline restore from persisted user info.
+      // Transient network/backend problems must NOT log the user out.
+      if (!isExpired && storedUser) {
+        set({ user: storedUser, isAuthenticated: true, isLoading: false });
+        return;
+      }
 
-      // Handle backend tokens - can refresh via backend
-      if (isExpired) {
-        // Try to refresh the token
-        try {
-          const response = await authApi.refreshToken(refreshToken);
-
-          // Store new tokens
-          await tokenStorage.setTokens(
-            response.accessToken,
-            response.refreshToken,
-            response.expiresIn
-          );
-
-          set({
-            user: response.user,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-        } catch {
-          // Refresh failed, clear tokens and require re-login
-          await tokenStorage.clearTokens();
-          set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
+      if (!refreshToken) {
+        // Legacy session with access token but no refresh token — keep the
+        // user in the app if we have their info; otherwise nothing to restore.
+        if (storedUser) {
+          set({ user: storedUser, isAuthenticated: true, isLoading: false });
+        } else {
+          set({ user: null, isAuthenticated: false, isLoading: false });
         }
-      } else {
-        // Access token is still valid, but we need user info
-        // Refresh anyway to get user info and ensure session is valid
-        try {
-          const response = await authApi.refreshToken(refreshToken);
+        return;
+      }
 
-          // Store new tokens
-          await tokenStorage.setTokens(
-            response.accessToken,
-            response.refreshToken,
-            response.expiresIn
-          );
+      try {
+        const response = await authApi.refreshToken(refreshToken);
+        await tokenStorage.setTokens(
+          response.accessToken,
+          response.refreshToken,
+          response.expiresIn
+        );
+        await tokenStorage.setUserInfo(response.user);
 
-          set({
-            user: response.user,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-        } catch {
-          // Token invalid, clear and require re-login
+        set({
+          user: response.user,
+          isAuthenticated: true,
+          isLoading: false,
+        });
+      } catch (error: unknown) {
+        // Only treat an explicit 401 from the refresh endpoint as a truly
+        // invalid session. Network errors, timeouts, or 5xx must not evict
+        // the user — fall back to the persisted user info so they remain
+        // signed in and can retry.
+        if (error instanceof ApiError && error.isUnauthorized) {
           await tokenStorage.clearTokens();
           set({
             user: null,
             isAuthenticated: false,
             isLoading: false,
+          });
+          return;
+        }
+
+        if (storedUser) {
+          set({ user: storedUser, isAuthenticated: true, isLoading: false });
+        } else {
+          set({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: getErrorMessage(error),
           });
         }
       }
     } catch (error: unknown) {
-      // Any error during restore, clear tokens
-      await tokenStorage.clearTokens();
+      // Never clear tokens for unknown errors — leave the session intact
+      // and surface the error so the UI can decide what to do.
       set({
-        user: null,
-        isAuthenticated: false,
-        error: getErrorMessage(error),
         isLoading: false,
+        error: getErrorMessage(error),
       });
     }
   },

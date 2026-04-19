@@ -74,10 +74,17 @@ async function getAuthToken(): Promise<string | null> {
           response.refreshToken,
           response.expiresIn
         );
+        await tokenStorage.setUserInfo(response.user);
         return response.accessToken;
-      } catch {
-        // Refresh failed, clear tokens and return null
-        await tokenStorage.clearTokens();
+      } catch (error: unknown) {
+        // Only evict the session when the backend explicitly says the
+        // refresh token is invalid. Network errors / timeouts / 5xx must
+        // not clear tokens — the user should stay signed in and the caller
+        // can retry on the next request.
+        if (error instanceof ApiError && error.isUnauthorized) {
+          await tokenStorage.clearTokens();
+          onSessionExpired?.();
+        }
         return null;
       }
     }
@@ -130,9 +137,11 @@ async function request<T>(
 
     clearTimeout(timeoutId);
 
-    // Handle authentication errors
-    if (response.status === 401) {
-      // Token is invalid or expired, clear tokens and notify auth layer
+    // Only treat a 401 as session expiration if we actually sent a token.
+    // Unauthenticated calls that legitimately require auth should not evict
+    // a stored session. The backend reserves 401 for genuine authentication
+    // failures; authorization and business-rule violations use 400/403.
+    if (response.status === 401 && token) {
       await tokenStorage.clearTokens();
       onSessionExpired?.();
     }
