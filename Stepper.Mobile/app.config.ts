@@ -24,6 +24,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       NSHealthUpdateUsageDescription:
         'Stepper needs permission to save step data.',
       UIBackgroundModes: ['processing'],
+      BGTaskSchedulerPermittedIdentifiers: ['STEP_SYNC_TASK'],
       ITSAppUsesNonExemptEncryption: false,
     },
     entitlements: {
