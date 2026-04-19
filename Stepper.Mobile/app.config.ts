@@ -110,7 +110,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     apiBaseUrl: process.env.API_BASE_URL ?? 'http://localhost:5000',
     googleWebClientId: process.env.GOOGLE_WEB_CLIENT_ID ?? '',
     posthogApiKey: process.env.POSTHOG_API_KEY ?? '',
-    posthogHost: process.env.POSTHOG_HOST ?? 'https://us.i.posthog.com',
+    posthogHost: process.env.POSTHOG_HOST ?? 'https://eu.i.posthog.com',
     eas: {
       projectId: 'c3cc51f2-9e6f-4840-9536-b013d859849e',
     },

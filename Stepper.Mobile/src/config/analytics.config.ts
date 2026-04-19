@@ -20,9 +20,9 @@ export const analyticsConfig = {
 
   /**
    * PostHog host URL.
-   * Defaults to PostHog cloud (US) if not specified.
+   * Defaults to PostHog cloud (EU) if not specified.
    */
-  host: POSTHOG_HOST || 'https://us.i.posthog.com',
+  host: POSTHOG_HOST || 'https://eu.i.posthog.com',
 
   /**
    * Whether analytics is enabled.

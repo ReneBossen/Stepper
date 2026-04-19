@@ -38,7 +38,7 @@ jest.mock('expo-constants', () => {
         apiBaseUrl: 'http://localhost:5000',
         googleWebClientId: 'test-google-client-id',
         posthogApiKey: '',
-        posthogHost: 'https://us.i.posthog.com',
+        posthogHost: 'https://eu.i.posthog.com',
       },
     },
     executionEnvironment: 'storeClient',
