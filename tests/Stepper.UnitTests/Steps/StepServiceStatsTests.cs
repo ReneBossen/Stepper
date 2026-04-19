@@ -194,6 +194,133 @@ public class StepServiceStatsTests
 
     #endregion
 
+    #region Weekly Average Tests
+
+    [Fact]
+    public async Task GetStatsAsync_WithPartialWeek_DividesByDaysWithData()
+    {
+        // Arrange — three days with steps in the current week. Average should be
+        // the total divided by 3, not by 7.
+        var userId = Guid.NewGuid();
+        var monday = GetMondayOfThisWeek();
+
+        var summaries = new List<DailyStepSummary>
+        {
+            new() { Date = monday, TotalSteps = 6000, TotalDistanceMeters = 4800.0 },
+            new() { Date = monday.AddDays(1), TotalSteps = 9000, TotalDistanceMeters = 7200.0 },
+            new() { Date = monday.AddDays(2), TotalSteps = 12000, TotalDistanceMeters = 9600.0 }
+        };
+
+        _mockRepository.Setup(x => x.GetDailyGoalAsync(userId)).ReturnsAsync(10000);
+        _mockRepository.Setup(x => x.GetAllDailySummariesAsync(userId)).ReturnsAsync(summaries);
+
+        // Act
+        var result = await _sut.GetStatsAsync(userId);
+
+        // Assert
+        result.WeekAverage.Should().Be(9000); // (6000 + 9000 + 12000) / 3
+    }
+
+    [Fact]
+    public async Task GetStatsAsync_WithFullWeek_DividesBySeven()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var monday = GetMondayOfThisWeek();
+
+        var summaries = Enumerable.Range(0, 7)
+            .Select(offset => new DailyStepSummary
+            {
+                Date = monday.AddDays(offset),
+                TotalSteps = 7000,
+                TotalDistanceMeters = 5600.0
+            })
+            .ToList();
+
+        _mockRepository.Setup(x => x.GetDailyGoalAsync(userId)).ReturnsAsync(10000);
+        _mockRepository.Setup(x => x.GetAllDailySummariesAsync(userId)).ReturnsAsync(summaries);
+
+        // Act
+        var result = await _sut.GetStatsAsync(userId);
+
+        // Assert
+        result.WeekAverage.Should().Be(7000);
+    }
+
+    [Fact]
+    public async Task GetStatsAsync_WithNoStepsThisWeek_ReturnsZeroWeekAverage()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+
+        _mockRepository.Setup(x => x.GetDailyGoalAsync(userId)).ReturnsAsync(10000);
+        _mockRepository.Setup(x => x.GetAllDailySummariesAsync(userId)).ReturnsAsync(new List<DailyStepSummary>());
+
+        // Act
+        var result = await _sut.GetStatsAsync(userId);
+
+        // Assert
+        result.WeekAverage.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetStatsAsync_WithZeroStepDay_ExcludesItFromAverageDivisor()
+    {
+        // Arrange — a logged rest day (0 steps) should not pull the average down.
+        var userId = Guid.NewGuid();
+        var monday = GetMondayOfThisWeek();
+
+        var summaries = new List<DailyStepSummary>
+        {
+            new() { Date = monday, TotalSteps = 8000, TotalDistanceMeters = 6400.0 },
+            new() { Date = monday.AddDays(1), TotalSteps = 0, TotalDistanceMeters = 0.0 },
+            new() { Date = monday.AddDays(2), TotalSteps = 10000, TotalDistanceMeters = 8000.0 }
+        };
+
+        _mockRepository.Setup(x => x.GetDailyGoalAsync(userId)).ReturnsAsync(10000);
+        _mockRepository.Setup(x => x.GetAllDailySummariesAsync(userId)).ReturnsAsync(summaries);
+
+        // Act
+        var result = await _sut.GetStatsAsync(userId);
+
+        // Assert
+        result.WeekAverage.Should().Be(9000); // (8000 + 10000) / 2
+    }
+
+    [Fact]
+    public async Task GetStatsAsync_WithPreviousWeekData_ExcludesItFromAverage()
+    {
+        // Arrange — last week's data should not influence the current week's average.
+        var userId = Guid.NewGuid();
+        var monday = GetMondayOfThisWeek();
+        var lastWeek = monday.AddDays(-7);
+
+        var summaries = new List<DailyStepSummary>
+        {
+            new() { Date = monday, TotalSteps = 5000, TotalDistanceMeters = 4000.0 },
+            new() { Date = lastWeek, TotalSteps = 20000, TotalDistanceMeters = 16000.0 }
+        };
+
+        _mockRepository.Setup(x => x.GetDailyGoalAsync(userId)).ReturnsAsync(10000);
+        _mockRepository.Setup(x => x.GetAllDailySummariesAsync(userId)).ReturnsAsync(summaries);
+
+        // Act
+        var result = await _sut.GetStatsAsync(userId);
+
+        // Assert
+        result.WeekAverage.Should().Be(5000);
+    }
+
+    private static DateOnly GetMondayOfThisWeek()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var dayOfWeek = today.DayOfWeek;
+        var daysFromMonday = dayOfWeek == DayOfWeek.Sunday ? 6 : (int)dayOfWeek - 1;
+        return today.AddDays(-daysFromMonday);
+    }
+
+    #endregion
+
     #region Monthly Aggregation Tests
 
     [Fact]

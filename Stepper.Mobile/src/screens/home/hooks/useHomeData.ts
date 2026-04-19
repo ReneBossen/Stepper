@@ -171,9 +171,9 @@ export const useHomeData = (): UseHomeDataReturn => {
   // Use today's distance from stats (backend provides this)
   const todayDistance = stats?.todayDistance ?? 0;
 
-  // Weekly stats
+  // Weekly stats — server computes the average over days with actual data.
   const weeklyTotal = stats?.weekSteps ?? 0;
-  const weeklyAverage = weeklyTotal > 0 ? Math.round(weeklyTotal / 7) : 0;
+  const weeklyAverage = stats?.weekAverage ?? 0;
 
   // Streak
   const streak = stats?.currentStreak ?? 0;

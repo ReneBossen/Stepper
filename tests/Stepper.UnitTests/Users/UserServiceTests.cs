@@ -531,6 +531,152 @@ public class UserServiceTests
 
     #endregion
 
+    #region GetUserActivityAsync Tests
+
+    [Fact]
+    public async Task GetUserActivityAsync_WithEmptyGuid_ThrowsArgumentException()
+    {
+        // Arrange & Act
+        var act = async () => await _sut.GetUserActivityAsync(Guid.Empty);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("User ID cannot be empty.*");
+    }
+
+    [Fact]
+    public async Task GetUserActivityAsync_WithPartialWeek_DividesByDaysWithData()
+    {
+        // Arrange — only 2 days of data this week. Average should divide by 2, not 7.
+        var userId = Guid.NewGuid();
+        var monday = GetMondayOfThisWeek();
+
+        var entries = new List<(int StepCount, double? DistanceMeters, DateOnly Date)>
+        {
+            (8000, 6400.0, monday),
+            (12000, 9600.0, monday.AddDays(1))
+        };
+
+        _mockRepository.Setup(x => x.GetStepEntriesForRangeAsync(userId, It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+            .ReturnsAsync(entries);
+        _mockRepository.Setup(x => x.GetActivityDatesAsync(userId))
+            .ReturnsAsync(new List<DateOnly>());
+
+        // Act
+        var result = await _sut.GetUserActivityAsync(userId);
+
+        // Assert
+        result.TotalSteps.Should().Be(20000);
+        result.AverageStepsPerDay.Should().Be(10000); // 20000 / 2
+    }
+
+    [Fact]
+    public async Task GetUserActivityAsync_QueriesMondayToSundayOfCurrentWeek()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var monday = GetMondayOfThisWeek();
+        var sunday = monday.AddDays(6);
+
+        _mockRepository.Setup(x => x.GetStepEntriesForRangeAsync(userId, monday, sunday))
+            .ReturnsAsync(new List<(int StepCount, double? DistanceMeters, DateOnly Date)>())
+            .Verifiable();
+        _mockRepository.Setup(x => x.GetActivityDatesAsync(userId))
+            .ReturnsAsync(new List<DateOnly>());
+
+        // Act
+        await _sut.GetUserActivityAsync(userId);
+
+        // Assert
+        _mockRepository.Verify(
+            x => x.GetStepEntriesForRangeAsync(userId, monday, sunday),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GetUserActivityAsync_WithNoData_ReturnsZeroAverage()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+
+        _mockRepository.Setup(x => x.GetStepEntriesForRangeAsync(userId, It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+            .ReturnsAsync(new List<(int StepCount, double? DistanceMeters, DateOnly Date)>());
+        _mockRepository.Setup(x => x.GetActivityDatesAsync(userId))
+            .ReturnsAsync(new List<DateOnly>());
+
+        // Act
+        var result = await _sut.GetUserActivityAsync(userId);
+
+        // Assert
+        result.TotalSteps.Should().Be(0);
+        result.AverageStepsPerDay.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetUserActivityAsync_WithZeroStepDay_ExcludesItFromAverageDivisor()
+    {
+        // Arrange — a logged 0-step rest day should not pull the average down.
+        var userId = Guid.NewGuid();
+        var monday = GetMondayOfThisWeek();
+
+        var entries = new List<(int StepCount, double? DistanceMeters, DateOnly Date)>
+        {
+            (6000, 4800.0, monday),
+            (0, 0.0, monday.AddDays(1)),
+            (12000, 9600.0, monday.AddDays(2))
+        };
+
+        _mockRepository.Setup(x => x.GetStepEntriesForRangeAsync(userId, It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+            .ReturnsAsync(entries);
+        _mockRepository.Setup(x => x.GetActivityDatesAsync(userId))
+            .ReturnsAsync(new List<DateOnly>());
+
+        // Act
+        var result = await _sut.GetUserActivityAsync(userId);
+
+        // Assert
+        result.TotalSteps.Should().Be(18000);
+        result.AverageStepsPerDay.Should().Be(9000); // 18000 / 2 active days
+    }
+
+    [Fact]
+    public async Task GetUserActivityAsync_WithMultipleEntriesSameDay_CountsDayOnce()
+    {
+        // Arrange — two entries on the same day (e.g. multiple sync sources) should
+        // count as one day toward the divisor.
+        var userId = Guid.NewGuid();
+        var monday = GetMondayOfThisWeek();
+
+        var entries = new List<(int StepCount, double? DistanceMeters, DateOnly Date)>
+        {
+            (3000, 2400.0, monday),
+            (5000, 4000.0, monday),
+            (10000, 8000.0, monday.AddDays(1))
+        };
+
+        _mockRepository.Setup(x => x.GetStepEntriesForRangeAsync(userId, It.IsAny<DateOnly>(), It.IsAny<DateOnly>()))
+            .ReturnsAsync(entries);
+        _mockRepository.Setup(x => x.GetActivityDatesAsync(userId))
+            .ReturnsAsync(new List<DateOnly>());
+
+        // Act
+        var result = await _sut.GetUserActivityAsync(userId);
+
+        // Assert
+        result.TotalSteps.Should().Be(18000);
+        result.AverageStepsPerDay.Should().Be(9000); // 18000 / 2 distinct dates
+    }
+
+    private static DateOnly GetMondayOfThisWeek()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var dayOfWeek = today.DayOfWeek;
+        var daysFromMonday = dayOfWeek == DayOfWeek.Sunday ? 6 : (int)dayOfWeek - 1;
+        return today.AddDays(-daysFromMonday);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static User CreateTestUser(Guid userId)
