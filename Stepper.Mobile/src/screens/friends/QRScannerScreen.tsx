@@ -13,6 +13,31 @@ import { track } from '@services/analytics';
 
 type NavigationProp = NativeStackNavigationProp<FriendsStackParamList, 'QRScanner'>;
 
+// Must stay in sync with the backend's DiscoveryConstants.InviteDeepLinkScheme.
+const STEPPER_INVITE_PREFIX = 'stepper://invite/';
+
+// The backend stores qr_code_id as a random hex token. Accept the range of
+// lengths we could reasonably see (16 bytes ≈ 32 hex chars today, with slack
+// for future changes) without locking the scanner to a single size.
+const QR_CODE_ID_REGEX = /^[0-9a-f]{16,64}$/i;
+
+/**
+ * Extracts the qr_code_id from a scanned QR payload.
+ * Accepts the canonical Stepper://invite/<id> deep link (case-insensitive)
+ * and a bare qr_code_id token. Returns null for anything else so the scanner
+ * keeps reading until a valid Stepper QR appears.
+ */
+function parseStepperQrPayload(raw: string): string | null {
+  const trimmed = raw.trim();
+  const lower = trimmed.toLowerCase();
+
+  const candidate = lower.startsWith(STEPPER_INVITE_PREFIX)
+    ? trimmed.slice(STEPPER_INVITE_PREFIX.length)
+    : trimmed;
+
+  return QR_CODE_ID_REGEX.test(candidate) ? candidate : null;
+}
+
 /**
  * QR Scanner screen for scanning friend's QR codes.
  * Uses expo-camera for barcode scanning.
@@ -54,12 +79,9 @@ export default function QRScannerScreen() {
     async (result: BarcodeScanningResult) => {
       if (scanned || isProcessing) return;
 
-      const { data } = result;
-
-      // Check if the scanned data looks like a valid user ID (UUID format)
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(data)) {
-        // Not a valid user ID format, ignore
+      const qrCodeId = parseStepperQrPayload(result.data);
+      if (!qrCodeId) {
+        // Not a Stepper QR — ignore silently so the user can keep scanning.
         return;
       }
 
@@ -67,8 +89,8 @@ export default function QRScannerScreen() {
       setIsProcessing(true);
 
       try {
-        // Check if user exists
-        const user = await friendsApi.getUserById(data);
+        // Look up the user by their qr_code_id.
+        const user = await friendsApi.getUserByQrCode(qrCodeId);
 
         if (!user) {
           Alert.alert('User Not Found', 'The scanned QR code is not valid.', [
@@ -128,7 +150,7 @@ export default function QRScannerScreen() {
               text: 'Send Request',
               onPress: async () => {
                 try {
-                  await sendRequest(data);
+                  await sendRequest(user.id);
                   Alert.alert(
                     'Request Sent',
                     `Friend request sent to ${user.display_name}!`,

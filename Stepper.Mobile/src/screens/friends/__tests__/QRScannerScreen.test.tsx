@@ -107,7 +107,7 @@ describe('QRScannerScreen', () => {
       sendRequest: mockSendRequest,
     });
 
-    mockFriendsApi.getUserById.mockResolvedValue(mockUser);
+    mockFriendsApi.getUserByQrCode.mockResolvedValue(mockUser);
     mockFriendsApi.checkFriendshipStatus.mockResolvedValue({ status: 'none' });
     mockSendRequest.mockResolvedValue(undefined);
 
@@ -239,43 +239,60 @@ describe('QRScannerScreen', () => {
   });
 
   describe('barcode scanning', () => {
-    it('should ignore non-UUID barcodes', async () => {
+    it('should ignore barcodes that are not Stepper invite QRs', async () => {
       render(<QRScannerScreen />);
 
       const onBarcodeScanned = (global as any).__mockOnBarcodeScanned;
 
       await act(async () => {
-        onBarcodeScanned({ data: 'not-a-uuid' });
+        onBarcodeScanned({ data: 'https://example.com/not-a-stepper-qr' });
       });
 
-      expect(mockFriendsApi.getUserById).not.toHaveBeenCalled();
+      expect(mockFriendsApi.getUserByQrCode).not.toHaveBeenCalled();
     });
 
-    it('should process valid UUID barcodes', async () => {
+    it('should also accept a bare qr_code_id without the deep link prefix', async () => {
       render(<QRScannerScreen />);
 
-      const validUUID = '12345678-1234-1234-1234-123456789abc';
+      const bareQrCodeId = 'a1b2c3d4e5f60718';
       const onBarcodeScanned = (global as any).__mockOnBarcodeScanned;
 
       await act(async () => {
-        onBarcodeScanned({ data: validUUID });
+        onBarcodeScanned({ data: bareQrCodeId });
       });
 
       await waitFor(() => {
-        expect(mockFriendsApi.getUserById).toHaveBeenCalledWith(validUUID);
+        expect(mockFriendsApi.getUserByQrCode).toHaveBeenCalledWith(bareQrCodeId);
+      });
+    });
+
+    it('should process valid Stepper invite barcodes', async () => {
+      render(<QRScannerScreen />);
+
+      const validQrCodeId = 'a1b2c3d4e5f60718';
+      const scannedPayload = `Stepper://invite/${validQrCodeId}`;
+      const onBarcodeScanned = (global as any).__mockOnBarcodeScanned;
+
+      await act(async () => {
+        onBarcodeScanned({ data: scannedPayload });
+      });
+
+      await waitFor(() => {
+        expect(mockFriendsApi.getUserByQrCode).toHaveBeenCalledWith(validQrCodeId);
       });
     });
 
     it('should show alert when user not found', async () => {
-      mockFriendsApi.getUserById.mockResolvedValue(null);
+      mockFriendsApi.getUserByQrCode.mockResolvedValue(null);
 
       render(<QRScannerScreen />);
 
-      const validUUID = '12345678-1234-1234-1234-123456789abc';
+      const validQrCodeId = 'a1b2c3d4e5f60718';
+      const scannedPayload = `Stepper://invite/${validQrCodeId}`;
       const onBarcodeScanned = (global as any).__mockOnBarcodeScanned;
 
       await act(async () => {
-        onBarcodeScanned({ data: validUUID });
+        onBarcodeScanned({ data: scannedPayload });
       });
 
       await waitFor(() => {
@@ -292,11 +309,12 @@ describe('QRScannerScreen', () => {
 
       render(<QRScannerScreen />);
 
-      const validUUID = '12345678-1234-1234-1234-123456789abc';
+      const validQrCodeId = 'a1b2c3d4e5f60718';
+      const scannedPayload = `Stepper://invite/${validQrCodeId}`;
       const onBarcodeScanned = (global as any).__mockOnBarcodeScanned;
 
       await act(async () => {
-        onBarcodeScanned({ data: validUUID });
+        onBarcodeScanned({ data: scannedPayload });
       });
 
       await waitFor(() => {
@@ -313,11 +331,12 @@ describe('QRScannerScreen', () => {
 
       render(<QRScannerScreen />);
 
-      const validUUID = '12345678-1234-1234-1234-123456789abc';
+      const validQrCodeId = 'a1b2c3d4e5f60718';
+      const scannedPayload = `Stepper://invite/${validQrCodeId}`;
       const onBarcodeScanned = (global as any).__mockOnBarcodeScanned;
 
       await act(async () => {
-        onBarcodeScanned({ data: validUUID });
+        onBarcodeScanned({ data: scannedPayload });
       });
 
       await waitFor(() => {
@@ -334,11 +353,12 @@ describe('QRScannerScreen', () => {
 
       render(<QRScannerScreen />);
 
-      const validUUID = '12345678-1234-1234-1234-123456789abc';
+      const validQrCodeId = 'a1b2c3d4e5f60718';
+      const scannedPayload = `Stepper://invite/${validQrCodeId}`;
       const onBarcodeScanned = (global as any).__mockOnBarcodeScanned;
 
       await act(async () => {
-        onBarcodeScanned({ data: validUUID });
+        onBarcodeScanned({ data: scannedPayload });
       });
 
       await waitFor(() => {
@@ -353,11 +373,12 @@ describe('QRScannerScreen', () => {
     it('should show confirmation alert when can add friend', async () => {
       render(<QRScannerScreen />);
 
-      const validUUID = '12345678-1234-1234-1234-123456789abc';
+      const validQrCodeId = 'a1b2c3d4e5f60718';
+      const scannedPayload = `Stepper://invite/${validQrCodeId}`;
       const onBarcodeScanned = (global as any).__mockOnBarcodeScanned;
 
       await act(async () => {
-        onBarcodeScanned({ data: validUUID });
+        onBarcodeScanned({ data: scannedPayload });
       });
 
       await waitFor(() => {
@@ -370,17 +391,18 @@ describe('QRScannerScreen', () => {
     });
 
     it('should show error when trying to add yourself', async () => {
-      mockFriendsApi.getUserById.mockRejectedValue(
+      mockFriendsApi.getUserByQrCode.mockRejectedValue(
         new Error('Cannot add yourself as a friend')
       );
 
       render(<QRScannerScreen />);
 
-      const validUUID = '12345678-1234-1234-1234-123456789abc';
+      const validQrCodeId = 'a1b2c3d4e5f60718';
+      const scannedPayload = `Stepper://invite/${validQrCodeId}`;
       const onBarcodeScanned = (global as any).__mockOnBarcodeScanned;
 
       await act(async () => {
-        onBarcodeScanned({ data: validUUID });
+        onBarcodeScanned({ data: scannedPayload });
       });
 
       await waitFor(() => {
@@ -395,16 +417,17 @@ describe('QRScannerScreen', () => {
     it('should set scanned state after first valid scan', async () => {
       render(<QRScannerScreen />);
 
-      const validUUID = '12345678-1234-1234-1234-123456789abc';
+      const validQrCodeId = 'a1b2c3d4e5f60718';
+      const scannedPayload = `Stepper://invite/${validQrCodeId}`;
       const onBarcodeScanned = (global as any).__mockOnBarcodeScanned;
 
       // First scan should process
       await act(async () => {
-        onBarcodeScanned({ data: validUUID });
+        onBarcodeScanned({ data: scannedPayload });
       });
 
       await waitFor(() => {
-        expect(mockFriendsApi.getUserById).toHaveBeenCalledWith(validUUID);
+        expect(mockFriendsApi.getUserByQrCode).toHaveBeenCalledWith(validQrCodeId);
       });
     });
   });
@@ -412,7 +435,7 @@ describe('QRScannerScreen', () => {
   describe('processing state', () => {
     it('should show activity indicator while processing', async () => {
       let resolvePromise: (value: any) => void;
-      mockFriendsApi.getUserById.mockImplementation(
+      mockFriendsApi.getUserByQrCode.mockImplementation(
         () => new Promise((resolve) => {
           resolvePromise = resolve;
         })
@@ -420,11 +443,12 @@ describe('QRScannerScreen', () => {
 
       const { getByTestId, queryByText } = render(<QRScannerScreen />);
 
-      const validUUID = '12345678-1234-1234-1234-123456789abc';
+      const validQrCodeId = 'a1b2c3d4e5f60718';
+      const scannedPayload = `Stepper://invite/${validQrCodeId}`;
       const onBarcodeScanned = (global as any).__mockOnBarcodeScanned;
 
       await act(async () => {
-        onBarcodeScanned({ data: validUUID });
+        onBarcodeScanned({ data: scannedPayload });
       });
 
       // Should show activity indicator and hide instruction text
@@ -455,11 +479,12 @@ describe('QRScannerScreen', () => {
 
       render(<QRScannerScreen />);
 
-      const validUUID = '12345678-1234-1234-1234-123456789abc';
+      const validQrCodeId = 'a1b2c3d4e5f60718';
+      const scannedPayload = `Stepper://invite/${validQrCodeId}`;
       const onBarcodeScanned = (global as any).__mockOnBarcodeScanned;
 
       await act(async () => {
-        onBarcodeScanned({ data: validUUID });
+        onBarcodeScanned({ data: scannedPayload });
       });
 
       await waitFor(() => {
@@ -472,7 +497,7 @@ describe('QRScannerScreen', () => {
       });
 
       await waitFor(() => {
-        expect(mockSendRequest).toHaveBeenCalledWith(validUUID);
+        expect(mockSendRequest).toHaveBeenCalledWith(mockUser.id);
       });
     });
 
@@ -492,11 +517,12 @@ describe('QRScannerScreen', () => {
 
       render(<QRScannerScreen />);
 
-      const validUUID = '12345678-1234-1234-1234-123456789abc';
+      const validQrCodeId = 'a1b2c3d4e5f60718';
+      const scannedPayload = `Stepper://invite/${validQrCodeId}`;
       const onBarcodeScanned = (global as any).__mockOnBarcodeScanned;
 
       await act(async () => {
-        onBarcodeScanned({ data: validUUID });
+        onBarcodeScanned({ data: scannedPayload });
       });
 
       await waitFor(() => {
@@ -537,11 +563,12 @@ describe('QRScannerScreen', () => {
 
       render(<QRScannerScreen />);
 
-      const validUUID = '12345678-1234-1234-1234-123456789abc';
+      const validQrCodeId = 'a1b2c3d4e5f60718';
+      const scannedPayload = `Stepper://invite/${validQrCodeId}`;
       const onBarcodeScanned = (global as any).__mockOnBarcodeScanned;
 
       await act(async () => {
-        onBarcodeScanned({ data: validUUID });
+        onBarcodeScanned({ data: scannedPayload });
       });
 
       await waitFor(() => {

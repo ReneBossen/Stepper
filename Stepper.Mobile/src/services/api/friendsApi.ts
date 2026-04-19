@@ -56,6 +56,13 @@ interface BackendSearchUsersResponse {
   totalCount: number;
 }
 
+/** Response for the current user's QR code endpoint */
+interface BackendQrCodeResponse {
+  qrCodeId: string;
+  qrCodeImage: string;
+  deepLink: string;
+}
+
 /**
  * Mobile types (snake_case for mobile consistency)
  */
@@ -66,6 +73,12 @@ export interface UserSearchResult {
   username: string;
   avatar_url?: string;
   friendship_status?: string;
+}
+
+export interface MyQrCode {
+  qr_code_id: string;
+  qr_code_image: string;
+  deep_link: string;
 }
 
 export interface OutgoingRequest {
@@ -228,13 +241,27 @@ export const friendsApi = {
   },
 
   /**
-   * Get a user by their ID (for QR code scanning).
-   * @param userId - The user ID to look up
+   * Get the current user's QR code payload (id, PNG image, deep link).
+   * Used by the "My QR Code" modal so the QR encodes the backend's
+   * qr_code_id rather than the raw user UUID.
    */
-  getUserById: async (userId: string): Promise<UserSearchResult | null> => {
+  getMyQrCode: async (): Promise<MyQrCode> => {
+    const result = await apiClient.get<BackendQrCodeResponse>('/friends/discovery/qr-code');
+    return {
+      qr_code_id: result.qrCodeId,
+      qr_code_image: result.qrCodeImage,
+      deep_link: result.deepLink,
+    };
+  },
+
+  /**
+   * Look up a user by a scanned QR code's qr_code_id (short hex token).
+   * @param qrCodeId - The qr_code_id extracted from the scanned QR payload
+   */
+  getUserByQrCode: async (qrCodeId: string): Promise<UserSearchResult | null> => {
     try {
       const result = await apiClient.get<BackendUserSearchResult>(
-        `/friends/discovery/qr-code/${userId}`
+        `/friends/discovery/qr-code/${qrCodeId}`
       );
       return mapBackendSearchResultToMobile(result);
     } catch (error) {

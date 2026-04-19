@@ -1,6 +1,7 @@
-import React, { useRef, useCallback, useState } from 'react';
+import React, { useRef, useCallback, useState, useEffect } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import {
+  ActivityIndicator,
   Modal,
   Portal,
   Text,
@@ -13,6 +14,7 @@ import * as MediaLibrary from 'expo-media-library';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useUserStore } from '@store/userStore';
+import { friendsApi } from '@services/api/friendsApi';
 import { getErrorMessage } from '@utils/errorUtils';
 
 interface MyQRCodeModalProps {
@@ -30,9 +32,46 @@ export function MyQRCodeModal({ visible, onDismiss }: MyQRCodeModalProps) {
   const qrRef = useRef<QRCode | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [qrValue, setQrValue] = useState<string | null>(null);
+  const [isLoadingQr, setIsLoadingQr] = useState(false);
+  const [qrError, setQrError] = useState<string | null>(null);
 
-  const userId = currentUser?.id ?? '';
   const displayName = currentUser?.display_name ?? 'User';
+
+  // Fetch the backend-issued qr_code_id / deep link when the modal opens.
+  // We encode the deep link (not the raw UUID) so scanners and future
+  // Stepper://invite/ deep-link routing share a single payload format.
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingQr(true);
+    setQrError(null);
+
+    friendsApi
+      .getMyQrCode()
+      .then((data) => {
+        if (!cancelled) {
+          setQrValue(data.deep_link);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setQrError(getErrorMessage(error));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingQr(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
 
   const getQRDataURL = useCallback((): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -152,13 +191,28 @@ export function MyQRCodeModal({ visible, onDismiss }: MyQRCodeModalProps) {
               { backgroundColor: '#FFFFFF', borderColor: theme.colors.outlineVariant },
             ]}
           >
-            <QRCode
-              value={userId}
-              size={200}
-              backgroundColor="#FFFFFF"
-              color="#000000"
-              getRef={(ref) => (qrRef.current = ref)}
-            />
+            {isLoadingQr || !qrValue ? (
+              <View style={styles.qrPlaceholder}>
+                {qrError ? (
+                  <Text
+                    variant="bodyMedium"
+                    style={[styles.qrErrorText, { color: theme.colors.error }]}
+                  >
+                    {qrError}
+                  </Text>
+                ) : (
+                  <ActivityIndicator size="large" />
+                )}
+              </View>
+            ) : (
+              <QRCode
+                value={qrValue}
+                size={200}
+                backgroundColor="#FFFFFF"
+                color="#000000"
+                getRef={(ref) => (qrRef.current = ref)}
+              />
+            )}
           </View>
         </View>
 
@@ -182,7 +236,7 @@ export function MyQRCodeModal({ visible, onDismiss }: MyQRCodeModalProps) {
             onPress={handleSaveToPhotos}
             icon="download"
             style={styles.button}
-            disabled={isSaving || isSharing}
+            disabled={isSaving || isSharing || !qrValue}
             loading={isSaving}
           >
             {isSaving ? 'Saving...' : 'Save to Photos'}
@@ -193,7 +247,7 @@ export function MyQRCodeModal({ visible, onDismiss }: MyQRCodeModalProps) {
             onPress={handleShare}
             icon="share-variant"
             style={styles.button}
-            disabled={isSaving || isSharing}
+            disabled={isSaving || isSharing || !qrValue}
             loading={isSharing}
           >
             {isSharing ? 'Sharing...' : 'Share Code'}
@@ -227,6 +281,16 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
+  },
+  qrPlaceholder: {
+    width: 200,
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  qrErrorText: {
+    textAlign: 'center',
+    paddingHorizontal: 8,
   },
   displayName: {
     textAlign: 'center',
