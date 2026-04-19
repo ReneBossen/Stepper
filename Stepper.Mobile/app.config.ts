@@ -6,7 +6,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   slug: 'stepper',
   version: '1.0.0',
   orientation: 'portrait',
-  icon: './assets/icon.png',
+  icon: './assets/StepperIcon.png',
   userInterfaceStyle: 'automatic',
   splash: {
     image: './assets/splash.png',
@@ -16,6 +16,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   assetBundlePatterns: ['**/*'],
   ios: {
     supportsTablet: true,
+    icon: './assets/StepperIcon.png',
     bundleIdentifier: 'com.stepper.mobile',
     associatedDomains: ['applinks:stepper.com'],
     infoPlist: {
@@ -34,7 +35,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: './assets/adaptive-icon.png',
+      foregroundImage: './assets/StepperIcon.png',
       backgroundColor: '#ffffff',
     },
     package: 'com.stepper.mobile',
