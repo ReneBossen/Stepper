@@ -1,4 +1,5 @@
 using Stepper.Api.Activity;
+using Stepper.Api.Common;
 using Stepper.Api.Common.Database;
 using Stepper.Api.Friends;
 using Stepper.Api.Groups;
@@ -243,14 +244,13 @@ public class UserService : IUserService
     {
         ValidateUserId(userId);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var weekAgo = today.AddDays(-6); // Last 7 days including today
+        var (weekStart, weekEnd) = WeekRange.GetCurrentWeek();
 
-        var stepEntries = await _userRepository.GetStepEntriesForRangeAsync(userId, weekAgo, today);
+        var stepEntries = await _userRepository.GetStepEntriesForRangeAsync(userId, weekStart, weekEnd);
 
         var totalSteps = CalculateTotalSteps(stepEntries);
         var totalDistance = CalculateTotalDistance(stepEntries);
-        var averageSteps = CalculateAverageSteps(totalSteps);
+        var averageSteps = CalculateAverageSteps(stepEntries, totalSteps);
         var currentStreak = await CalculateCurrentStreakAsync(userId);
 
         return new UserActivityResponse
@@ -816,10 +816,22 @@ public class UserService : IUserService
         return entries.Sum(e => e.DistanceMeters ?? 0);
     }
 
-    private static int CalculateAverageSteps(int totalSteps)
+    private static int CalculateAverageSteps(
+        List<(int StepCount, double? DistanceMeters, DateOnly Date)> entries,
+        int totalSteps)
     {
-        const int daysInWeek = 7;
-        return totalSteps / daysInWeek;
+        var daysWithData = entries
+            .Where(e => e.StepCount > 0)
+            .Select(e => e.Date)
+            .Distinct()
+            .Count();
+
+        if (daysWithData == 0)
+        {
+            return 0;
+        }
+
+        return (int)Math.Round((double)totalSteps / daysWithData, MidpointRounding.AwayFromZero);
     }
 
     private async Task<int> CalculateCurrentStreakAsync(Guid userId)

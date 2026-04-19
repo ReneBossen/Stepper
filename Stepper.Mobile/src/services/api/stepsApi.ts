@@ -22,6 +22,7 @@ export interface StepStats {
   todayDistance: number;
   weekSteps: number;
   weekDistance: number;
+  weekAverage: number;
   monthSteps: number;
   monthDistance: number;
   currentStreak: number;

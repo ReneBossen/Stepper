@@ -1,3 +1,4 @@
+using Stepper.Api.Common;
 using Stepper.Api.Common.Models;
 using Stepper.Api.Steps.DTOs;
 
@@ -197,6 +198,7 @@ public class StepService : IStepService
         var todayStats = CalculateTodayStats(allSummaries);
         var weekStats = CalculateWeekStats(allSummaries);
         var monthStats = CalculateMonthStats(allSummaries);
+        var weekAverage = CalculateAverage(weekStats.Steps, weekStats.DaysWithData);
         var (currentStreak, longestStreak) = CalculateStreaks(allSummaries, dailyGoal);
 
         return new StepStatsResponse(
@@ -204,6 +206,7 @@ public class StepService : IStepService
             TodayDistance: todayStats.Distance,
             WeekSteps: weekStats.Steps,
             WeekDistance: weekStats.Distance,
+            WeekAverage: weekAverage,
             MonthSteps: monthStats.Steps,
             MonthDistance: monthStats.Distance,
             CurrentStreak: currentStreak,
@@ -230,19 +233,19 @@ public class StepService : IStepService
             : (0, 0.0);
     }
 
-    private static (int Steps, double Distance) CalculateWeekStats(List<DailyStepSummary> summaries)
+    private static (int Steps, double Distance, int DaysWithData) CalculateWeekStats(List<DailyStepSummary> summaries)
     {
-        var (weekStart, weekEnd) = GetCurrentWeekRange();
+        var (weekStart, weekEnd) = WeekRange.GetCurrentWeek();
         return CalculatePeriodStats(summaries, weekStart, weekEnd);
     }
 
-    private static (int Steps, double Distance) CalculateMonthStats(List<DailyStepSummary> summaries)
+    private static (int Steps, double Distance, int DaysWithData) CalculateMonthStats(List<DailyStepSummary> summaries)
     {
         var (monthStart, monthEnd) = GetCurrentMonthRange();
         return CalculatePeriodStats(summaries, monthStart, monthEnd);
     }
 
-    private static (int Steps, double Distance) CalculatePeriodStats(
+    private static (int Steps, double Distance, int DaysWithData) CalculatePeriodStats(
         List<DailyStepSummary> summaries,
         DateOnly start,
         DateOnly end)
@@ -253,21 +256,19 @@ public class StepService : IStepService
 
         var totalSteps = periodSummaries.Sum(s => s.TotalSteps);
         var totalDistance = periodSummaries.Sum(s => s.TotalDistanceMeters);
+        var daysWithData = periodSummaries.Count(s => s.TotalSteps > 0);
 
-        return (totalSteps, totalDistance);
+        return (totalSteps, totalDistance, daysWithData);
     }
 
-    private static (DateOnly Start, DateOnly End) GetCurrentWeekRange()
+    private static int CalculateAverage(int totalSteps, int daysWithData)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var dayOfWeek = today.DayOfWeek;
+        if (daysWithData <= 0)
+        {
+            return 0;
+        }
 
-        // Calculate Monday of current week (Monday = 0 for our purposes)
-        var daysFromMonday = dayOfWeek == DayOfWeek.Sunday ? 6 : (int)dayOfWeek - 1;
-        var monday = today.AddDays(-daysFromMonday);
-        var sunday = monday.AddDays(6);
-
-        return (monday, sunday);
+        return (int)Math.Round((double)totalSteps / daysWithData, MidpointRounding.AwayFromZero);
     }
 
     private static (DateOnly Start, DateOnly End) GetCurrentMonthRange()

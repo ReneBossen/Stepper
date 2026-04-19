@@ -217,6 +217,7 @@ public class StepsEndpointTests : IAsyncLifetime
             TodayDistance: 5950.0,
             WeekSteps: 60000,
             WeekDistance: 42000.0,
+            WeekAverage: 8571,
             MonthSteps: 250000,
             MonthDistance: 175000.0,
             CurrentStreak: 15,
