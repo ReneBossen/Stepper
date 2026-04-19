@@ -14,6 +14,7 @@ import {
   Divider,
   useTheme,
   ActivityIndicator,
+  IconButton,
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -200,6 +201,32 @@ export default function FriendDiscoveryScreen() {
     [navigation]
   );
 
+  // Cancel an outgoing friend request
+  const handleCancelOutgoingRequest = useCallback(
+    (requestId: string) => {
+      Alert.alert(
+        'Cancel Friend Request',
+        'Do you want to cancel your friend request?',
+        [
+          { text: 'No', style: 'cancel' },
+          {
+            text: 'Yes',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await friendsApi.cancelRequest(requestId);
+                await fetchOutgoingRequests();
+              } catch (error) {
+                Alert.alert('Error', getErrorMessage(error));
+              }
+            },
+          },
+        ]
+      );
+    },
+    [fetchOutgoingRequests]
+  );
+
   // Format relative time
   const formatRelativeTime = useCallback((dateString: string): string => {
     const date = new Date(dateString);
@@ -246,9 +273,16 @@ export default function FriendDiscoveryScreen() {
             {formatRelativeTime(item.created_at)}
           </Text>
         </View>
+        <IconButton
+          icon="close"
+          size={20}
+          onPress={() => handleCancelOutgoingRequest(item.id)}
+          accessibilityLabel="Cancel friend request"
+          testID={`cancel-outgoing-${item.id}`}
+        />
       </View>
     ),
-    [theme.colors, formatRelativeTime]
+    [theme.colors, formatRelativeTime, handleCancelOutgoingRequest]
   );
 
   const keyExtractorSearch = useCallback(

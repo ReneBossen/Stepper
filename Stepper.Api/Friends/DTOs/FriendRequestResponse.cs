@@ -26,6 +26,21 @@ public record FriendRequestResponse
     public string? RequesterAvatarUrl { get; init; }
 
     /// <summary>
+    /// The ID of the user who received the request.
+    /// </summary>
+    public Guid? AddresseeId { get; init; }
+
+    /// <summary>
+    /// The display name of the addressee.
+    /// </summary>
+    public string? AddresseeDisplayName { get; init; }
+
+    /// <summary>
+    /// The avatar URL of the addressee.
+    /// </summary>
+    public string? AddresseeAvatarUrl { get; init; }
+
+    /// <summary>
     /// The status of the friend request.
     /// </summary>
     public string Status { get; init; } = string.Empty;

@@ -401,132 +401,113 @@ describe('friendsApi', () => {
   });
 
   describe('checkFriendshipStatus', () => {
-    it('should return "none" when no friendship exists', async () => {
-      const mockUser = {
+    it('should call the discovery users endpoint with the target user id', async () => {
+      mockApiClient.get.mockResolvedValue({
+        id: 'user-123',
+        displayName: 'Test User',
+        friendshipStatus: 'none',
+      });
+
+      await friendsApi.checkFriendshipStatus('user-123');
+
+      expect(mockApiClient.get).toHaveBeenCalledWith('/friends/discovery/users/user-123');
+    });
+
+    it('should return "none" with no friendshipId when no friendship exists', async () => {
+      mockApiClient.get.mockResolvedValue({
         id: 'user-123',
         displayName: 'Test User',
         avatarUrl: null,
         friendshipStatus: 'none',
-      };
-
-      mockApiClient.get.mockResolvedValue(mockUser);
+      });
 
       const result = await friendsApi.checkFriendshipStatus('user-123');
 
-      expect(result).toBe('none');
+      expect(result).toEqual({ status: 'none', friendshipId: undefined });
     });
 
-    it('should return "accepted" when already friends', async () => {
-      const mockUser = {
+    it('should return "accepted" with friendshipId when already friends', async () => {
+      mockApiClient.get.mockResolvedValue({
         id: 'user-123',
         displayName: 'Test User',
         avatarUrl: null,
         friendshipStatus: 'accepted',
-      };
-
-      mockApiClient.get.mockResolvedValue(mockUser);
-
-      const result = await friendsApi.checkFriendshipStatus('user-123');
-
-      expect(result).toBe('accepted');
-    });
-
-    it('should return "accepted" for "friends" status', async () => {
-      const mockUser = {
-        id: 'user-123',
-        displayName: 'Test User',
-        avatarUrl: null,
-        friendshipStatus: 'friends',
-      };
-
-      mockApiClient.get.mockResolvedValue(mockUser);
+        friendshipId: 'friendship-1',
+      });
 
       const result = await friendsApi.checkFriendshipStatus('user-123');
 
-      expect(result).toBe('accepted');
+      expect(result).toEqual({ status: 'accepted', friendshipId: 'friendship-1' });
     });
 
-    it('should return "pending_sent" for outgoing request', async () => {
-      const mockUser = {
+    it('should return "pending_sent" with friendshipId for outgoing request', async () => {
+      mockApiClient.get.mockResolvedValue({
         id: 'user-123',
         displayName: 'Test User',
         avatarUrl: null,
         friendshipStatus: 'pending_sent',
-      };
-
-      mockApiClient.get.mockResolvedValue(mockUser);
-
-      const result = await friendsApi.checkFriendshipStatus('user-123');
-
-      expect(result).toBe('pending_sent');
-    });
-
-    it('should return "pending_sent" for "pending_outgoing" status', async () => {
-      const mockUser = {
-        id: 'user-123',
-        displayName: 'Test User',
-        avatarUrl: null,
-        friendshipStatus: 'pending_outgoing',
-      };
-
-      mockApiClient.get.mockResolvedValue(mockUser);
+        friendshipId: 'friendship-2',
+      });
 
       const result = await friendsApi.checkFriendshipStatus('user-123');
 
-      expect(result).toBe('pending_sent');
+      expect(result).toEqual({ status: 'pending_sent', friendshipId: 'friendship-2' });
     });
 
-    it('should return "pending_received" for incoming request', async () => {
-      const mockUser = {
+    it('should return "pending_received" with friendshipId for incoming request', async () => {
+      mockApiClient.get.mockResolvedValue({
         id: 'user-123',
         displayName: 'Test User',
         avatarUrl: null,
         friendshipStatus: 'pending_received',
-      };
-
-      mockApiClient.get.mockResolvedValue(mockUser);
+        friendshipId: 'friendship-3',
+      });
 
       const result = await friendsApi.checkFriendshipStatus('user-123');
 
-      expect(result).toBe('pending_received');
+      expect(result).toEqual({ status: 'pending_received', friendshipId: 'friendship-3' });
     });
 
-    it('should return "pending_received" for "pending_incoming" status', async () => {
-      const mockUser = {
-        id: 'user-123',
-        displayName: 'Test User',
-        avatarUrl: null,
-        friendshipStatus: 'pending_incoming',
-      };
-
-      mockApiClient.get.mockResolvedValue(mockUser);
+    it('should return "none" on 404 (user not found)', async () => {
+      mockApiClient.get.mockRejectedValue({ statusCode: 404, message: 'Not found' });
 
       const result = await friendsApi.checkFriendshipStatus('user-123');
 
-      expect(result).toBe('pending_received');
+      expect(result).toEqual({ status: 'none' });
     });
 
-    it('should return "none" on error', async () => {
-      mockApiClient.get.mockRejectedValue(new Error('Network error'));
+    it('should re-throw server errors', async () => {
+      const serverError = { statusCode: 500, message: 'Internal error' };
+      mockApiClient.get.mockRejectedValue(serverError);
 
-      const result = await friendsApi.checkFriendshipStatus('user-123');
+      await expect(friendsApi.checkFriendshipStatus('user-123')).rejects.toEqual(serverError);
+    });
 
-      expect(result).toBe('none');
+    it('should re-throw network errors', async () => {
+      const networkError = { statusCode: 0, message: 'Network error' };
+      mockApiClient.get.mockRejectedValue(networkError);
+
+      await expect(friendsApi.checkFriendshipStatus('user-123')).rejects.toEqual(networkError);
+    });
+
+    it('should re-throw unauthorized errors', async () => {
+      const authError = { statusCode: 401, message: 'Unauthorized' };
+      mockApiClient.get.mockRejectedValue(authError);
+
+      await expect(friendsApi.checkFriendshipStatus('user-123')).rejects.toEqual(authError);
     });
 
     it('should return "none" for unknown status', async () => {
-      const mockUser = {
+      mockApiClient.get.mockResolvedValue({
         id: 'user-123',
         displayName: 'Test User',
         avatarUrl: null,
         friendshipStatus: 'unknown_status',
-      };
-
-      mockApiClient.get.mockResolvedValue(mockUser);
+      });
 
       const result = await friendsApi.checkFriendshipStatus('user-123');
 
-      expect(result).toBe('none');
+      expect(result.status).toBe('none');
     });
   });
 });

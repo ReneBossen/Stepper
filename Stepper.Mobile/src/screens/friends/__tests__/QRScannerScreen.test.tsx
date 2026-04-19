@@ -108,7 +108,7 @@ describe('QRScannerScreen', () => {
     });
 
     mockFriendsApi.getUserById.mockResolvedValue(mockUser);
-    mockFriendsApi.checkFriendshipStatus.mockResolvedValue('none');
+    mockFriendsApi.checkFriendshipStatus.mockResolvedValue({ status: 'none' });
     mockSendRequest.mockResolvedValue(undefined);
 
     // Default: permission granted
@@ -288,7 +288,7 @@ describe('QRScannerScreen', () => {
     });
 
     it('should show alert when already friends', async () => {
-      mockFriendsApi.checkFriendshipStatus.mockResolvedValue('accepted');
+      mockFriendsApi.checkFriendshipStatus.mockResolvedValue({ status: 'accepted', friendshipId: 'friendship-1' });
 
       render(<QRScannerScreen />);
 
@@ -309,7 +309,7 @@ describe('QRScannerScreen', () => {
     });
 
     it('should show alert when request already sent', async () => {
-      mockFriendsApi.checkFriendshipStatus.mockResolvedValue('pending_sent');
+      mockFriendsApi.checkFriendshipStatus.mockResolvedValue({ status: 'pending_sent', friendshipId: 'friendship-2' });
 
       render(<QRScannerScreen />);
 
@@ -330,7 +330,7 @@ describe('QRScannerScreen', () => {
     });
 
     it('should show alert when request already received', async () => {
-      mockFriendsApi.checkFriendshipStatus.mockResolvedValue('pending_received');
+      mockFriendsApi.checkFriendshipStatus.mockResolvedValue({ status: 'pending_received', friendshipId: 'friendship-3' });
 
       render(<QRScannerScreen />);
 

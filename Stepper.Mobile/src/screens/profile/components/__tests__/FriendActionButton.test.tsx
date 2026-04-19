@@ -50,6 +50,7 @@ describe('FriendActionButton', () => {
     onAddFriend: jest.fn(),
     onAcceptRequest: jest.fn(),
     onDeclineRequest: jest.fn(),
+    onCancelRequest: jest.fn(),
     onRemoveFriend: jest.fn(),
   };
 
@@ -121,7 +122,7 @@ describe('FriendActionButton', () => {
   });
 
   describe('status: pending_sent', () => {
-    it('should render Friend Request Sent button', () => {
+    it('should render Pending button', () => {
       const { getByText } = render(
         <FriendActionButton
           status="pending_sent"
@@ -129,10 +130,10 @@ describe('FriendActionButton', () => {
           testID="friend-action"
         />
       );
-      expect(getByText('Friend Request Sent')).toBeTruthy();
+      expect(getByText('Pending')).toBeTruthy();
     });
 
-    it('should be disabled', () => {
+    it('should call onCancelRequest when pressed', () => {
       const { getByTestId } = render(
         <FriendActionButton
           status="pending_sent"
@@ -141,8 +142,22 @@ describe('FriendActionButton', () => {
         />
       );
 
-      const button = getByTestId('friend-action');
-      expect(button.props.disabled).toBe(true);
+      fireEvent.press(getByTestId('friend-action'));
+      expect(mockCallbacks.onCancelRequest).toHaveBeenCalledTimes(1);
+    });
+
+    it('should be disabled when loading', () => {
+      const { getByTestId } = render(
+        <FriendActionButton
+          status="pending_sent"
+          isLoading={true}
+          {...mockCallbacks}
+          testID="friend-action"
+        />
+      );
+
+      fireEvent.press(getByTestId('friend-action'));
+      expect(mockCallbacks.onCancelRequest).not.toHaveBeenCalled();
     });
 
     it('should have proper accessibility label', () => {
@@ -153,7 +168,7 @@ describe('FriendActionButton', () => {
           testID="friend-action"
         />
       );
-      expect(getByLabelText('Friend request sent')).toBeTruthy();
+      expect(getByLabelText('Friend request pending, tap to cancel')).toBeTruthy();
     });
   });
 

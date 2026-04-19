@@ -365,7 +365,7 @@ describe('UserProfileScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockFriendsApi.checkFriendshipStatus.mockResolvedValue('none');
+    mockFriendsApi.checkFriendshipStatus.mockResolvedValue({ status: 'none' });
 
     mockUseUserStore.mockImplementation((selector?: any) => {
       if (selector) {
@@ -500,7 +500,7 @@ describe('UserProfileScreen', () => {
     });
 
     it('should not show privacy restricted view when friends', async () => {
-      mockFriendsApi.checkFriendshipStatus.mockResolvedValue('accepted');
+      mockFriendsApi.checkFriendshipStatus.mockResolvedValue({ status: 'accepted', friendshipId: 'friendship-1' });
 
       mockUseUserStore.mockImplementation((selector?: any) => {
         const state = {
@@ -542,7 +542,7 @@ describe('UserProfileScreen', () => {
 
   describe('friend status: pending_sent', () => {
     beforeEach(() => {
-      mockFriendsApi.checkFriendshipStatus.mockResolvedValue('pending_sent');
+      mockFriendsApi.checkFriendshipStatus.mockResolvedValue({ status: 'pending_sent', friendshipId: 'friendship-2' });
     });
 
     it('should display pending sent status', async () => {
@@ -556,7 +556,7 @@ describe('UserProfileScreen', () => {
 
   describe('friend status: pending_received', () => {
     beforeEach(() => {
-      mockFriendsApi.checkFriendshipStatus.mockResolvedValue('pending_received');
+      mockFriendsApi.checkFriendshipStatus.mockResolvedValue({ status: 'pending_received', friendshipId: 'friendship-3' });
     });
 
     it('should display Accept and Decline buttons', async () => {
@@ -599,7 +599,7 @@ describe('UserProfileScreen', () => {
 
   describe('friend status: accepted', () => {
     beforeEach(() => {
-      mockFriendsApi.checkFriendshipStatus.mockResolvedValue('accepted');
+      mockFriendsApi.checkFriendshipStatus.mockResolvedValue({ status: 'accepted', friendshipId: 'friendship-1' });
     });
 
     it('should display Remove Friend button', async () => {

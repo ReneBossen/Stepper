@@ -18,6 +18,7 @@ public class FriendDiscoveryServiceTests
     private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly Mock<IInviteCodeRepository> _mockInviteCodeRepository;
     private readonly Mock<IFriendService> _mockFriendService;
+    private readonly Mock<IFriendRepository> _mockFriendRepository;
     private readonly Mock<HttpContext> _mockHttpContext;
     private readonly FriendDiscoveryService _sut;
 
@@ -28,6 +29,7 @@ public class FriendDiscoveryServiceTests
         _mockUserRepository = new Mock<IUserRepository>();
         _mockInviteCodeRepository = new Mock<IInviteCodeRepository>();
         _mockFriendService = new Mock<IFriendService>();
+        _mockFriendRepository = new Mock<IFriendRepository>();
         _mockHttpContext = new Mock<HttpContext>();
 
         _sut = new FriendDiscoveryService(
@@ -35,7 +37,8 @@ public class FriendDiscoveryServiceTests
             _mockHttpContextAccessor.Object,
             _mockUserRepository.Object,
             _mockInviteCodeRepository.Object,
-            _mockFriendService.Object
+            _mockFriendService.Object,
+            _mockFriendRepository.Object
         );
     }
 
@@ -50,7 +53,8 @@ public class FriendDiscoveryServiceTests
             _mockHttpContextAccessor.Object,
             _mockUserRepository.Object,
             _mockInviteCodeRepository.Object,
-            _mockFriendService.Object
+            _mockFriendService.Object,
+            _mockFriendRepository.Object
         );
 
         // Assert
@@ -66,7 +70,8 @@ public class FriendDiscoveryServiceTests
             null!,
             _mockUserRepository.Object,
             _mockInviteCodeRepository.Object,
-            _mockFriendService.Object
+            _mockFriendService.Object,
+            _mockFriendRepository.Object
         );
 
         // Assert
@@ -82,7 +87,8 @@ public class FriendDiscoveryServiceTests
             _mockHttpContextAccessor.Object,
             null!,
             _mockInviteCodeRepository.Object,
-            _mockFriendService.Object
+            _mockFriendService.Object,
+            _mockFriendRepository.Object
         );
 
         // Assert
@@ -98,7 +104,8 @@ public class FriendDiscoveryServiceTests
             _mockHttpContextAccessor.Object,
             _mockUserRepository.Object,
             null!,
-            _mockFriendService.Object
+            _mockFriendService.Object,
+            _mockFriendRepository.Object
         );
 
         // Assert
@@ -114,6 +121,24 @@ public class FriendDiscoveryServiceTests
             _mockHttpContextAccessor.Object,
             _mockUserRepository.Object,
             _mockInviteCodeRepository.Object,
+            null!,
+            _mockFriendRepository.Object
+        );
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Constructor_WithNullFriendRepository_ThrowsArgumentNullException()
+    {
+        // Arrange & Act
+        var act = () => new FriendDiscoveryService(
+            _mockClientFactory.Object,
+            _mockHttpContextAccessor.Object,
+            _mockUserRepository.Object,
+            _mockInviteCodeRepository.Object,
+            _mockFriendService.Object,
             null!
         );
 
@@ -503,6 +528,240 @@ public class FriendDiscoveryServiceTests
         result1.Code.Should().NotBe(result2.Code);
         result1.Code.Should().NotBeNullOrEmpty();
         result2.Code.Should().NotBeNullOrEmpty();
+    }
+
+    #endregion
+
+    #region GetUserByIdAsync Tests
+
+    [Fact]
+    public async Task GetUserByIdAsync_WithEmptyRequestingUserId_ThrowsArgumentException()
+    {
+        // Arrange
+        var targetUserId = Guid.NewGuid();
+
+        // Act
+        var act = async () => await _sut.GetUserByIdAsync(Guid.Empty, targetUserId);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("Requesting user ID cannot be empty.*");
+    }
+
+    [Fact]
+    public async Task GetUserByIdAsync_WithEmptyTargetUserId_ThrowsArgumentException()
+    {
+        // Arrange
+        var requestingUserId = Guid.NewGuid();
+
+        // Act
+        var act = async () => await _sut.GetUserByIdAsync(requestingUserId, Guid.Empty);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("Target user ID cannot be empty.*");
+    }
+
+    [Fact]
+    public async Task GetUserByIdAsync_WithSelfLookup_ThrowsArgumentException()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+
+        // Act
+        var act = async () => await _sut.GetUserByIdAsync(userId, userId);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("Cannot look up friendship status with yourself.*");
+    }
+
+    [Fact]
+    public async Task GetUserByIdAsync_WithNonExistentUser_ThrowsKeyNotFoundException()
+    {
+        // Arrange
+        var requestingUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+
+        _mockUserRepository.Setup(x => x.GetByIdAsync(targetUserId))
+            .ReturnsAsync((User?)null);
+
+        // Act
+        var act = async () => await _sut.GetUserByIdAsync(requestingUserId, targetUserId);
+
+        // Assert
+        await act.Should().ThrowAsync<KeyNotFoundException>()
+            .WithMessage($"User not found: {targetUserId}");
+    }
+
+    [Fact]
+    public async Task GetUserByIdAsync_WithNoFriendship_ReturnsNoneStatus()
+    {
+        // Arrange
+        var requestingUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var targetUser = CreateTestUser(targetUserId, "Target User", "qr-target");
+
+        _mockUserRepository.Setup(x => x.GetByIdAsync(targetUserId))
+            .ReturnsAsync(targetUser);
+        _mockFriendRepository.Setup(x => x.GetFriendshipAsync(requestingUserId, targetUserId))
+            .ReturnsAsync((Friendship?)null);
+
+        // Act
+        var result = await _sut.GetUserByIdAsync(requestingUserId, targetUserId);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Id.Should().Be(targetUserId);
+        result.DisplayName.Should().Be("Target User");
+        result.FriendshipStatus.Should().Be("none");
+        result.FriendshipId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetUserByIdAsync_WithOutgoingPendingRequest_ReturnsPendingSentStatus()
+    {
+        // Arrange
+        var requestingUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var targetUser = CreateTestUser(targetUserId, "Target User", "qr-target");
+        var friendship = new Friendship
+        {
+            Id = Guid.NewGuid(),
+            RequesterId = requestingUserId,
+            AddresseeId = targetUserId,
+            Status = FriendshipStatus.Pending,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _mockUserRepository.Setup(x => x.GetByIdAsync(targetUserId))
+            .ReturnsAsync(targetUser);
+        _mockFriendRepository.Setup(x => x.GetFriendshipAsync(requestingUserId, targetUserId))
+            .ReturnsAsync(friendship);
+
+        // Act
+        var result = await _sut.GetUserByIdAsync(requestingUserId, targetUserId);
+
+        // Assert
+        result.FriendshipStatus.Should().Be("pending_sent");
+        result.FriendshipId.Should().Be(friendship.Id);
+    }
+
+    [Fact]
+    public async Task GetUserByIdAsync_WithIncomingPendingRequest_ReturnsPendingReceivedStatus()
+    {
+        // Arrange
+        var requestingUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var targetUser = CreateTestUser(targetUserId, "Target User", "qr-target");
+        var friendship = new Friendship
+        {
+            Id = Guid.NewGuid(),
+            RequesterId = targetUserId,
+            AddresseeId = requestingUserId,
+            Status = FriendshipStatus.Pending,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _mockUserRepository.Setup(x => x.GetByIdAsync(targetUserId))
+            .ReturnsAsync(targetUser);
+        _mockFriendRepository.Setup(x => x.GetFriendshipAsync(requestingUserId, targetUserId))
+            .ReturnsAsync(friendship);
+
+        // Act
+        var result = await _sut.GetUserByIdAsync(requestingUserId, targetUserId);
+
+        // Assert
+        result.FriendshipStatus.Should().Be("pending_received");
+        result.FriendshipId.Should().Be(friendship.Id);
+    }
+
+    [Fact]
+    public async Task GetUserByIdAsync_WithAcceptedFriendship_ReturnsAcceptedStatus()
+    {
+        // Arrange
+        var requestingUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var targetUser = CreateTestUser(targetUserId, "Target User", "qr-target");
+        var friendship = new Friendship
+        {
+            Id = Guid.NewGuid(),
+            RequesterId = requestingUserId,
+            AddresseeId = targetUserId,
+            Status = FriendshipStatus.Accepted,
+            CreatedAt = DateTime.UtcNow.AddDays(-5),
+            AcceptedAt = DateTime.UtcNow.AddDays(-4)
+        };
+
+        _mockUserRepository.Setup(x => x.GetByIdAsync(targetUserId))
+            .ReturnsAsync(targetUser);
+        _mockFriendRepository.Setup(x => x.GetFriendshipAsync(requestingUserId, targetUserId))
+            .ReturnsAsync(friendship);
+
+        // Act
+        var result = await _sut.GetUserByIdAsync(requestingUserId, targetUserId);
+
+        // Assert
+        result.FriendshipStatus.Should().Be("accepted");
+        result.FriendshipId.Should().Be(friendship.Id);
+    }
+
+    [Fact]
+    public async Task GetUserByIdAsync_WithRejectedFriendship_ReturnsNoneStatus()
+    {
+        // Arrange
+        var requestingUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var targetUser = CreateTestUser(targetUserId, "Target User", "qr-target");
+        var friendship = new Friendship
+        {
+            Id = Guid.NewGuid(),
+            RequesterId = requestingUserId,
+            AddresseeId = targetUserId,
+            Status = FriendshipStatus.Rejected,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _mockUserRepository.Setup(x => x.GetByIdAsync(targetUserId))
+            .ReturnsAsync(targetUser);
+        _mockFriendRepository.Setup(x => x.GetFriendshipAsync(requestingUserId, targetUserId))
+            .ReturnsAsync(friendship);
+
+        // Act
+        var result = await _sut.GetUserByIdAsync(requestingUserId, targetUserId);
+
+        // Assert
+        result.FriendshipStatus.Should().Be("none");
+        result.FriendshipId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetUserByIdAsync_WithBlockedFriendship_ReturnsNoneStatus()
+    {
+        // Arrange
+        var requestingUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var targetUser = CreateTestUser(targetUserId, "Target User", "qr-target");
+        var friendship = new Friendship
+        {
+            Id = Guid.NewGuid(),
+            RequesterId = requestingUserId,
+            AddresseeId = targetUserId,
+            Status = FriendshipStatus.Blocked,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _mockUserRepository.Setup(x => x.GetByIdAsync(targetUserId))
+            .ReturnsAsync(targetUser);
+        _mockFriendRepository.Setup(x => x.GetFriendshipAsync(requestingUserId, targetUserId))
+            .ReturnsAsync(friendship);
+
+        // Act
+        var result = await _sut.GetUserByIdAsync(requestingUserId, targetUserId);
+
+        // Assert — block state is deliberately not leaked
+        result.FriendshipStatus.Should().Be("none");
+        result.FriendshipId.Should().BeNull();
     }
 
     #endregion
