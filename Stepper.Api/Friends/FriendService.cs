@@ -66,6 +66,9 @@ public class FriendService : IFriendService
             RequesterId = friendship.RequesterId,
             RequesterDisplayName = requesterProfile?.DisplayName ?? "Unknown",
             RequesterAvatarUrl = requesterProfile?.AvatarUrl,
+            AddresseeId = friendship.AddresseeId,
+            AddresseeDisplayName = targetUser.DisplayName,
+            AddresseeAvatarUrl = targetUser.AvatarUrl,
             Status = friendship.Status.ToString().ToLowerInvariant(),
             CreatedAt = friendship.CreatedAt
         };
@@ -141,8 +144,9 @@ public class FriendService : IFriendService
             {
                 Id = friendship.Id,
                 RequesterId = friendship.RequesterId,
-                RequesterDisplayName = addresseeProfile?.DisplayName ?? "Unknown",
-                RequesterAvatarUrl = addresseeProfile?.AvatarUrl,
+                AddresseeId = friendship.AddresseeId,
+                AddresseeDisplayName = addresseeProfile?.DisplayName ?? "Unknown",
+                AddresseeAvatarUrl = addresseeProfile?.AvatarUrl,
                 Status = friendship.Status.ToString().ToLowerInvariant(),
                 CreatedAt = friendship.CreatedAt
             });

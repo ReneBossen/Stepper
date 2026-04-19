@@ -30,6 +30,15 @@ public interface IFriendDiscoveryService
     Task<UserSearchResult> GetUserByQrCodeAsync(string qrCodeId);
 
     /// <summary>
+    /// Gets a user's profile by user ID, including directional friendship status
+    /// with the requesting user and the friendship row ID when one exists.
+    /// </summary>
+    /// <param name="requestingUserId">The ID of the user performing the lookup.</param>
+    /// <param name="targetUserId">The ID of the user to look up.</param>
+    /// <returns>The user profile with friendship status.</returns>
+    Task<UserProfileWithStatusResult> GetUserByIdAsync(Guid requestingUserId, Guid targetUserId);
+
+    /// <summary>
     /// Generates a shareable invite link.
     /// </summary>
     /// <param name="userId">The ID of the user generating the link.</param>

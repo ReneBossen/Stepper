@@ -73,6 +73,8 @@ public class FriendServiceTests
         result.Id.Should().Be(friendship.Id);
         result.RequesterId.Should().Be(userId);
         result.RequesterDisplayName.Should().Be("Requester User");
+        result.AddresseeId.Should().Be(friendUserId);
+        result.AddresseeDisplayName.Should().Be("Friend User");
         result.Status.Should().Be("pending");
         _mockUserRepository.Verify(x => x.GetByIdAsync(friendUserId), Times.Once);
         _mockFriendRepository.Verify(x => x.GetFriendshipAsync(userId, friendUserId), Times.Once);
@@ -286,9 +288,11 @@ public class FriendServiceTests
         result.Should().NotBeNull();
         result.Should().HaveCount(2);
         result[0].RequesterId.Should().Be(userId);
-        result[0].RequesterDisplayName.Should().Be("User 1");
+        result[0].AddresseeId.Should().Be(addresseeId1);
+        result[0].AddresseeDisplayName.Should().Be("User 1");
         result[1].RequesterId.Should().Be(userId);
-        result[1].RequesterDisplayName.Should().Be("User 2");
+        result[1].AddresseeId.Should().Be(addresseeId2);
+        result[1].AddresseeDisplayName.Should().Be("User 2");
         _mockFriendRepository.Verify(x => x.GetSentRequestsAsync(userId), Times.Once);
     }
 

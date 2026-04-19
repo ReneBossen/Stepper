@@ -86,6 +86,25 @@ public class FriendDiscoveryController : ControllerBase
     }
 
     /// <summary>
+    /// Gets a user's profile by user ID, including the directional friendship status
+    /// between the current user and the target user.
+    /// </summary>
+    /// <param name="userId">The ID of the user to look up.</param>
+    /// <returns>User profile with friendship status.</returns>
+    [HttpGet("users/{userId:guid}")]
+    public async Task<ActionResult<ApiResponse<UserProfileWithStatusResult>>> GetUserById(Guid userId)
+    {
+        var requestingUserId = User.GetUserId();
+        if (requestingUserId == null)
+        {
+            return Unauthorized(ApiResponse<UserProfileWithStatusResult>.ErrorResponse("User is not authenticated."));
+        }
+
+        var result = await _discoveryService.GetUserByIdAsync(requestingUserId.Value, userId);
+        return Ok(ApiResponse<UserProfileWithStatusResult>.SuccessResponse(result));
+    }
+
+    /// <summary>
     /// Generates a shareable invite link.
     /// </summary>
     /// <param name="request">Link generation parameters.</param>

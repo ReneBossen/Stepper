@@ -17,6 +17,7 @@ public class FriendDiscoveryService : IFriendDiscoveryService
     private readonly IUserRepository _userRepository;
     private readonly IInviteCodeRepository _inviteCodeRepository;
     private readonly IFriendService _friendService;
+    private readonly IFriendRepository _friendRepository;
 
     private static readonly JsonSerializerOptions RpcJsonOptions = new()
     {
@@ -29,19 +30,22 @@ public class FriendDiscoveryService : IFriendDiscoveryService
         IHttpContextAccessor httpContextAccessor,
         IUserRepository userRepository,
         IInviteCodeRepository inviteCodeRepository,
-        IFriendService friendService)
+        IFriendService friendService,
+        IFriendRepository friendRepository)
     {
         ArgumentNullException.ThrowIfNull(clientFactory);
         ArgumentNullException.ThrowIfNull(httpContextAccessor);
         ArgumentNullException.ThrowIfNull(userRepository);
         ArgumentNullException.ThrowIfNull(inviteCodeRepository);
         ArgumentNullException.ThrowIfNull(friendService);
+        ArgumentNullException.ThrowIfNull(friendRepository);
 
         _clientFactory = clientFactory;
         _httpContextAccessor = httpContextAccessor;
         _userRepository = userRepository;
         _inviteCodeRepository = inviteCodeRepository;
         _friendService = friendService;
+        _friendRepository = friendRepository;
     }
 
     /// <inheritdoc />
@@ -145,6 +149,60 @@ public class FriendDiscoveryService : IFriendDiscoveryService
         }
 
         return user;
+    }
+
+    /// <inheritdoc />
+    public async Task<UserProfileWithStatusResult> GetUserByIdAsync(Guid requestingUserId, Guid targetUserId)
+    {
+        if (requestingUserId == Guid.Empty)
+        {
+            throw new ArgumentException("Requesting user ID cannot be empty.", nameof(requestingUserId));
+        }
+
+        if (targetUserId == Guid.Empty)
+        {
+            throw new ArgumentException("Target user ID cannot be empty.", nameof(targetUserId));
+        }
+
+        if (requestingUserId == targetUserId)
+        {
+            throw new ArgumentException("Cannot look up friendship status with yourself.", nameof(targetUserId));
+        }
+
+        var targetUser = await _userRepository.GetByIdAsync(targetUserId);
+        if (targetUser == null)
+        {
+            throw new KeyNotFoundException($"User not found: {targetUserId}");
+        }
+
+        var friendship = await _friendRepository.GetFriendshipAsync(requestingUserId, targetUserId);
+
+        var (status, friendshipId) = MapFriendshipStatus(friendship, requestingUserId);
+
+        return new UserProfileWithStatusResult
+        {
+            Id = targetUser.Id,
+            DisplayName = targetUser.DisplayName,
+            AvatarUrl = targetUser.AvatarUrl,
+            FriendshipStatus = status,
+            FriendshipId = friendshipId
+        };
+    }
+
+    private static (string status, Guid? friendshipId) MapFriendshipStatus(Friendship? friendship, Guid requestingUserId)
+    {
+        if (friendship == null)
+        {
+            return ("none", null);
+        }
+
+        return friendship.Status switch
+        {
+            FriendshipStatus.Accepted => ("accepted", friendship.Id),
+            FriendshipStatus.Pending when friendship.RequesterId == requestingUserId => ("pending_sent", friendship.Id),
+            FriendshipStatus.Pending => ("pending_received", friendship.Id),
+            _ => ("none", null)
+        };
     }
 
     /// <inheritdoc />
