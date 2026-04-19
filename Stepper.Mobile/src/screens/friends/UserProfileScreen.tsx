@@ -23,10 +23,19 @@ import { useFriendsStore } from '@store/friendsStore';
 import { friendsApi } from '@services/api/friendsApi';
 import { getErrorMessage } from '@utils/errorUtils';
 import { getInitials, formatJoinDate } from '@utils/stringUtils';
-import type { FriendsStackScreenProps, FriendsStackParamList, GroupsStackParamList } from '@navigation/types';
+import type {
+  FriendsStackScreenProps,
+  FriendsStackParamList,
+  GroupsStackScreenProps,
+  GroupsStackParamList,
+} from '@navigation/types';
 
-type Props = FriendsStackScreenProps<'UserProfile'>;
-type NavigationProp = NativeStackNavigationProp<FriendsStackParamList, 'UserProfile'>;
+type Props =
+  | FriendsStackScreenProps<'UserProfile'>
+  | GroupsStackScreenProps<'UserProfile'>;
+type NavigationProp =
+  | NativeStackNavigationProp<FriendsStackParamList, 'UserProfile'>
+  | NativeStackNavigationProp<GroupsStackParamList, 'UserProfile'>;
 
 /**
  * Other User Profile screen displaying another user's profile information,

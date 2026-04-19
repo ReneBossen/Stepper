@@ -10,6 +10,7 @@ import CreateGroupScreen from '@screens/groups/CreateGroupScreen';
 import JoinGroupScreen from '@screens/groups/JoinGroupScreen';
 import ManageMembersScreen from '@screens/groups/ManageMembersScreen';
 import InviteMembersScreen from '@screens/groups/InviteMembersScreen';
+import UserProfileScreen from '@screens/friends/UserProfileScreen';
 
 const Stack = createNativeStackNavigator<GroupsStackParamList>();
 
@@ -49,6 +50,11 @@ export default function GroupsStackNavigator() {
       <Stack.Screen
         name={GROUPS_ROUTES.InviteMembers}
         component={InviteMembersScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name={GROUPS_ROUTES.UserProfile}
+        component={UserProfileScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

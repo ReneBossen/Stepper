@@ -68,6 +68,7 @@ export type GroupsStackParamList = {
   JoinGroup: { inviteCode?: string };
   ManageMembers: { groupId: string };
   InviteMembers: { groupId: string };
+  UserProfile: { userId: string };
 };
 
 // Settings Stack

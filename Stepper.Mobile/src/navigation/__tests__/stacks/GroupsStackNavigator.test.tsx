@@ -48,6 +48,11 @@ jest.mock('@screens/groups/InviteMembersScreen', () => ({
   default: () => <View testID="invite-members-screen" />,
 }));
 
+jest.mock('@screens/friends/UserProfileScreen', () => ({
+  __esModule: true,
+  default: () => <View testID="user-profile-screen" />,
+}));
+
 import GroupsStackNavigator from '../../stacks/GroupsStackNavigator';
 
 describe('GroupsStackNavigator', () => {
@@ -84,5 +89,10 @@ describe('GroupsStackNavigator', () => {
   it('GroupsStackNavigator_WhenRendered_DisplaysInviteMembersScreen', () => {
     const { getByTestId } = render(<GroupsStackNavigator />);
     expect(getByTestId('invite-members-screen')).toBeTruthy();
+  });
+
+  it('GroupsStackNavigator_WhenRendered_DisplaysUserProfileScreen', () => {
+    const { getByTestId } = render(<GroupsStackNavigator />);
+    expect(getByTestId('user-profile-screen')).toBeTruthy();
   });
 });
