@@ -27,13 +27,6 @@ public interface IInviteCodeRepository
     Task<List<InviteCode>> GetByUserIdAsync(Guid userId);
 
     /// <summary>
-    /// Updates an invite code.
-    /// </summary>
-    /// <param name="inviteCode">The invite code to update.</param>
-    /// <returns>The updated invite code.</returns>
-    Task<InviteCode> UpdateAsync(InviteCode inviteCode);
-
-    /// <summary>
     /// Deletes an invite code.
     /// </summary>
     /// <param name="id">The ID of the invite code to delete.</param>

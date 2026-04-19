@@ -73,15 +73,8 @@ public class GroupService : IGroupService
     /// <inheritdoc />
     public async Task<GroupResponse> GetGroupAsync(Guid userId, Guid groupId)
     {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        }
-
-        if (groupId == Guid.Empty)
-        {
-            throw new ArgumentException("Group ID cannot be empty.", nameof(groupId));
-        }
+        ValidateUserId(userId);
+        ValidateGroupId(groupId);
 
         var group = await _groupRepository.GetByIdAsync(groupId);
         if (group == null)
@@ -90,28 +83,31 @@ public class GroupService : IGroupService
         }
 
         var membership = await _groupRepository.GetMembershipAsync(groupId, userId);
-        if (membership == null)
+        if (membership == null && !group.IsPublic)
         {
             throw new UnauthorizedAccessException("You are not a member of this group.");
         }
 
-        return await MapToGroupResponseAsync(group, membership.Role);
+        if (membership == null)
+        {
+            // Non-member viewing a public group — no role/status to report.
+            return await MapToGroupResponseAsync(group, MemberRole.Member, status: null);
+        }
+
+        return await MapToGroupResponseAsync(group, membership.Role, membership.Status);
     }
 
     /// <inheritdoc />
     public async Task<GroupListResponse> GetUserGroupsAsync(Guid userId)
     {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        }
+        ValidateUserId(userId);
 
         var groupsWithRoles = await _groupRepository.GetUserGroupsAsync(userId);
 
         var groupResponses = new List<GroupResponse>();
-        foreach (var (group, role) in groupsWithRoles)
+        foreach (var (group, role, status) in groupsWithRoles)
         {
-            groupResponses.Add(await MapToGroupResponseAsync(group, role));
+            groupResponses.Add(await MapToGroupResponseAsync(group, role, status));
         }
 
         return new GroupListResponse
@@ -146,17 +142,9 @@ public class GroupService : IGroupService
             throw new ArgumentException($"Group name must be between {MinGroupNameLength} and {MaxGroupNameLength} characters.");
         }
 
-        var group = await _groupRepository.GetByIdAsync(groupId);
-        if (group == null)
-        {
-            throw new KeyNotFoundException($"Group not found: {groupId}");
-        }
-
-        var membership = await _groupRepository.GetMembershipAsync(groupId, userId);
-        if (membership == null || (membership.Role != MemberRole.Owner && membership.Role != MemberRole.Admin))
-        {
-            throw new UnauthorizedAccessException("Only group owners and admins can update the group.");
-        }
+        var group = await GetGroupOrThrowAsync(groupId);
+        var membership = await GetActiveMembershipOrThrowAsync(groupId, userId);
+        EnsureAdminRole(membership, "update the group");
 
         if (request.MaxMembers.HasValue)
         {
@@ -164,14 +152,12 @@ public class GroupService : IGroupService
             group.MaxMembers = request.MaxMembers.Value;
         }
 
-        // Update the group
         group.Name = request.Name.Trim();
         group.Description = request.Description?.Trim();
         group.IsPublic = request.IsPublic;
 
         var updatedGroup = await _groupRepository.UpdateAsync(group);
 
-        // Ensure group has a join code (legacy public groups may not have one)
         var existingJoinCode = await _groupRepository.GetJoinCodeAsync(updatedGroup.Id);
         if (existingJoinCode == null)
         {
@@ -185,24 +171,13 @@ public class GroupService : IGroupService
     /// <inheritdoc />
     public async Task DeleteGroupAsync(Guid userId, Guid groupId)
     {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        }
+        ValidateUserId(userId);
+        ValidateGroupId(groupId);
 
-        if (groupId == Guid.Empty)
-        {
-            throw new ArgumentException("Group ID cannot be empty.", nameof(groupId));
-        }
+        await GetGroupOrThrowAsync(groupId);
+        var membership = await GetActiveMembershipOrThrowAsync(groupId, userId);
 
-        var group = await _groupRepository.GetByIdAsync(groupId);
-        if (group == null)
-        {
-            throw new KeyNotFoundException($"Group not found: {groupId}");
-        }
-
-        var membership = await _groupRepository.GetMembershipAsync(groupId, userId);
-        if (membership == null || membership.Role != MemberRole.Owner)
+        if (membership.Role != MemberRole.Owner)
         {
             throw new UnauthorizedAccessException("Only the group owner can delete the group.");
         }
@@ -213,122 +188,43 @@ public class GroupService : IGroupService
     /// <inheritdoc />
     public async Task<GroupResponse> JoinGroupAsync(Guid userId, Guid groupId, JoinGroupRequest request)
     {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        }
-
-        if (groupId == Guid.Empty)
-        {
-            throw new ArgumentException("Group ID cannot be empty.", nameof(groupId));
-        }
-
+        ValidateUserId(userId);
+        ValidateGroupId(groupId);
         ArgumentNullException.ThrowIfNull(request);
 
-        var group = await _groupRepository.GetByIdAsync(groupId);
-        if (group == null)
+        // Private groups: delegate entirely to the join_group_by_code RPC path
+        // so all validation lives in one place.
+        if (!string.IsNullOrWhiteSpace(request.JoinCode))
         {
-            throw new KeyNotFoundException($"Group not found: {groupId}");
+            return await JoinByCodeAsync(userId, request.JoinCode!);
         }
 
-        // Check if already a member
-        var existingMembership = await _groupRepository.GetMembershipAsync(groupId, userId);
-        if (existingMembership != null)
-        {
-            throw new InvalidOperationException("You are already a member of this group.");
-        }
+        // Public group path: SECURITY DEFINER RPC enforces is_public,
+        // max_members, already-member, and require_approval.
+        var (joinedGroupId, status) = await _groupRepository.JoinPublicGroupAsync(groupId);
 
-        // For private groups, validate join code
-        if (!group.IsPublic)
-        {
-            if (string.IsNullOrWhiteSpace(request.JoinCode))
-            {
-                throw new ArgumentException("Join code is required for private groups.");
-            }
-
-            var storedJoinCode = await _groupRepository.GetJoinCodeAsync(groupId);
-            if (request.JoinCode != storedJoinCode)
-            {
-                throw new UnauthorizedAccessException("Invalid join code.");
-            }
-        }
-
-        // Enforce max members limit
-        await EnsureGroupNotFullAsync(group);
-
-        // Add the user as a member
-        var membership = new GroupMembership
-        {
-            Id = Guid.NewGuid(),
-            GroupId = groupId,
-            UserId = userId,
-            Role = MemberRole.Member,
-            JoinedAt = DateTime.UtcNow
-        };
-
-        await _groupRepository.AddMemberAsync(membership);
-
-        // Refresh the group to get updated member count
-        var refreshedGroup = await _groupRepository.GetByIdAsync(groupId);
-        if (refreshedGroup == null)
-        {
-            throw new InvalidOperationException("Failed to retrieve group after joining.");
-        }
-
-        return await MapToGroupResponseAsync(refreshedGroup, MemberRole.Member);
+        var refreshedGroup = await GetRefreshedGroupAsync(joinedGroupId);
+        return await MapToGroupResponseAsync(refreshedGroup, MemberRole.Member, status);
     }
 
     /// <inheritdoc />
     public async Task LeaveGroupAsync(Guid userId, Guid groupId)
     {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        }
+        ValidateUserId(userId);
+        ValidateGroupId(groupId);
 
-        if (groupId == Guid.Empty)
-        {
-            throw new ArgumentException("Group ID cannot be empty.", nameof(groupId));
-        }
-
-        var group = await _groupRepository.GetByIdAsync(groupId);
-        if (group == null)
-        {
-            throw new KeyNotFoundException($"Group not found: {groupId}");
-        }
-
-        var membership = await _groupRepository.GetMembershipAsync(groupId, userId);
-        if (membership == null)
-        {
-            throw new InvalidOperationException("You are not a member of this group.");
-        }
-
-        // Owners cannot leave without transferring ownership
-        if (membership.Role == MemberRole.Owner)
-        {
-            var members = await _groupRepository.GetMembersAsync(groupId);
-            if (members.Count > 1)
-            {
-                throw new InvalidOperationException("Group owner cannot leave. Transfer ownership to another member first or delete the group.");
-            }
-        }
-
-        await _groupRepository.RemoveMemberAsync(groupId, userId);
+        // The leave_group SECURITY DEFINER RPC enforces membership, owner
+        // check, and active-member count server-side. TranslateRpcException
+        // in the repository maps PostgreSQL error codes to the semantic .NET
+        // exception types the middleware expects.
+        await _groupRepository.LeaveGroupAsync(groupId);
     }
 
     /// <inheritdoc />
     public async Task<GroupMemberResponse> InviteMemberAsync(Guid userId, Guid groupId, InviteMemberRequest request)
     {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        }
-
-        if (groupId == Guid.Empty)
-        {
-            throw new ArgumentException("Group ID cannot be empty.", nameof(groupId));
-        }
-
+        ValidateUserId(userId);
+        ValidateGroupId(groupId);
         ArgumentNullException.ThrowIfNull(request);
 
         if (request.UserId == Guid.Empty)
@@ -336,83 +232,35 @@ public class GroupService : IGroupService
             throw new ArgumentException("User ID to invite cannot be empty.");
         }
 
-        var group = await _groupRepository.GetByIdAsync(groupId);
-        if (group == null)
-        {
-            throw new KeyNotFoundException($"Group not found: {groupId}");
-        }
+        await GetGroupOrThrowAsync(groupId);
+        var membership = await GetActiveMembershipOrThrowAsync(groupId, userId);
+        EnsureAdminRole(membership, "invite members");
 
-        var membership = await _groupRepository.GetMembershipAsync(groupId, userId);
-        if (membership == null || (membership.Role != MemberRole.Owner && membership.Role != MemberRole.Admin))
-        {
-            throw new UnauthorizedAccessException("Only group owners and admins can invite members.");
-        }
-
-        // Check if user exists
         var userToInvite = await _userRepository.GetByIdAsync(request.UserId);
         if (userToInvite == null)
         {
             throw new KeyNotFoundException($"User not found: {request.UserId}");
         }
 
-        // Check if already a member
-        var existingMembership = await _groupRepository.GetMembershipAsync(groupId, request.UserId);
-        if (existingMembership != null)
-        {
-            throw new InvalidOperationException("User is already a member of this group.");
-        }
+        // admin_add_member RPC enforces max_members and already-member checks
+        await _groupRepository.AdminAddMemberAsync(groupId, request.UserId);
 
-        // Add the user as a member
-        var newMembership = new GroupMembership
-        {
-            Id = Guid.NewGuid(),
-            GroupId = groupId,
-            UserId = request.UserId,
-            Role = MemberRole.Member,
-            JoinedAt = DateTime.UtcNow
-        };
+        var createdMembership = await _groupRepository.GetMembershipAsync(groupId, request.UserId)
+            ?? throw new InvalidOperationException("Failed to retrieve added membership.");
 
-        var createdMembership = await _groupRepository.AddMemberAsync(newMembership);
-
-        return new GroupMemberResponse
-        {
-            UserId = userToInvite.Id,
-            DisplayName = userToInvite.DisplayName,
-            AvatarUrl = userToInvite.AvatarUrl,
-            Role = createdMembership.Role,
-            JoinedAt = createdMembership.JoinedAt
-        };
+        return MapToMemberResponse(createdMembership, userToInvite);
     }
 
     /// <inheritdoc />
     public async Task RemoveMemberAsync(Guid userId, Guid groupId, Guid targetUserId)
     {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        }
+        ValidateUserId(userId);
+        ValidateGroupId(groupId);
+        ValidateTargetUserId(targetUserId);
 
-        if (groupId == Guid.Empty)
-        {
-            throw new ArgumentException("Group ID cannot be empty.", nameof(groupId));
-        }
-
-        if (targetUserId == Guid.Empty)
-        {
-            throw new ArgumentException("Target user ID cannot be empty.", nameof(targetUserId));
-        }
-
-        var group = await _groupRepository.GetByIdAsync(groupId);
-        if (group == null)
-        {
-            throw new KeyNotFoundException($"Group not found: {groupId}");
-        }
-
-        var membership = await _groupRepository.GetMembershipAsync(groupId, userId);
-        if (membership == null || (membership.Role != MemberRole.Owner && membership.Role != MemberRole.Admin))
-        {
-            throw new UnauthorizedAccessException("Only group owners and admins can remove members.");
-        }
+        await GetGroupOrThrowAsync(groupId);
+        var membership = await GetActiveMembershipOrThrowAsync(groupId, userId);
+        EnsureAdminRole(membership, "remove members");
 
         var targetMembership = await _groupRepository.GetMembershipAsync(groupId, targetUserId);
         if (targetMembership == null)
@@ -420,13 +268,11 @@ public class GroupService : IGroupService
             throw new InvalidOperationException("User is not a member of this group.");
         }
 
-        // Cannot remove the owner
         if (targetMembership.Role == MemberRole.Owner)
         {
             throw new UnauthorizedAccessException("Cannot remove the group owner.");
         }
 
-        // Admins cannot remove other admins
         if (membership.Role == MemberRole.Admin && targetMembership.Role == MemberRole.Admin)
         {
             throw new UnauthorizedAccessException("Admins cannot remove other admins.");
@@ -436,90 +282,20 @@ public class GroupService : IGroupService
     }
 
     /// <inheritdoc />
-    public async Task<List<GroupMemberResponse>> GetMembersAsync(Guid userId, Guid groupId)
+    public Task<List<GroupMemberResponse>> GetMembersAsync(Guid userId, Guid groupId)
     {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        }
-
-        if (groupId == Guid.Empty)
-        {
-            throw new ArgumentException("Group ID cannot be empty.", nameof(groupId));
-        }
-
-        var group = await _groupRepository.GetByIdAsync(groupId);
-        if (group == null)
-        {
-            throw new KeyNotFoundException($"Group not found: {groupId}");
-        }
-
-        var membership = await _groupRepository.GetMembershipAsync(groupId, userId);
-        if (membership == null)
-        {
-            throw new UnauthorizedAccessException("You are not a member of this group.");
-        }
-
-        var memberships = await _groupRepository.GetMembersAsync(groupId);
-
-        if (memberships.Count == 0)
-        {
-            return new List<GroupMemberResponse>();
-        }
-
-        // Batch fetch all users to avoid N+1 query
-        var userIds = memberships.Select(m => m.UserId).ToList();
-        var users = await _userRepository.GetByIdsAsync(userIds);
-
-        // Create a lookup dictionary for fast access
-        var userDict = (users ?? new List<User>()).ToDictionary(u => u.Id);
-
-        // Map memberships to responses
-        var responses = new List<GroupMemberResponse>();
-        foreach (var m in memberships)
-        {
-            if (userDict.TryGetValue(m.UserId, out var user))
-            {
-                responses.Add(new GroupMemberResponse
-                {
-                    UserId = user.Id,
-                    DisplayName = user.DisplayName,
-                    AvatarUrl = user.AvatarUrl,
-                    Role = m.Role,
-                    JoinedAt = m.JoinedAt
-                });
-            }
-        }
-
-        return responses;
+        return GetMembersAsync(userId, groupId, status: null);
     }
 
     /// <inheritdoc />
     public async Task<LeaderboardResponse> GetLeaderboardAsync(Guid userId, Guid groupId)
     {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        }
+        ValidateUserId(userId);
+        ValidateGroupId(groupId);
 
-        if (groupId == Guid.Empty)
-        {
-            throw new ArgumentException("Group ID cannot be empty.", nameof(groupId));
-        }
+        var group = await GetGroupOrThrowAsync(groupId);
+        _ = await GetActiveMembershipOrThrowAsync(groupId, userId);
 
-        var group = await _groupRepository.GetByIdAsync(groupId);
-        if (group == null)
-        {
-            throw new KeyNotFoundException($"Group not found: {groupId}");
-        }
-
-        var membership = await _groupRepository.GetMembershipAsync(groupId, userId);
-        if (membership == null)
-        {
-            throw new UnauthorizedAccessException("You are not a member of this group.");
-        }
-
-        // Calculate the competition period based on group settings
         var (startDate, endDate) = CalculateCompetitionPeriod(group.PeriodType, DateTime.UtcNow);
 
         var dateRange = new DateRange
@@ -542,41 +318,34 @@ public class GroupService : IGroupService
     /// <inheritdoc />
     public async Task<GroupResponse> RegenerateJoinCodeAsync(Guid userId, Guid groupId)
     {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User ID cannot be empty.", nameof(userId));
-        }
+        ValidateUserId(userId);
+        ValidateGroupId(groupId);
 
-        if (groupId == Guid.Empty)
-        {
-            throw new ArgumentException("Group ID cannot be empty.", nameof(groupId));
-        }
-
-        var group = await _groupRepository.GetByIdAsync(groupId);
-        if (group == null)
-        {
-            throw new KeyNotFoundException($"Group not found: {groupId}");
-        }
-
-        var membership = await _groupRepository.GetMembershipAsync(groupId, userId);
-        if (membership == null || (membership.Role != MemberRole.Owner && membership.Role != MemberRole.Admin))
-        {
-            throw new UnauthorizedAccessException("Only group owners and admins can regenerate the join code.");
-        }
+        var group = await GetGroupOrThrowAsync(groupId);
+        var membership = await GetActiveMembershipOrThrowAsync(groupId, userId);
+        EnsureAdminRole(membership, "regenerate the join code");
 
         var newJoinCode = GenerateJoinCode();
         await _groupRepository.UpdateJoinCodeAsync(groupId, newJoinCode);
 
-        // Set join code on domain model for response mapping
         group.JoinCode = newJoinCode;
 
         return await MapToGroupResponseAsync(group, membership.Role);
     }
 
-    private async Task<GroupResponse> MapToGroupResponseAsync(Group group, MemberRole role)
+    private async Task<GroupResponse> MapToGroupResponseAsync(
+        Group group,
+        MemberRole role,
+        MembershipStatus? status = MembershipStatus.Active)
     {
-        // Fetch join code from separate table if not already on domain model
-        var joinCode = group.JoinCode ?? await _groupRepository.GetJoinCodeAsync(group.Id);
+        // Fetch join code from separate table if not already on domain model.
+        // Pending members and non-members cannot read group_join_codes under
+        // RLS, so skip the lookup entirely for them.
+        string? joinCode = null;
+        if (status == MembershipStatus.Active && (role == MemberRole.Owner || role == MemberRole.Admin))
+        {
+            joinCode = group.JoinCode ?? await _groupRepository.GetJoinCodeAsync(group.Id);
+        }
 
         return new GroupResponse
         {
@@ -587,9 +356,9 @@ public class GroupService : IGroupService
             PeriodType = group.PeriodType,
             MemberCount = group.MemberCount,
             MaxMembers = group.MaxMembers,
-            // Security: Only owners and admins can see join codes to prevent unauthorized sharing
-            JoinCode = (role == MemberRole.Owner || role == MemberRole.Admin) ? joinCode : null,
+            JoinCode = joinCode,
             Role = role,
+            Status = status,
             CreatedAt = group.CreatedAt
         };
     }
@@ -673,17 +442,13 @@ public class GroupService : IGroupService
         ValidateUserId(userId);
         ValidateJoinCode(code);
 
-        var group = await _groupRepository.GetByJoinCodeAsync(code);
-        EnsureGroupFoundByCode(group);
+        // SECURITY DEFINER RPC bypasses RLS on group_join_codes (members-only
+        // SELECT) and group_memberships (no direct INSERT), and enforces
+        // already-member, max_members, and require_approval server-side.
+        var (groupId, status) = await _groupRepository.JoinGroupByCodeAsync(code);
 
-        await EnsureNotAlreadyMemberAsync(group!.Id, userId);
-        await EnsureGroupNotFullAsync(group);
-
-        var membership = CreateMembershipForJoin(group!.Id, userId);
-        await _groupRepository.AddMemberAsync(membership);
-
-        var refreshedGroup = await GetRefreshedGroupAsync(group!.Id);
-        return await MapToGroupResponseAsync(refreshedGroup, MemberRole.Member);
+        var refreshedGroup = await GetRefreshedGroupAsync(groupId);
+        return await MapToGroupResponseAsync(refreshedGroup, MemberRole.Member, status);
     }
 
     /// <inheritdoc />
@@ -697,8 +462,8 @@ public class GroupService : IGroupService
         ValidateGroupId(groupId);
         ValidateTargetUserId(targetUserId);
 
-        var group = await GetGroupOrThrowAsync(groupId);
-        var userMembership = await GetMembershipOrThrowAsync(groupId, userId);
+        _ = await GetGroupOrThrowAsync(groupId);
+        var userMembership = await GetActiveMembershipOrThrowAsync(groupId, userId);
         var targetMembership = await GetTargetMembershipOrThrowAsync(groupId, targetUserId);
 
         ValidateRoleChangePermissions(userMembership, targetMembership, newRole);
@@ -712,9 +477,43 @@ public class GroupService : IGroupService
     /// <inheritdoc />
     public async Task<List<GroupMemberResponse>> GetMembersAsync(Guid userId, Guid groupId, string? status)
     {
-        // Delegate to existing method for now (status filtering not yet implemented in DB)
-        // Status filtering would require membership status field in database
-        return await GetMembersAsync(userId, groupId);
+        ValidateUserId(userId);
+        ValidateGroupId(groupId);
+
+        _ = await GetGroupOrThrowAsync(groupId);
+        var membership = await GetActiveMembershipOrThrowAsync(groupId, userId);
+
+        // Only admins/owners can see pending members
+        MembershipStatus? statusFilter = null;
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            statusFilter = ParseStatusFilter(status);
+            if (statusFilter == MembershipStatus.Pending &&
+                membership.Role != MemberRole.Owner && membership.Role != MemberRole.Admin)
+            {
+                throw new UnauthorizedAccessException("Only owners and admins can view pending members.");
+            }
+        }
+
+        var memberships = await _groupRepository.GetMembersAsync(groupId, statusFilter);
+
+        if (memberships.Count == 0)
+        {
+            return new List<GroupMemberResponse>();
+        }
+
+        var userIds = memberships.Select(m => m.UserId).ToList();
+        var users = await _userRepository.GetByIdsAsync(userIds);
+        var userDict = (users ?? new List<User>()).ToDictionary(u => u.Id);
+
+        var responses = new List<GroupMemberResponse>();
+        foreach (var m in memberships)
+        {
+            userDict.TryGetValue(m.UserId, out var user);
+            responses.Add(MapToMemberResponse(m, user));
+        }
+
+        return responses;
     }
 
     /// <inheritdoc />
@@ -724,16 +523,49 @@ public class GroupService : IGroupService
         ValidateGroupId(groupId);
         ValidateTargetUserId(targetUserId);
 
-        var group = await GetGroupOrThrowAsync(groupId);
-        var userMembership = await GetMembershipOrThrowAsync(groupId, userId);
+        await GetGroupOrThrowAsync(groupId);
+        var userMembership = await GetActiveMembershipOrThrowAsync(groupId, userId);
 
         EnsureCanApproveMember(userMembership);
 
         var targetMembership = await GetTargetMembershipOrThrowAsync(groupId, targetUserId);
 
-        // For now, approval just confirms membership exists (pending status not yet in DB)
+        if (targetMembership.Status != MembershipStatus.Pending)
+        {
+            throw new InvalidOperationException("Target membership is not pending approval.");
+        }
+
+        var approved = await _groupRepository.ApproveMembershipAsync(groupId, targetUserId);
         var targetUser = await _userRepository.GetByIdAsync(targetUserId);
-        return MapToMemberResponse(targetMembership, targetUser);
+        return MapToMemberResponse(approved, targetUser);
+    }
+
+    private static MembershipStatus ParseStatusFilter(string status)
+    {
+        return status.Trim().ToLowerInvariant() switch
+        {
+            "active" => MembershipStatus.Active,
+            "pending" => MembershipStatus.Pending,
+            _ => throw new ArgumentException($"Unknown status filter: {status}", nameof(status))
+        };
+    }
+
+    private async Task<GroupMembership> GetActiveMembershipOrThrowAsync(Guid groupId, Guid userId)
+    {
+        var membership = await _groupRepository.GetMembershipAsync(groupId, userId);
+        if (membership == null || membership.Status != MembershipStatus.Active)
+        {
+            throw new UnauthorizedAccessException("You are not an active member of this group.");
+        }
+        return membership;
+    }
+
+    private static void EnsureAdminRole(GroupMembership membership, string action)
+    {
+        if (membership.Role != MemberRole.Owner && membership.Role != MemberRole.Admin)
+        {
+            throw new UnauthorizedAccessException($"Only group owners and admins can {action}.");
+        }
     }
 
     // Validation helper methods
@@ -761,13 +593,6 @@ public class GroupService : IGroupService
             throw new ArgumentException("Maximum members must be between 1 and 50.", nameof(maxMembers));
     }
 
-    private async Task EnsureGroupNotFullAsync(Group group)
-    {
-        var memberCount = await _groupRepository.GetMemberCountAsync(group.Id);
-        if (memberCount >= group.MaxMembers)
-            throw new InvalidOperationException($"This group is full. Maximum members: {group.MaxMembers}");
-    }
-
     private static void ValidateSearchQuery(string query)
     {
         if (string.IsNullOrWhiteSpace(query))
@@ -786,31 +611,6 @@ public class GroupService : IGroupService
             throw new ArgumentException("Join code cannot be empty.", nameof(code));
     }
 
-    private static void EnsureGroupFoundByCode(Group? group)
-    {
-        if (group == null)
-            throw new KeyNotFoundException("Invalid join code. Group not found.");
-    }
-
-    private async Task EnsureNotAlreadyMemberAsync(Guid groupId, Guid userId)
-    {
-        var existingMembership = await _groupRepository.GetMembershipAsync(groupId, userId);
-        if (existingMembership != null)
-            throw new InvalidOperationException("You are already a member of this group.");
-    }
-
-    private static GroupMembership CreateMembershipForJoin(Guid groupId, Guid userId)
-    {
-        return new GroupMembership
-        {
-            Id = Guid.NewGuid(),
-            GroupId = groupId,
-            UserId = userId,
-            Role = MemberRole.Member,
-            JoinedAt = DateTime.UtcNow
-        };
-    }
-
     private async Task<Group> GetRefreshedGroupAsync(Guid groupId)
     {
         var group = await _groupRepository.GetByIdAsync(groupId);
@@ -825,14 +625,6 @@ public class GroupService : IGroupService
         if (group == null)
             throw new KeyNotFoundException($"Group not found: {groupId}");
         return group;
-    }
-
-    private async Task<GroupMembership> GetMembershipOrThrowAsync(Guid groupId, Guid userId)
-    {
-        var membership = await _groupRepository.GetMembershipAsync(groupId, userId);
-        if (membership == null)
-            throw new UnauthorizedAccessException("You are not a member of this group.");
-        return membership;
     }
 
     private async Task<GroupMembership> GetTargetMembershipOrThrowAsync(Guid groupId, Guid targetUserId)
@@ -903,6 +695,7 @@ public class GroupService : IGroupService
             DisplayName = user?.DisplayName ?? "Unknown",
             AvatarUrl = user?.AvatarUrl,
             Role = membership.Role,
+            Status = membership.Status,
             JoinedAt = membership.JoinedAt
         };
     }

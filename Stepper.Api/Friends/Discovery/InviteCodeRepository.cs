@@ -70,26 +70,6 @@ public class InviteCodeRepository : IInviteCodeRepository
     }
 
     /// <inheritdoc />
-    public async Task<InviteCode> UpdateAsync(InviteCode inviteCode)
-    {
-        var client = await GetAuthenticatedClientAsync();
-
-        var entity = InviteCodeEntity.FromInviteCode(inviteCode);
-
-        var response = await client
-            .From<InviteCodeEntity>()
-            .Update(entity);
-
-        var updated = response.Models.FirstOrDefault();
-        if (updated == null)
-        {
-            throw new InvalidOperationException("Failed to update invite code.");
-        }
-
-        return updated.ToInviteCode();
-    }
-
-    /// <inheritdoc />
     public async Task DeleteAsync(Guid id)
     {
         var client = await GetAuthenticatedClientAsync();

@@ -24,6 +24,9 @@ public class GroupMembershipEntity : BaseModel
     [Column("joined_at")]
     public DateTime JoinedAt { get; set; }
 
+    [Column("status")]
+    public string Status { get; set; } = "active";
+
     /// <summary>
     /// Converts the entity to a domain GroupMembership model.
     /// </summary>
@@ -35,7 +38,8 @@ public class GroupMembershipEntity : BaseModel
             GroupId = GroupId,
             UserId = UserId,
             Role = ParseRole(Role),
-            JoinedAt = JoinedAt
+            JoinedAt = JoinedAt,
+            Status = ParseStatus(Status)
         };
     }
 
@@ -50,7 +54,8 @@ public class GroupMembershipEntity : BaseModel
             GroupId = membership.GroupId,
             UserId = membership.UserId,
             Role = membership.Role.ToString().ToLowerInvariant(),
-            JoinedAt = membership.JoinedAt
+            JoinedAt = membership.JoinedAt,
+            Status = membership.Status.ToString().ToLowerInvariant()
         };
     }
 
@@ -62,6 +67,16 @@ public class GroupMembershipEntity : BaseModel
             "admin" => MemberRole.Admin,
             "member" => MemberRole.Member,
             _ => throw new ArgumentException($"Unknown role: {role}")
+        };
+    }
+
+    private static MembershipStatus ParseStatus(string status)
+    {
+        return status.ToLowerInvariant() switch
+        {
+            "active" => MembershipStatus.Active,
+            "pending" => MembershipStatus.Pending,
+            _ => throw new ArgumentException($"Unknown membership status: {status}")
         };
     }
 }

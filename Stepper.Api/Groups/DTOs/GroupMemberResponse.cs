@@ -29,6 +29,12 @@ public record GroupMemberResponse
     public MemberRole Role { get; init; }
 
     /// <summary>
+    /// Membership status (active or pending approval).
+    /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public MembershipStatus Status { get; init; } = MembershipStatus.Active;
+
+    /// <summary>
     /// When the user joined the group.
     /// </summary>
     public DateTime JoinedAt { get; init; }

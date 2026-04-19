@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, FlatList, StyleSheet, RefreshControl } from 'react-native';
+import { View, FlatList, StyleSheet, RefreshControl, Alert } from 'react-native';
 import { Appbar, Text, Divider, Icon, useTheme, FAB } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -84,10 +84,17 @@ export default function GroupsListScreen() {
     setIsJoiningByCode(true);
     setInviteCodeError(null);
     try {
-      const groupId = await joinGroupByCode(trimmedCode);
+      const result = await joinGroupByCode(trimmedCode);
       setShowInviteDialog(false);
       setInviteCode('');
-      navigation.navigate(GROUPS_ROUTES.GroupDetail, { groupId });
+      if (result.status === 'pending') {
+        Alert.alert(
+          'Request sent',
+          'Your request to join is waiting for a group admin to approve it.'
+        );
+      } else {
+        navigation.navigate(GROUPS_ROUTES.GroupDetail, { groupId: result.groupId });
+      }
     } catch (error) {
       setInviteCodeError(getErrorMessage(error));
     } finally {

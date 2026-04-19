@@ -50,6 +50,20 @@ async function handleGroupCountChange(
 }
 
 /**
+ * Lifecycle status of a group membership.
+ */
+export type MembershipStatus = 'active' | 'pending';
+
+/**
+ * Result of a join attempt — carries the resulting membership status so
+ * callers can show a "pending approval" UI when the group requires approval.
+ */
+export interface JoinGroupResult {
+  groupId: string;
+  status: MembershipStatus;
+}
+
+/**
  * Base group information.
  */
 export interface Group {
@@ -100,6 +114,7 @@ export interface GroupMember {
   username: string;
   avatar_url?: string;
   role?: 'owner' | 'admin' | 'member';
+  status?: MembershipStatus;
   joined_at?: string;
   steps: number;
   rank: number;
@@ -196,8 +211,8 @@ interface GroupsState {
   fetchGroup: (groupId: string) => Promise<void>;
   fetchLeaderboard: (groupId: string) => Promise<void>;
   createGroup: (data: CreateGroupData) => Promise<Group>;
-  joinGroup: (groupId: string) => Promise<void>;
-  joinGroupByCode: (code: string) => Promise<string>;
+  joinGroup: (groupId: string) => Promise<JoinGroupResult>;
+  joinGroupByCode: (code: string) => Promise<JoinGroupResult>;
   leaveGroup: (groupId: string) => Promise<void>;
   clearCurrentGroup: () => void;
 
@@ -349,7 +364,7 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     try {
       const previousGroupCount = get().myGroups.length;
 
-      await groupsApi.joinGroup(groupId);
+      const result = await groupsApi.joinGroup(groupId);
       // Refresh my groups list
       const myGroups = await groupsApi.getMyGroups();
       set({ myGroups, isLoading: false });
@@ -357,18 +372,22 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
       // Find the joined group to get its details
       const joinedGroup = myGroups.find(g => g.id === groupId);
 
-      // Track analytics and evaluate milestones
-      await handleGroupCountChange(
-        previousGroupCount,
-        myGroups,
-        groupId,
-        'group_joined',
-        {
-          name: joinedGroup?.name,
-          is_public: joinedGroup ? !joinedGroup.is_private : undefined,
-          member_count: joinedGroup?.member_count,
-        }
-      );
+      // Track analytics and evaluate milestones only for confirmed active joins
+      if (result.status === 'active') {
+        await handleGroupCountChange(
+          previousGroupCount,
+          myGroups,
+          groupId,
+          'group_joined',
+          {
+            name: joinedGroup?.name,
+            is_public: joinedGroup ? !joinedGroup.is_private : undefined,
+            member_count: joinedGroup?.member_count,
+          }
+        );
+      }
+
+      return result;
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
       throw error;
@@ -383,28 +402,30 @@ export const useGroupsStore = create<GroupsState>((set, get) => ({
     try {
       const previousGroupCount = get().myGroups.length;
 
-      const groupId = await groupsApi.joinGroupByCode(code);
+      const result = await groupsApi.joinGroupByCode(code);
       // Refresh my groups list
       const myGroups = await groupsApi.getMyGroups();
       set({ myGroups, isLoading: false });
 
       // Find the joined group to get its details
-      const joinedGroup = myGroups.find(g => g.id === groupId);
+      const joinedGroup = myGroups.find(g => g.id === result.groupId);
 
-      // Track analytics and evaluate milestones
-      await handleGroupCountChange(
-        previousGroupCount,
-        myGroups,
-        groupId,
-        'group_joined',
-        {
-          name: joinedGroup?.name,
-          is_public: joinedGroup ? !joinedGroup.is_private : undefined,
-          member_count: joinedGroup?.member_count,
-        }
-      );
+      // Track analytics and evaluate milestones only for confirmed active joins
+      if (result.status === 'active') {
+        await handleGroupCountChange(
+          previousGroupCount,
+          myGroups,
+          result.groupId,
+          'group_joined',
+          {
+            name: joinedGroup?.name,
+            is_public: joinedGroup ? !joinedGroup.is_private : undefined,
+            member_count: joinedGroup?.member_count,
+          }
+        );
+      }
 
-      return groupId;
+      return result;
     } catch (error: unknown) {
       set({ error: getErrorMessage(error), isLoading: false });
       throw error;

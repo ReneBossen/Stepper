@@ -381,7 +381,7 @@ describe('groupsApi', () => {
       expect(mockApiClient.post).toHaveBeenCalledWith('/groups/join-by-code', {
         code: 'ABC123', // Should be uppercased
       });
-      expect(result).toBe('joined-group-id');
+      expect(result).toEqual({ groupId: 'joined-group-id', status: 'active' });
     });
   });
 

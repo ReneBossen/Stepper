@@ -55,6 +55,14 @@ public record GroupResponse
     public MemberRole Role { get; init; }
 
     /// <summary>
+    /// The current user's membership status (active or pending approval).
+    /// Null when the user is not a member (e.g. viewing a public group).
+    /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public MembershipStatus? Status { get; init; }
+
+    /// <summary>
     /// When the group was created.
     /// </summary>
     public DateTime CreatedAt { get; init; }
