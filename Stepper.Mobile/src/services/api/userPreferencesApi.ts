@@ -66,18 +66,20 @@ export const DEFAULT_PREFERENCES: Omit<UserPreferences, 'id' | 'created_at' | 'u
 /**
  * Backend API response shape for user preferences.
  * Uses camelCase from .NET backend.
- * Note: Backend has a simplified preferences model compared to mobile.
  */
 interface BackendPreferencesResponse {
   notificationsEnabled: boolean;
   dailyStepGoal: number;
   distanceUnit: string;
-  privateProfile: boolean;
+  privacyProfileVisibility: PrivacyLevel;
+  privacyFindMe: PrivacyLevel;
+  privacyShowSteps: PrivacyLevel;
 }
 
 /**
- * Maps backend preferences response (camelCase, simplified) to mobile format (snake_case, full).
- * Provides default values for fields not supported by the backend.
+ * Maps backend preferences response (camelCase) to mobile format (snake_case).
+ * The backend does not yet store the granular notification toggles — they
+ * shadow the master `notificationsEnabled` flag until that lands.
  */
 function mapPreferencesResponse(backend: BackendPreferencesResponse, userId: string): UserPreferences {
   const now = new Date().toISOString();
@@ -86,20 +88,18 @@ function mapPreferencesResponse(backend: BackendPreferencesResponse, userId: str
     daily_step_goal: backend.dailyStepGoal,
     units: backend.distanceUnit === 'imperial' ? 'imperial' : 'metric',
     notifications_enabled: backend.notificationsEnabled,
-    // Granular notification preferences - derive from master toggle
     notify_friend_requests: backend.notificationsEnabled,
     notify_friend_accepted: backend.notificationsEnabled,
     notify_friend_milestones: backend.notificationsEnabled,
     notify_group_invites: backend.notificationsEnabled,
-    notify_leaderboard_updates: false, // Default to false as per DEFAULT_PREFERENCES
+    notify_leaderboard_updates: false,
     notify_competition_reminders: backend.notificationsEnabled,
     notify_goal_achieved: backend.notificationsEnabled,
     notify_streak_reminders: backend.notificationsEnabled,
     notify_weekly_summary: backend.notificationsEnabled,
-    // Privacy settings - derive from privateProfile flag
-    privacy_profile_visibility: backend.privateProfile ? 'private' : 'public',
-    privacy_find_me: backend.privateProfile ? 'private' : 'public',
-    privacy_show_steps: backend.privateProfile ? 'private' : 'partial',
+    privacy_profile_visibility: backend.privacyProfileVisibility,
+    privacy_find_me: backend.privacyFindMe,
+    privacy_show_steps: backend.privacyShowSteps,
     created_at: now,
     updated_at: now,
   };
@@ -154,16 +154,16 @@ export const userPreferencesApi = {
       requestBody.distanceUnit = updates.units;
     }
 
-    // Map privacy settings to backend's privateProfile
-    // If any privacy setting is set to 'private', set privateProfile to true
-    if (updates.privacy_profile_visibility !== undefined ||
-        updates.privacy_find_me !== undefined ||
-        updates.privacy_show_steps !== undefined) {
-      const isPrivate =
-        updates.privacy_profile_visibility === 'private' ||
-        updates.privacy_find_me === 'private' ||
-        updates.privacy_show_steps === 'private';
-      requestBody.privateProfile = isPrivate;
+    if (updates.privacy_profile_visibility !== undefined) {
+      requestBody.privacyProfileVisibility = updates.privacy_profile_visibility;
+    }
+
+    if (updates.privacy_find_me !== undefined) {
+      requestBody.privacyFindMe = updates.privacy_find_me;
+    }
+
+    if (updates.privacy_show_steps !== undefined) {
+      requestBody.privacyShowSteps = updates.privacy_show_steps;
     }
 
     const [prefsResponse, userId] = await Promise.all([

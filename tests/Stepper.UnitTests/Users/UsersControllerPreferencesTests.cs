@@ -51,7 +51,9 @@ public class UsersControllerPreferencesTests
         response.Data!.DailyStepGoal.Should().Be(preferences.DailyStepGoal);
         response.Data.DistanceUnit.Should().Be(preferences.DistanceUnit);
         response.Data.NotificationsEnabled.Should().Be(preferences.NotificationsEnabled);
-        response.Data.PrivateProfile.Should().Be(preferences.PrivateProfile);
+        response.Data.PrivacyProfileVisibility.Should().Be(preferences.PrivacyProfileVisibility);
+        response.Data.PrivacyFindMe.Should().Be(preferences.PrivacyFindMe);
+        response.Data.PrivacyShowSteps.Should().Be(preferences.PrivacyShowSteps);
         _mockUserService.Verify(x => x.GetPreferencesAsync(userId), Times.Once);
     }
 
@@ -86,13 +88,17 @@ public class UsersControllerPreferencesTests
             NotificationsEnabled: false,
             DailyStepGoal: 15000,
             DistanceUnit: "imperial",
-            PrivateProfile: true
+            PrivacyProfileVisibility: "private",
+            PrivacyFindMe: "private",
+            PrivacyShowSteps: "private"
         );
         var updatedPreferences = new UserPreferencesResponse(
             NotificationsEnabled: false,
             DailyStepGoal: 15000,
             DistanceUnit: "imperial",
-            PrivateProfile: true
+            PrivacyProfileVisibility: "private",
+            PrivacyFindMe: "private",
+            PrivacyShowSteps: "private"
         );
         SetupAuthenticatedUser(userId);
 
@@ -111,7 +117,9 @@ public class UsersControllerPreferencesTests
         response.Data!.DailyStepGoal.Should().Be(15000);
         response.Data.DistanceUnit.Should().Be("imperial");
         response.Data.NotificationsEnabled.Should().BeFalse();
-        response.Data.PrivateProfile.Should().BeTrue();
+        response.Data.PrivacyProfileVisibility.Should().Be("private");
+        response.Data.PrivacyFindMe.Should().Be("private");
+        response.Data.PrivacyShowSteps.Should().Be("private");
         _mockUserService.Verify(x => x.UpdatePreferencesAsync(userId, request), Times.Once);
     }
 
@@ -124,13 +132,17 @@ public class UsersControllerPreferencesTests
             NotificationsEnabled: null,
             DailyStepGoal: 12000,
             DistanceUnit: null,
-            PrivateProfile: null
+            PrivacyProfileVisibility: null,
+            PrivacyFindMe: null,
+            PrivacyShowSteps: null
         );
         var updatedPreferences = new UserPreferencesResponse(
             NotificationsEnabled: true,
             DailyStepGoal: 12000,
             DistanceUnit: "metric",
-            PrivateProfile: false
+            PrivacyProfileVisibility: "public",
+            PrivacyFindMe: "public",
+            PrivacyShowSteps: "partial"
         );
         SetupAuthenticatedUser(userId);
 
@@ -153,7 +165,7 @@ public class UsersControllerPreferencesTests
     public async Task UpdateMyPreferences_WithUnauthenticatedUser_ReturnsUnauthorized()
     {
         // Arrange
-        var request = new UpdateUserPreferencesRequest(null, 10000, null, null);
+        var request = new UpdateUserPreferencesRequest(null, 10000, null, null, null, null);
         SetupUnauthenticatedUser();
 
         // Act
@@ -222,7 +234,9 @@ public class UsersControllerPreferencesTests
             NotificationsEnabled: true,
             DailyStepGoal: 10000,
             DistanceUnit: "metric",
-            PrivateProfile: false
+            PrivacyProfileVisibility: "public",
+            PrivacyFindMe: "public",
+            PrivacyShowSteps: "partial"
         );
     }
 

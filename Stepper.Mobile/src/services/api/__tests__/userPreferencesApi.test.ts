@@ -1,7 +1,6 @@
-import { userPreferencesApi, UserPreferences, DEFAULT_PREFERENCES } from '../userPreferencesApi';
+import { userPreferencesApi, DEFAULT_PREFERENCES } from '../userPreferencesApi';
 import { apiClient } from '../client';
 
-// Mock the apiClient
 jest.mock('../client', () => ({
   apiClient: {
     get: jest.fn(),
@@ -12,15 +11,15 @@ jest.mock('../client', () => ({
 const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
 
 describe('userPreferencesApi', () => {
-  // Backend response format (camelCase, simplified)
   const mockBackendPreferences = {
     notificationsEnabled: true,
     dailyStepGoal: 10000,
     distanceUnit: 'metric',
-    privateProfile: false,
+    privacyProfileVisibility: 'public',
+    privacyFindMe: 'public',
+    privacyShowSteps: 'partial',
   };
 
-  // Backend profile response (for getting user ID)
   const mockBackendProfile = {
     id: '123',
     displayName: 'Test User',
@@ -36,8 +35,8 @@ describe('userPreferencesApi', () => {
   describe('getPreferences', () => {
     it('should fetch preferences successfully via backend API', async () => {
       mockApiClient.get
-        .mockResolvedValueOnce(mockBackendPreferences) // preferences call
-        .mockResolvedValueOnce(mockBackendProfile); // profile call for user ID
+        .mockResolvedValueOnce(mockBackendPreferences)
+        .mockResolvedValueOnce(mockBackendProfile);
 
       const result = await userPreferencesApi.getPreferences();
 
@@ -55,7 +54,9 @@ describe('userPreferencesApi', () => {
           notificationsEnabled: false,
           dailyStepGoal: 15000,
           distanceUnit: 'imperial',
-          privateProfile: true,
+          privacyProfileVisibility: 'private',
+          privacyFindMe: 'partial',
+          privacyShowSteps: 'public',
         })
         .mockResolvedValueOnce({ id: '456' });
 
@@ -67,8 +68,8 @@ describe('userPreferencesApi', () => {
         units: 'imperial',
         notifications_enabled: false,
         privacy_profile_visibility: 'private',
-        privacy_find_me: 'private',
-        privacy_show_steps: 'private',
+        privacy_find_me: 'partial',
+        privacy_show_steps: 'public',
       });
     });
 
@@ -79,33 +80,36 @@ describe('userPreferencesApi', () => {
 
       const result = await userPreferencesApi.getPreferences();
 
-      // When notifications are enabled, all granular settings should be true
       expect(result.notify_friend_requests).toBe(true);
       expect(result.notify_friend_accepted).toBe(true);
       expect(result.notify_friend_milestones).toBe(true);
       expect(result.notify_group_invites).toBe(true);
-      expect(result.notify_leaderboard_updates).toBe(false); // Always false by default
+      expect(result.notify_leaderboard_updates).toBe(false);
       expect(result.notify_competition_reminders).toBe(true);
       expect(result.notify_goal_achieved).toBe(true);
       expect(result.notify_streak_reminders).toBe(true);
       expect(result.notify_weekly_summary).toBe(true);
     });
 
-    it('should derive privacy settings from privateProfile flag', async () => {
+    it('should pass through each privacy field independently', async () => {
       mockApiClient.get
-        .mockResolvedValueOnce({ ...mockBackendPreferences, privateProfile: false })
+        .mockResolvedValueOnce({
+          ...mockBackendPreferences,
+          privacyProfileVisibility: 'public',
+          privacyFindMe: 'private',
+          privacyShowSteps: 'partial',
+        })
         .mockResolvedValueOnce(mockBackendProfile);
 
       const result = await userPreferencesApi.getPreferences();
 
       expect(result.privacy_profile_visibility).toBe('public');
-      expect(result.privacy_find_me).toBe('public');
-      expect(result.privacy_show_steps).toBe('partial'); // Default for non-private
+      expect(result.privacy_find_me).toBe('private');
+      expect(result.privacy_show_steps).toBe('partial');
     });
 
     it('should throw error when API call fails', async () => {
-      const apiError = new Error('Network error');
-      mockApiClient.get.mockRejectedValue(apiError);
+      mockApiClient.get.mockRejectedValue(new Error('Network error'));
 
       await expect(userPreferencesApi.getPreferences()).rejects.toThrow('Network error');
     });
@@ -116,10 +120,9 @@ describe('userPreferencesApi', () => {
       const updates = { daily_step_goal: 12000, units: 'imperial' as const };
 
       mockApiClient.put.mockResolvedValue({
-        notificationsEnabled: true,
+        ...mockBackendPreferences,
         dailyStepGoal: 12000,
         distanceUnit: 'imperial',
-        privateProfile: false,
       });
       mockApiClient.get.mockResolvedValue(mockBackendProfile);
 
@@ -147,17 +150,39 @@ describe('userPreferencesApi', () => {
       });
     });
 
-    it('should map privacy settings to privateProfile flag', async () => {
+    it('should send only the privacy field that was changed', async () => {
       mockApiClient.put.mockResolvedValue({
         ...mockBackendPreferences,
-        privateProfile: true,
+        privacyShowSteps: 'private',
       });
       mockApiClient.get.mockResolvedValue(mockBackendProfile);
 
-      await userPreferencesApi.updatePreferences({ privacy_find_me: 'private' });
+      await userPreferencesApi.updatePreferences({ privacy_show_steps: 'private' });
 
       expect(mockApiClient.put).toHaveBeenCalledWith('/users/me/preferences', {
-        privateProfile: true,
+        privacyShowSteps: 'private',
+      });
+    });
+
+    it('should send all three privacy fields when all three change', async () => {
+      mockApiClient.put.mockResolvedValue({
+        ...mockBackendPreferences,
+        privacyProfileVisibility: 'partial',
+        privacyFindMe: 'private',
+        privacyShowSteps: 'public',
+      });
+      mockApiClient.get.mockResolvedValue(mockBackendProfile);
+
+      await userPreferencesApi.updatePreferences({
+        privacy_profile_visibility: 'partial',
+        privacy_find_me: 'private',
+        privacy_show_steps: 'public',
+      });
+
+      expect(mockApiClient.put).toHaveBeenCalledWith('/users/me/preferences', {
+        privacyProfileVisibility: 'partial',
+        privacyFindMe: 'private',
+        privacyShowSteps: 'public',
       });
     });
 
@@ -170,33 +195,30 @@ describe('userPreferencesApi', () => {
         notify_weekly_summary: false,
       });
 
-      // These should be overridden with the values passed in the update
       expect(result.notify_friend_requests).toBe(false);
       expect(result.notify_weekly_summary).toBe(false);
     });
 
-    it('should preserve granular privacy settings in response', async () => {
+    it('should reflect backend response for each privacy field independently', async () => {
       mockApiClient.put.mockResolvedValue({
         ...mockBackendPreferences,
-        privateProfile: true,
+        privacyProfileVisibility: 'public',
+        privacyFindMe: 'public',
+        privacyShowSteps: 'private',
       });
       mockApiClient.get.mockResolvedValue(mockBackendProfile);
 
       const result = await userPreferencesApi.updatePreferences({
-        privacy_profile_visibility: 'partial',
-        privacy_find_me: 'private',
-        privacy_show_steps: 'partial',
+        privacy_show_steps: 'private',
       });
 
-      // These should be overridden with the values passed in the update
-      expect(result.privacy_profile_visibility).toBe('partial');
-      expect(result.privacy_find_me).toBe('private');
-      expect(result.privacy_show_steps).toBe('partial');
+      expect(result.privacy_profile_visibility).toBe('public');
+      expect(result.privacy_find_me).toBe('public');
+      expect(result.privacy_show_steps).toBe('private');
     });
 
     it('should throw error when update fails', async () => {
-      const apiError = new Error('Update failed');
-      mockApiClient.put.mockRejectedValue(apiError);
+      mockApiClient.put.mockRejectedValue(new Error('Update failed'));
 
       await expect(userPreferencesApi.updatePreferences({ daily_step_goal: 15000 })).rejects.toThrow('Update failed');
     });
@@ -209,44 +231,6 @@ describe('userPreferencesApi', () => {
 
       expect(mockApiClient.put).toHaveBeenCalledWith('/users/me/preferences', {});
       expect(result.id).toBe('123');
-    });
-
-    it('should correctly determine privateProfile from multiple privacy settings', async () => {
-      mockApiClient.put.mockResolvedValue({
-        ...mockBackendPreferences,
-        privateProfile: false,
-      });
-      mockApiClient.get.mockResolvedValue(mockBackendProfile);
-
-      // All set to public - privateProfile should be false
-      await userPreferencesApi.updatePreferences({
-        privacy_profile_visibility: 'public',
-        privacy_find_me: 'public',
-        privacy_show_steps: 'public',
-      });
-
-      expect(mockApiClient.put).toHaveBeenCalledWith('/users/me/preferences', {
-        privateProfile: false,
-      });
-    });
-
-    it('should set privateProfile true if any privacy setting is private', async () => {
-      mockApiClient.put.mockResolvedValue({
-        ...mockBackendPreferences,
-        privateProfile: true,
-      });
-      mockApiClient.get.mockResolvedValue(mockBackendProfile);
-
-      // One setting is private - privateProfile should be true
-      await userPreferencesApi.updatePreferences({
-        privacy_profile_visibility: 'public',
-        privacy_find_me: 'public',
-        privacy_show_steps: 'private',
-      });
-
-      expect(mockApiClient.put).toHaveBeenCalledWith('/users/me/preferences', {
-        privateProfile: true,
-      });
     });
   });
 

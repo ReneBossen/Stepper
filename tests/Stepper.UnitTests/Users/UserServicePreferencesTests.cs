@@ -78,7 +78,7 @@ public class UserServicePreferencesTests
         result.DailyStepGoal.Should().Be(12000);
         result.DistanceUnit.Should().Be("imperial");
         result.NotificationsEnabled.Should().BeFalse();
-        result.PrivateProfile.Should().BeTrue();
+        result.PrivacyProfileVisibility.Should().Be("private");
         _mockRepository.Verify(x => x.GetByIdAsync(userId), Times.Once);
         _mockPreferencesRepository.Verify(x => x.GetByUserIdAsync(userId), Times.Exactly(2));
     }
@@ -104,7 +104,9 @@ public class UserServicePreferencesTests
         result.DailyStepGoal.Should().Be(10000); // Default value
         result.DistanceUnit.Should().Be("metric"); // Default value
         result.NotificationsEnabled.Should().BeTrue(); // Default value
-        result.PrivateProfile.Should().BeFalse(); // Default value (public)
+        result.PrivacyProfileVisibility.Should().Be("public"); // Default
+        result.PrivacyFindMe.Should().Be("public"); // Default
+        result.PrivacyShowSteps.Should().Be("partial"); // Default
     }
 
     [Fact]
@@ -189,7 +191,9 @@ public class UserServicePreferencesTests
             NotificationsEnabled: false,
             DailyStepGoal: 15000,
             DistanceUnit: "imperial",
-            PrivateProfile: true
+            PrivacyProfileVisibility: "private",
+            PrivacyFindMe: null,
+            PrivacyShowSteps: null
         );
 
         _mockRepository.Setup(x => x.GetByIdAsync(userId))
@@ -207,7 +211,7 @@ public class UserServicePreferencesTests
         result.NotificationsEnabled.Should().BeFalse();
         result.DailyStepGoal.Should().Be(15000);
         result.DistanceUnit.Should().Be("imperial");
-        result.PrivateProfile.Should().BeTrue();
+        result.PrivacyProfileVisibility.Should().Be("private");
         _mockRepository.Verify(x => x.GetByIdAsync(userId), Times.Once);
         _mockPreferencesRepository.Verify(x => x.UpdateAsync(It.Is<UserPreferencesEntity>(p =>
             p.NotifyDailyReminder == false &&
@@ -233,7 +237,9 @@ public class UserServicePreferencesTests
             NotificationsEnabled: null, // Should not change
             DailyStepGoal: 12000, // Should update
             DistanceUnit: null, // Should not change
-            PrivateProfile: null // Should not change
+            PrivacyProfileVisibility: null, // Should not change
+            PrivacyFindMe: null, // Should not change
+            PrivacyShowSteps: null // Should not change
         );
 
         _mockRepository.Setup(x => x.GetByIdAsync(userId))
@@ -251,14 +257,14 @@ public class UserServicePreferencesTests
         result.DailyStepGoal.Should().Be(12000); // Updated
         result.DistanceUnit.Should().Be("metric"); // Unchanged
         result.NotificationsEnabled.Should().BeTrue(); // Unchanged
-        result.PrivateProfile.Should().BeFalse(); // Unchanged (public)
+        result.PrivacyProfileVisibility.Should().Be("public"); // Unchanged
     }
 
     [Fact]
     public async Task UpdatePreferencesAsync_WithEmptyGuid_ThrowsArgumentException()
     {
         // Arrange
-        var request = new UpdateUserPreferencesRequest(null, null, null, null);
+        var request = new UpdateUserPreferencesRequest(null, null, null, null, null, null);
 
         // Act
         var act = async () => await _sut.UpdatePreferencesAsync(Guid.Empty, request);
@@ -288,7 +294,7 @@ public class UserServicePreferencesTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var request = new UpdateUserPreferencesRequest(null, 10000, null, null);
+        var request = new UpdateUserPreferencesRequest(null, 10000, null, null, null, null);
         _mockRepository.Setup(x => x.GetByIdAsync(userId))
             .ReturnsAsync((User?)null);
 
@@ -309,7 +315,7 @@ public class UserServicePreferencesTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var request = new UpdateUserPreferencesRequest(null, stepGoal, null, null);
+        var request = new UpdateUserPreferencesRequest(null, stepGoal, null, null, null, null);
 
         // Act
         var act = async () => await _sut.UpdatePreferencesAsync(userId, request);
@@ -330,7 +336,7 @@ public class UserServicePreferencesTests
         var userId = Guid.NewGuid();
         var user = CreateTestUser(userId);
         var existingPreferences = CreateTestPreferences(userId);
-        var request = new UpdateUserPreferencesRequest(null, stepGoal, null, null);
+        var request = new UpdateUserPreferencesRequest(null, stepGoal, null, null, null, null);
 
         _mockRepository.Setup(x => x.GetByIdAsync(userId))
             .ReturnsAsync(user);
@@ -357,7 +363,7 @@ public class UserServicePreferencesTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var request = new UpdateUserPreferencesRequest(null, null, unit, null);
+        var request = new UpdateUserPreferencesRequest(null, null, unit, null, null, null);
 
         // Act
         var act = async () => await _sut.UpdatePreferencesAsync(userId, request);
@@ -381,7 +387,7 @@ public class UserServicePreferencesTests
         var userId = Guid.NewGuid();
         var user = CreateTestUser(userId);
         var existingPreferences = CreateTestPreferences(userId);
-        var request = new UpdateUserPreferencesRequest(null, null, unit, null);
+        var request = new UpdateUserPreferencesRequest(null, null, unit, null, null, null);
 
         _mockRepository.Setup(x => x.GetByIdAsync(userId))
             .ReturnsAsync(user);
@@ -406,7 +412,7 @@ public class UserServicePreferencesTests
         var user = CreateTestUser(userId);
         var existingPreferences = CreateTestPreferences(userId);
         existingPreferences.Units = "imperial";
-        var request = new UpdateUserPreferencesRequest(null, null, "", null);
+        var request = new UpdateUserPreferencesRequest(null, null, "", null, null, null);
 
         _mockRepository.Setup(x => x.GetByIdAsync(userId))
             .ReturnsAsync(user);
@@ -432,7 +438,7 @@ public class UserServicePreferencesTests
         var userId = Guid.NewGuid();
         var user = CreateTestUser(userId);
         var existingPreferences = CreateTestPreferences(userId);
-        var request = new UpdateUserPreferencesRequest(enabled, null, null, null);
+        var request = new UpdateUserPreferencesRequest(enabled, null, null, null, null, null);
 
         _mockRepository.Setup(x => x.GetByIdAsync(userId))
             .ReturnsAsync(user);
@@ -450,15 +456,16 @@ public class UserServicePreferencesTests
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task UpdatePreferencesAsync_WithPrivateProfile_UpdatesPrivacySetting(bool isPrivate)
+    [InlineData("public")]
+    [InlineData("partial")]
+    [InlineData("private")]
+    public async Task UpdatePreferencesAsync_WithPrivacyProfileVisibility_UpdatesPrivacySetting(string level)
     {
         // Arrange
         var userId = Guid.NewGuid();
         var user = CreateTestUser(userId);
         var existingPreferences = CreateTestPreferences(userId);
-        var request = new UpdateUserPreferencesRequest(null, null, null, isPrivate);
+        var request = new UpdateUserPreferencesRequest(null, null, null, level, null, null);
 
         _mockRepository.Setup(x => x.GetByIdAsync(userId))
             .ReturnsAsync(user);
@@ -472,7 +479,7 @@ public class UserServicePreferencesTests
 
         // Assert
         result.Should().NotBeNull();
-        result.PrivateProfile.Should().Be(isPrivate);
+        result.PrivacyProfileVisibility.Should().Be(level);
     }
 
     [Fact]
@@ -482,7 +489,7 @@ public class UserServicePreferencesTests
         var userId = Guid.NewGuid();
         var user = CreateTestUser(userId);
         var newPreferences = CreateTestPreferences(userId);
-        var request = new UpdateUserPreferencesRequest(null, 15000, null, null);
+        var request = new UpdateUserPreferencesRequest(null, 15000, null, null, null, null);
 
         _mockRepository.Setup(x => x.GetByIdAsync(userId))
             .ReturnsAsync(user);
