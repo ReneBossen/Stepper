@@ -4,6 +4,7 @@ import { NavigationContainer, NavigationContainerRef } from '@react-navigation/n
 import { AppState, AppStateStatus } from 'react-native';
 import { ThemeProvider } from '@theme/ThemeProvider';
 import { useAppTheme } from '@hooks/useAppTheme';
+import { useAutoHealthSync } from '@hooks/useAutoHealthSync';
 import RootNavigator from '@navigation/RootNavigator';
 import { useAuthStore } from '@store/authStore';
 import { useUserStore } from '@store/userStore';
@@ -114,6 +115,9 @@ function AppContent() {
       fetchCurrentUser();
     }
   }, [isAuthenticated, isReady, fetchCurrentUser]);
+
+  // Auto-sync health data on app open and foreground resume
+  useAutoHealthSync();
 
   if (!isReady) {
     return null;
