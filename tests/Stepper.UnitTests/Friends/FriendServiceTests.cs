@@ -189,6 +189,88 @@ public class FriendServiceTests
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage($"A friendship or request already exists with status: {existingFriendship.Status}");
         _mockFriendRepository.Verify(x => x.SendRequestAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
+        _mockFriendRepository.Verify(x => x.DeleteFriendshipAsync(It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SendFriendRequestAsync_WithExistingRejectedFriendship_DeletesOldRowAndSendsNewRequest()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var friendUserId = Guid.NewGuid();
+        var request = new SendFriendRequestRequest { FriendUserId = friendUserId };
+        var targetUser = CreateTestUser(friendUserId, "Friend User");
+        var requesterUser = CreateTestUser(userId, "Requester User");
+        var rejectedFriendship = CreateTestFriendship(userId, friendUserId, FriendshipStatus.Rejected);
+        var newFriendship = CreateTestFriendship(userId, friendUserId, FriendshipStatus.Pending);
+
+        _mockUserRepository.Setup(x => x.GetByIdAsync(friendUserId))
+            .ReturnsAsync(targetUser);
+        _mockUserRepository.Setup(x => x.GetByIdAsync(userId))
+            .ReturnsAsync(requesterUser);
+        _mockFriendRepository.Setup(x => x.GetFriendshipAsync(userId, friendUserId))
+            .ReturnsAsync(rejectedFriendship);
+        _mockFriendRepository.Setup(x => x.DeleteFriendshipAsync(rejectedFriendship.Id))
+            .Returns(Task.CompletedTask);
+        _mockFriendRepository.Setup(x => x.SendRequestAsync(userId, friendUserId))
+            .ReturnsAsync(newFriendship);
+
+        // Act
+        var result = await _sut.SendFriendRequestAsync(userId, request);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Status.Should().Be("pending");
+        _mockFriendRepository.Verify(x => x.DeleteFriendshipAsync(rejectedFriendship.Id), Times.Once);
+        _mockFriendRepository.Verify(x => x.SendRequestAsync(userId, friendUserId), Times.Once);
+    }
+
+    [Fact]
+    public async Task SendFriendRequestAsync_WithExistingAcceptedFriendship_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var friendUserId = Guid.NewGuid();
+        var request = new SendFriendRequestRequest { FriendUserId = friendUserId };
+        var targetUser = CreateTestUser(friendUserId, "Friend User");
+        var existingFriendship = CreateTestFriendship(userId, friendUserId, FriendshipStatus.Accepted);
+
+        _mockUserRepository.Setup(x => x.GetByIdAsync(friendUserId))
+            .ReturnsAsync(targetUser);
+        _mockFriendRepository.Setup(x => x.GetFriendshipAsync(userId, friendUserId))
+            .ReturnsAsync(existingFriendship);
+
+        // Act
+        var act = async () => await _sut.SendFriendRequestAsync(userId, request);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _mockFriendRepository.Verify(x => x.DeleteFriendshipAsync(It.IsAny<Guid>()), Times.Never);
+        _mockFriendRepository.Verify(x => x.SendRequestAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SendFriendRequestAsync_WithExistingBlockedFriendship_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var friendUserId = Guid.NewGuid();
+        var request = new SendFriendRequestRequest { FriendUserId = friendUserId };
+        var targetUser = CreateTestUser(friendUserId, "Friend User");
+        var existingFriendship = CreateTestFriendship(userId, friendUserId, FriendshipStatus.Blocked);
+
+        _mockUserRepository.Setup(x => x.GetByIdAsync(friendUserId))
+            .ReturnsAsync(targetUser);
+        _mockFriendRepository.Setup(x => x.GetFriendshipAsync(userId, friendUserId))
+            .ReturnsAsync(existingFriendship);
+
+        // Act
+        var act = async () => await _sut.SendFriendRequestAsync(userId, request);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        _mockFriendRepository.Verify(x => x.DeleteFriendshipAsync(It.IsAny<Guid>()), Times.Never);
+        _mockFriendRepository.Verify(x => x.SendRequestAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
     }
 
     #endregion

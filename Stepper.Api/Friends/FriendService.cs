@@ -49,11 +49,19 @@ public class FriendService : IFriendService
             throw new KeyNotFoundException($"User not found: {request.FriendUserId}");
         }
 
-        // Check if friendship already exists
+        // Check if friendship already exists. A previously-Rejected row is not
+        // a blocker — the user is free to try again — so we clear it and fall
+        // through to the fresh insert. Pending/Accepted/Blocked rows still
+        // throw.
         var existingFriendship = await _friendRepository.GetFriendshipAsync(userId, request.FriendUserId);
         if (existingFriendship != null)
         {
-            throw new InvalidOperationException($"A friendship or request already exists with status: {existingFriendship.Status}");
+            if (existingFriendship.Status != FriendshipStatus.Rejected)
+            {
+                throw new InvalidOperationException($"A friendship or request already exists with status: {existingFriendship.Status}");
+            }
+
+            await _friendRepository.DeleteFriendshipAsync(existingFriendship.Id);
         }
 
         var friendship = await _friendRepository.SendRequestAsync(userId, request.FriendUserId);

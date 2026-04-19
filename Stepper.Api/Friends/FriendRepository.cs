@@ -270,6 +270,17 @@ public class FriendRepository : IFriendRepository
             .Delete();
     }
 
+    /// <inheritdoc />
+    public async Task DeleteFriendshipAsync(Guid friendshipId)
+    {
+        var client = await GetAuthenticatedClientAsync();
+
+        await client
+            .From<FriendshipEntity>()
+            .Where(x => x.Id == friendshipId)
+            .Delete();
+    }
+
     private async Task<Client> GetAuthenticatedClientAsync()
     {
         if (_httpContextAccessor.HttpContext?.Items.TryGetValue("SupabaseToken", out var tokenObj) != true)

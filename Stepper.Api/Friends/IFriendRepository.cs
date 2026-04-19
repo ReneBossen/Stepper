@@ -71,4 +71,11 @@ public interface IFriendRepository
     /// <param name="requestId">The ID of the friend request.</param>
     /// <param name="userId">The ID of the user canceling the request (must be requester).</param>
     Task CancelRequestAsync(Guid requestId, Guid userId);
+
+    /// <summary>
+    /// Deletes a friendship row by id, without ownership or status checks.
+    /// Used internally to clear a Rejected row before a re-request.
+    /// </summary>
+    /// <param name="friendshipId">The ID of the friendship row to delete.</param>
+    Task DeleteFriendshipAsync(Guid friendshipId);
 }
