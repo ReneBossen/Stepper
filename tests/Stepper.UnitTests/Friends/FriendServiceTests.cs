@@ -273,6 +273,7 @@ public class FriendServiceTests
             CreateTestFriendship(userId, addresseeId1, FriendshipStatus.Pending),
             CreateTestFriendship(userId, addresseeId2, FriendshipStatus.Pending)
         };
+        var requester = CreateTestUser(userId, "Me");
         var addressee1 = CreateTestUser(addresseeId1, "User 1");
         var addressee2 = CreateTestUser(addresseeId2, "User 2");
 
@@ -280,6 +281,8 @@ public class FriendServiceTests
             .ReturnsAsync(friendships);
         _mockUserRepository.Setup(x => x.GetByIdsAsync(It.IsAny<List<Guid>>()))
             .ReturnsAsync((List<Guid> ids) => new List<User> { addressee1, addressee2 }.Where(u => ids.Contains(u.Id)).ToList());
+        _mockUserRepository.Setup(x => x.GetByIdAsync(userId))
+            .ReturnsAsync(requester);
 
         // Act
         var result = await _sut.GetSentRequestsAsync(userId);
@@ -288,12 +291,15 @@ public class FriendServiceTests
         result.Should().NotBeNull();
         result.Should().HaveCount(2);
         result[0].RequesterId.Should().Be(userId);
+        result[0].RequesterDisplayName.Should().Be("Me");
         result[0].AddresseeId.Should().Be(addresseeId1);
         result[0].AddresseeDisplayName.Should().Be("User 1");
         result[1].RequesterId.Should().Be(userId);
+        result[1].RequesterDisplayName.Should().Be("Me");
         result[1].AddresseeId.Should().Be(addresseeId2);
         result[1].AddresseeDisplayName.Should().Be("User 2");
         _mockFriendRepository.Verify(x => x.GetSentRequestsAsync(userId), Times.Once);
+        _mockUserRepository.Verify(x => x.GetByIdAsync(userId), Times.Once);
     }
 
     [Fact]

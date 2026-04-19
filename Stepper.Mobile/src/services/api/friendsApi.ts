@@ -273,8 +273,18 @@ export const friendsApi = {
         status: statusMap[result.friendshipStatus] ?? 'none',
         friendshipId: result.friendshipId,
       };
-    } catch {
-      return { status: 'none' };
+    } catch (error) {
+      // Treat "user not found" as no relationship; re-throw anything else so
+      // callers can surface network / server / auth failures.
+      if (
+        error &&
+        typeof error === 'object' &&
+        'statusCode' in error &&
+        (error as { statusCode: number }).statusCode === 404
+      ) {
+        return { status: 'none' };
+      }
+      throw error;
     }
   },
 };

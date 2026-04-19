@@ -134,6 +134,10 @@ public class FriendService : IFriendService
         var userProfiles = await _userRepository.GetByIdsAsync(addresseeIds);
         var userDict = userProfiles.ToDictionary(u => u.Id);
 
+        // The requester is always the caller; fetch once so older mobile clients
+        // still see a sensible RequesterDisplayName on outgoing requests.
+        var requesterProfile = await _userRepository.GetByIdAsync(userId);
+
         var responses = new List<FriendRequestResponse>();
 
         foreach (var friendship in friendships)
@@ -144,6 +148,8 @@ public class FriendService : IFriendService
             {
                 Id = friendship.Id,
                 RequesterId = friendship.RequesterId,
+                RequesterDisplayName = requesterProfile?.DisplayName ?? "Unknown",
+                RequesterAvatarUrl = requesterProfile?.AvatarUrl,
                 AddresseeId = friendship.AddresseeId,
                 AddresseeDisplayName = addresseeProfile?.DisplayName ?? "Unknown",
                 AddresseeAvatarUrl = addresseeProfile?.AvatarUrl,

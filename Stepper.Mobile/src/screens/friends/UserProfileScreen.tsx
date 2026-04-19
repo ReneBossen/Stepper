@@ -60,8 +60,9 @@ export default function UserProfileScreen({ route }: Props) {
       const { status, friendshipId: id } = await friendsApi.checkFriendshipStatus(userId);
       setFriendStatus(status);
       setFriendshipId(id);
-    } catch {
-      // Friend status check failed - will show default 'none' status
+    } catch (error) {
+      // Leave status at 'none' so the UI degrades gracefully; surface in dev logs.
+      console.error('Failed to load friend status', error);
     }
   }, [userId]);
 
@@ -98,7 +99,8 @@ export default function UserProfileScreen({ route }: Props) {
     setIsLoadingFriendAction(true);
     try {
       await sendRequest(userId);
-      setFriendStatus('pending_sent');
+      // Refetch rather than optimistically setting status: we need the server's
+      // friendshipId before the Pending button can be tapped to cancel.
       await loadFriendStatus();
     } catch (err: unknown) {
       Alert.alert('Error', getErrorMessage(err));

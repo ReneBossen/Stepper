@@ -169,15 +169,18 @@ public class FriendDiscoveryService : IFriendDiscoveryService
             throw new ArgumentException("Cannot look up friendship status with yourself.", nameof(targetUserId));
         }
 
-        var targetUser = await _userRepository.GetByIdAsync(targetUserId);
+        // The two reads are independent — run them in parallel.
+        var userTask = _userRepository.GetByIdAsync(targetUserId);
+        var friendshipTask = _friendRepository.GetFriendshipAsync(requestingUserId, targetUserId);
+        await Task.WhenAll(userTask, friendshipTask);
+
+        var targetUser = await userTask;
         if (targetUser == null)
         {
             throw new KeyNotFoundException($"User not found: {targetUserId}");
         }
 
-        var friendship = await _friendRepository.GetFriendshipAsync(requestingUserId, targetUserId);
-
-        var (status, friendshipId) = MapFriendshipStatus(friendship, requestingUserId);
+        var (status, friendshipId) = MapFriendshipStatus(await friendshipTask, requestingUserId);
 
         return new UserProfileWithStatusResult
         {
@@ -201,7 +204,10 @@ public class FriendDiscoveryService : IFriendDiscoveryService
             FriendshipStatus.Accepted => ("accepted", friendship.Id),
             FriendshipStatus.Pending when friendship.RequesterId == requestingUserId => ("pending_sent", friendship.Id),
             FriendshipStatus.Pending => ("pending_received", friendship.Id),
-            _ => ("none", null)
+            // Rejected → allow a fresh request. Blocked → deliberately hide state so we don't leak the block.
+            FriendshipStatus.Rejected => ("none", null),
+            FriendshipStatus.Blocked => ("none", null),
+            _ => throw new InvalidOperationException($"Unhandled FriendshipStatus: {friendship.Status}")
         };
     }
 

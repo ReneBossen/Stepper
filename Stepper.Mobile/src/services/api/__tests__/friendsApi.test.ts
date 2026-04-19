@@ -468,12 +468,33 @@ describe('friendsApi', () => {
       expect(result).toEqual({ status: 'pending_received', friendshipId: 'friendship-3' });
     });
 
-    it('should return "none" on error', async () => {
-      mockApiClient.get.mockRejectedValue(new Error('Network error'));
+    it('should return "none" on 404 (user not found)', async () => {
+      mockApiClient.get.mockRejectedValue({ statusCode: 404, message: 'Not found' });
 
       const result = await friendsApi.checkFriendshipStatus('user-123');
 
       expect(result).toEqual({ status: 'none' });
+    });
+
+    it('should re-throw server errors', async () => {
+      const serverError = { statusCode: 500, message: 'Internal error' };
+      mockApiClient.get.mockRejectedValue(serverError);
+
+      await expect(friendsApi.checkFriendshipStatus('user-123')).rejects.toEqual(serverError);
+    });
+
+    it('should re-throw network errors', async () => {
+      const networkError = { statusCode: 0, message: 'Network error' };
+      mockApiClient.get.mockRejectedValue(networkError);
+
+      await expect(friendsApi.checkFriendshipStatus('user-123')).rejects.toEqual(networkError);
+    });
+
+    it('should re-throw unauthorized errors', async () => {
+      const authError = { statusCode: 401, message: 'Unauthorized' };
+      mockApiClient.get.mockRejectedValue(authError);
+
+      await expect(friendsApi.checkFriendshipStatus('user-123')).rejects.toEqual(authError);
     });
 
     it('should return "none" for unknown status', async () => {

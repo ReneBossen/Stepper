@@ -735,6 +735,35 @@ public class FriendDiscoveryServiceTests
         result.FriendshipId.Should().BeNull();
     }
 
+    [Fact]
+    public async Task GetUserByIdAsync_WithBlockedFriendship_ReturnsNoneStatus()
+    {
+        // Arrange
+        var requestingUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var targetUser = CreateTestUser(targetUserId, "Target User", "qr-target");
+        var friendship = new Friendship
+        {
+            Id = Guid.NewGuid(),
+            RequesterId = requestingUserId,
+            AddresseeId = targetUserId,
+            Status = FriendshipStatus.Blocked,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _mockUserRepository.Setup(x => x.GetByIdAsync(targetUserId))
+            .ReturnsAsync(targetUser);
+        _mockFriendRepository.Setup(x => x.GetFriendshipAsync(requestingUserId, targetUserId))
+            .ReturnsAsync(friendship);
+
+        // Act
+        var result = await _sut.GetUserByIdAsync(requestingUserId, targetUserId);
+
+        // Assert — block state is deliberately not leaked
+        result.FriendshipStatus.Should().Be("none");
+        result.FriendshipId.Should().BeNull();
+    }
+
     #endregion
 
     #region RedeemInviteCodeAsync Tests
