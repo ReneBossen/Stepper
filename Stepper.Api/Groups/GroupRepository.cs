@@ -729,9 +729,18 @@ public class GroupRepository : IGroupRepository
         if (text.Contains("P0002"))
             return new KeyNotFoundException(ExtractRpcMessage(text), ex);
 
-        // ERRCODE 42501 — insufficient privilege / "not authenticated", "not admin", "owner cannot leave"
+        // ERRCODE 42501 — insufficient privilege. Only genuine authentication
+        // failures map to 401; authorization and business-rule violations (e.g.
+        // "owner cannot leave", "only admins can add members", immutable-column
+        // guards) map to 400 so the mobile client does not treat them as an
+        // expired session and log the user out.
         if (text.Contains("42501"))
-            return new UnauthorizedAccessException(ExtractRpcMessage(text));
+        {
+            var message = ExtractRpcMessage(text);
+            if (message.Contains("Not authenticated", StringComparison.OrdinalIgnoreCase))
+                return new UnauthorizedAccessException(message);
+            return new InvalidOperationException(message, ex);
+        }
 
         // ERRCODE 22023 — invalid parameter value
         if (text.Contains("22023"))

@@ -1,6 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useAuthStore } from '../authStore';
 import { authApi } from '@services/api/authApi';
+import { ApiError } from '@services/api/types';
 import { tokenStorage } from '@services/tokenStorage';
 import type { AuthResponse, AuthUser } from '../../types/auth';
 
@@ -381,11 +382,12 @@ describe('authStore', () => {
       expect(result.current.isAuthenticated).toBe(true);
     });
 
-    it('should clear tokens when refresh fails', async () => {
+    it('should clear tokens when refresh fails with 401 (invalid refresh token)', async () => {
       mockTokenStorage.getAccessToken.mockResolvedValue('mock-access-token');
       mockTokenStorage.getRefreshToken.mockResolvedValue('mock-refresh-token');
       mockTokenStorage.isAccessTokenExpired.mockResolvedValue(true);
-      mockAuthApi.refreshToken.mockRejectedValue(new Error('Refresh failed'));
+      mockTokenStorage.getUserInfo.mockResolvedValue(mockUser);
+      mockAuthApi.refreshToken.mockRejectedValue(new ApiError('Invalid refresh token', 401));
 
       const { result } = renderHook(() => useAuthStore());
 
@@ -396,6 +398,44 @@ describe('authStore', () => {
       expect(mockTokenStorage.clearTokens).toHaveBeenCalled();
       expect(result.current.user).toBeNull();
       expect(result.current.isAuthenticated).toBe(false);
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    it('should keep the user signed in when refresh fails with a transient error', async () => {
+      mockTokenStorage.getAccessToken.mockResolvedValue('mock-access-token');
+      mockTokenStorage.getRefreshToken.mockResolvedValue('mock-refresh-token');
+      mockTokenStorage.isAccessTokenExpired.mockResolvedValue(true);
+      mockTokenStorage.getUserInfo.mockResolvedValue(mockUser);
+      mockAuthApi.refreshToken.mockRejectedValue(new ApiError('Network error', 0));
+
+      const { result } = renderHook(() => useAuthStore());
+
+      await act(async () => {
+        await result.current.restoreSession();
+      });
+
+      expect(mockTokenStorage.clearTokens).not.toHaveBeenCalled();
+      expect(result.current.user).toEqual(mockUser);
+      expect(result.current.isAuthenticated).toBe(true);
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    it('should restore offline from persisted user info without refreshing', async () => {
+      mockTokenStorage.getAccessToken.mockResolvedValue('mock-access-token');
+      mockTokenStorage.getRefreshToken.mockResolvedValue('mock-refresh-token');
+      mockTokenStorage.isAccessTokenExpired.mockResolvedValue(false);
+      mockTokenStorage.getUserInfo.mockResolvedValue(mockUser);
+
+      const { result } = renderHook(() => useAuthStore());
+
+      await act(async () => {
+        await result.current.restoreSession();
+      });
+
+      expect(mockAuthApi.refreshToken).not.toHaveBeenCalled();
+      expect(mockTokenStorage.clearTokens).not.toHaveBeenCalled();
+      expect(result.current.user).toEqual(mockUser);
+      expect(result.current.isAuthenticated).toBe(true);
       expect(result.current.isLoading).toBe(false);
     });
 

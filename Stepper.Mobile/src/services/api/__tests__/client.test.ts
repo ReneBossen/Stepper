@@ -11,6 +11,8 @@ jest.mock('@services/tokenStorage', () => ({
     setTokens: jest.fn(),
     clearTokens: jest.fn(),
     getTokenType: jest.fn(),
+    setUserInfo: jest.fn(),
+    getUserInfo: jest.fn(),
   },
 }));
 
@@ -147,11 +149,11 @@ describe('apiClient', () => {
       );
     });
 
-    it('should clear tokens and return null when refresh fails', async () => {
+    it('should clear tokens only when refresh fails with 401 Unauthorized', async () => {
       mockGetAccessToken.mockResolvedValue('old-expired-token');
       mockIsAccessTokenExpired.mockResolvedValue(true);
       mockGetRefreshToken.mockResolvedValue('invalid-refresh-token');
-      mockRefreshToken.mockRejectedValue(new Error('Refresh failed'));
+      mockRefreshToken.mockRejectedValue(new ApiError('Invalid refresh token', 401));
 
       mockFetch.mockResolvedValue({
         ok: true,
@@ -165,6 +167,24 @@ describe('apiClient', () => {
       const callArgs = mockFetch.mock.calls[0];
       const headers = callArgs[1].headers;
       expect(headers['Authorization']).toBeUndefined();
+    });
+
+    it('should NOT clear tokens on transient refresh failures (network/5xx)', async () => {
+      mockGetAccessToken.mockResolvedValue('old-expired-token');
+      mockIsAccessTokenExpired.mockResolvedValue(true);
+      mockGetRefreshToken.mockResolvedValue('valid-refresh-token');
+      mockRefreshToken.mockRejectedValue(new ApiError('Network error', 0));
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ success: true, data: null, errors: [] }),
+      });
+
+      await apiClient.get('/public/endpoint');
+
+      expect(mockClearTokens).not.toHaveBeenCalled();
+      expect(mockSessionExpired).not.toHaveBeenCalled();
     });
 
     it('should return null when expired but no refresh token available', async () => {
