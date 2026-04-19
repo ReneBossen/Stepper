@@ -64,10 +64,16 @@ public class UserRepository : IUserRepository
 
         var client = await GetAuthenticatedClientAsync();
 
-        var entity = UserEntity.FromUser(user);
+        // Target-column update: sending created_at/qr_code_id would trip
+        // trg_users_prevent_immutable_updates after the timestamptz round-trip
+        // through System.DateTime loses sub-microsecond precision.
         var response = await client
             .From<UserEntity>()
-            .Update(entity);
+            .Where(x => x.Id == user.Id)
+            .Set(x => x.DisplayName, user.DisplayName)
+            .Set(x => x.AvatarUrl, user.AvatarUrl)
+            .Set(x => x.OnboardingCompleted, user.OnboardingCompleted)
+            .Update();
 
         var updated = response.Models.FirstOrDefault();
         if (updated == null)

@@ -77,9 +77,25 @@ public class UserPreferencesRepository : IUserPreferencesRepository
 
         var client = await GetAuthenticatedClientAsync();
 
+        // Target-column update: sending created_at would trip
+        // trg_user_preferences_prevent_immutable_updates after the timestamptz
+        // round-trip through System.DateTime loses sub-microsecond precision.
         var response = await client
             .From<UserPreferencesEntity>()
-            .Update(preferences);
+            .Where(x => x.Id == preferences.Id)
+            .Set(x => x.DailyStepGoal, preferences.DailyStepGoal)
+            .Set(x => x.Units, preferences.Units)
+            .Set(x => x.NotificationsEnabled, preferences.NotificationsEnabled)
+            .Set(x => x.NotifyFriendRequests, preferences.NotifyFriendRequests)
+            .Set(x => x.NotifyFriendAccepted, preferences.NotifyFriendAccepted)
+            .Set(x => x.NotifyGroupInvites, preferences.NotifyGroupInvites)
+            .Set(x => x.NotifyAchievements, preferences.NotifyAchievements)
+            .Set(x => x.NotifyDailyReminder, preferences.NotifyDailyReminder)
+            .Set(x => x.DailyReminderTime, preferences.DailyReminderTime)
+            .Set(x => x.PrivacyProfileVisibility, preferences.PrivacyProfileVisibility)
+            .Set(x => x.PrivacyFindMe, preferences.PrivacyFindMe)
+            .Set(x => x.PrivacyShowSteps, preferences.PrivacyShowSteps)
+            .Update();
 
         var updated = response.Models.FirstOrDefault();
         if (updated == null)

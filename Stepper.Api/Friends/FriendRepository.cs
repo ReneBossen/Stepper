@@ -104,9 +104,16 @@ public class FriendRepository : IFriendRepository
         existing.Status = FriendshipStatusStrings.Accepted;
         existing.AcceptedAt = DateTime.UtcNow;
 
+        // Target-column update: sending created_at/requester_id/addressee_id
+        // would trip trg_friendships_prevent_immutable_updates because the
+        // timestamptz round-trip through System.DateTime loses sub-microsecond
+        // precision.
         var response = await client
             .From<FriendshipEntity>()
-            .Update(existing);
+            .Where(x => x.Id == requestId)
+            .Set(x => x.Status, existing.Status)
+            .Set(x => x.AcceptedAt, existing.AcceptedAt)
+            .Update();
 
         var updated = response.Models.FirstOrDefault();
         if (updated == null)
@@ -145,9 +152,13 @@ public class FriendRepository : IFriendRepository
 
         existing.Status = FriendshipStatusStrings.Rejected;
 
+        // Target-column update: avoids re-sending immutable columns
+        // (see AcceptRequestAsync for details).
         var response = await client
             .From<FriendshipEntity>()
-            .Update(existing);
+            .Where(x => x.Id == requestId)
+            .Set(x => x.Status, existing.Status)
+            .Update();
 
         var updated = response.Models.FirstOrDefault();
         if (updated == null)

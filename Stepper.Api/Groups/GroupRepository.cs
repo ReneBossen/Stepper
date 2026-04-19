@@ -152,10 +152,18 @@ public class GroupRepository : IGroupRepository
 
         var client = await GetAuthenticatedClientAsync();
 
-        var entity = GroupEntity.FromGroup(group);
+        // Target-column update: sending created_at/created_by_id would trip
+        // trg_groups_prevent_immutable_updates because the timestamptz
+        // round-trip through System.DateTime loses sub-microsecond precision.
         var response = await client
             .From<GroupEntity>()
-            .Update(entity);
+            .Where(x => x.Id == group.Id)
+            .Set(x => x.Name, group.Name)
+            .Set(x => x.Description, group.Description)
+            .Set(x => x.IsPublic, group.IsPublic)
+            .Set(x => x.PeriodType, group.PeriodType.ToString().ToLowerInvariant())
+            .Set(x => x.MaxMembers, group.MaxMembers)
+            .Update();
 
         var updated = response.Models.FirstOrDefault();
         if (updated == null)
