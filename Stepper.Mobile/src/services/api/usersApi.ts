@@ -178,7 +178,8 @@ export interface MutualGroup {
 
 /**
  * Backend API response shape for user profile.
- * Uses camelCase from .NET backend.
+ * Uses camelCase from .NET backend. Preferences are fetched separately
+ * via userPreferencesApi (GET /users/me/preferences).
  */
 interface BackendProfileResponse {
   id: string;
@@ -186,22 +187,6 @@ interface BackendProfileResponse {
   avatarUrl?: string;
   createdAt: string;
   onboardingCompleted: boolean;
-  preferences?: {
-    units: string;
-    dailyStepGoal: number;
-    notifications: {
-      dailyReminder: boolean;
-      friendRequests: boolean;
-      groupInvites: boolean;
-      achievements: boolean;
-    };
-    privacy: {
-      showStepsToFriends: boolean;
-      showGroupActivity: boolean;
-      allowFriendRequests: boolean;
-      privateProfile: boolean;
-    };
-  };
 }
 
 /**

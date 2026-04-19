@@ -49,6 +49,13 @@ public class UserService : IUserService
         "imperial"
     };
 
+    private static readonly HashSet<string> ValidPrivacyLevels = new(StringComparer.Ordinal)
+    {
+        PrivacyLevel.Public,
+        PrivacyLevel.Partial,
+        PrivacyLevel.Private
+    };
+
     private readonly IUserRepository _userRepository;
     private readonly IUserPreferencesRepository _preferencesRepository;
     private readonly IStepRepository _stepRepository;
@@ -628,6 +635,30 @@ public class UserService : IUserService
         {
             ValidateDistanceUnit(request.DistanceUnit);
         }
+
+        if (request.PrivacyProfileVisibility != null)
+        {
+            ValidatePrivacyLevel(request.PrivacyProfileVisibility, nameof(request.PrivacyProfileVisibility));
+        }
+
+        if (request.PrivacyFindMe != null)
+        {
+            ValidatePrivacyLevel(request.PrivacyFindMe, nameof(request.PrivacyFindMe));
+        }
+
+        if (request.PrivacyShowSteps != null)
+        {
+            ValidatePrivacyLevel(request.PrivacyShowSteps, nameof(request.PrivacyShowSteps));
+        }
+    }
+
+    private static void ValidatePrivacyLevel(string value, string fieldName)
+    {
+        if (!ValidPrivacyLevels.Contains(value))
+        {
+            throw new ArgumentException(
+                $"{fieldName} must be one of: {string.Join(", ", ValidPrivacyLevels)}.");
+        }
     }
 
     private static void ValidateDailyStepGoal(int stepGoal)
@@ -664,9 +695,19 @@ public class UserService : IUserService
             preferences.Units = request.DistanceUnit;
         }
 
-        if (request.PrivateProfile.HasValue)
+        if (request.PrivacyProfileVisibility != null)
         {
-            preferences.PrivacyProfileVisibility = request.PrivateProfile.Value ? PrivacyLevel.Private : PrivacyLevel.Public;
+            preferences.PrivacyProfileVisibility = request.PrivacyProfileVisibility;
+        }
+
+        if (request.PrivacyFindMe != null)
+        {
+            preferences.PrivacyFindMe = request.PrivacyFindMe;
+        }
+
+        if (request.PrivacyShowSteps != null)
+        {
+            preferences.PrivacyShowSteps = request.PrivacyShowSteps;
         }
     }
 
@@ -790,7 +831,9 @@ public class UserService : IUserService
             NotificationsEnabled: preferences.NotifyDailyReminder,
             DailyStepGoal: preferences.DailyStepGoal,
             DistanceUnit: preferences.Units,
-            PrivateProfile: preferences.PrivacyProfileVisibility == PrivacyLevel.Private
+            PrivacyProfileVisibility: preferences.PrivacyProfileVisibility,
+            PrivacyFindMe: preferences.PrivacyFindMe,
+            PrivacyShowSteps: preferences.PrivacyShowSteps
         );
     }
 
