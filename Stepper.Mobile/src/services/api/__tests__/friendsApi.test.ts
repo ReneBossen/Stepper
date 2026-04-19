@@ -360,8 +360,8 @@ describe('friendsApi', () => {
     });
   });
 
-  describe('getUserById', () => {
-    it('should fetch user by ID and map to mobile format', async () => {
+  describe('getUserByQrCode', () => {
+    it('should fetch user by qr_code_id and map to mobile format', async () => {
       const mockUser = {
         id: 'user-123',
         displayName: 'Test User',
@@ -371,9 +371,9 @@ describe('friendsApi', () => {
 
       mockApiClient.get.mockResolvedValue(mockUser);
 
-      const result = await friendsApi.getUserById('user-123');
+      const result = await friendsApi.getUserByQrCode('abc123def456');
 
-      expect(mockApiClient.get).toHaveBeenCalledWith('/friends/discovery/qr-code/user-123');
+      expect(mockApiClient.get).toHaveBeenCalledWith('/friends/discovery/qr-code/abc123def456');
       expect(result).toEqual({
         id: 'user-123',
         display_name: 'Test User',
@@ -387,7 +387,7 @@ describe('friendsApi', () => {
       const error = { statusCode: 404, message: 'Not found' };
       mockApiClient.get.mockRejectedValue(error);
 
-      const result = await friendsApi.getUserById('nonexistent');
+      const result = await friendsApi.getUserByQrCode('nonexistent');
 
       expect(result).toBeNull();
     });
@@ -396,7 +396,7 @@ describe('friendsApi', () => {
       const error = new Error('Network error');
       mockApiClient.get.mockRejectedValue(error);
 
-      await expect(friendsApi.getUserById('user-123')).rejects.toThrow('Network error');
+      await expect(friendsApi.getUserByQrCode('abc123def456')).rejects.toThrow('Network error');
     });
   });
 

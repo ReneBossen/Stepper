@@ -3,10 +3,20 @@ import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { MyQRCodeModal } from '../MyQRCodeModal';
 import { useUserStore } from '@store/userStore';
+import { friendsApi } from '@services/api/friendsApi';
 
 // Mock user store
 jest.mock('@store/userStore');
 const mockUseUserStore = useUserStore as jest.MockedFunction<typeof useUserStore>;
+
+// Mock friendsApi so the modal can fetch the current user's qr_code_id / deep link
+jest.mock('@services/api/friendsApi');
+const mockFriendsApi = friendsApi as jest.Mocked<typeof friendsApi>;
+const mockQrCode = {
+  qr_code_id: 'a1b2c3d4e5f60718',
+  qr_code_image: 'base64-image-data',
+  deep_link: 'Stepper://invite/a1b2c3d4e5f60718',
+};
 
 // Mock react-native-paper
 jest.mock('react-native-paper', () => {
@@ -43,6 +53,9 @@ jest.mock('react-native-paper', () => {
       >
         <RN.Text>{icon}</RN.Text>
       </RN.TouchableOpacity>
+    ),
+    ActivityIndicator: ({ size, color, ...props }: any) => (
+      <RN.View testID="activity-indicator" {...props} />
     ),
     useTheme: () => ({
       colors: {
@@ -134,12 +147,24 @@ describe('MyQRCodeModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseUserStore.mockReturnValue({ currentUser: mockUser });
+    mockFriendsApi.getMyQrCode.mockResolvedValue(mockQrCode);
     mockRequestPermissionsAsync.mockResolvedValue({ status: 'granted' });
     mockWriteAsStringAsync.mockResolvedValue(undefined);
     mockSaveToLibraryAsync.mockResolvedValue(undefined);
     mockIsAvailableAsync.mockResolvedValue(true);
     mockShareAsync.mockResolvedValue(undefined);
   });
+
+  // The modal fetches the user's deep link on open and keeps the Save / Share
+  // buttons disabled until the fetch resolves. Tests that interact with those
+  // buttons need to wait for the QR to appear before pressing.
+  async function renderAndWaitForQr(props = defaultProps) {
+    const result = render(<MyQRCodeModal {...props} />);
+    await waitFor(() => {
+      expect(result.getByTestId('qr-code')).toBeTruthy();
+    });
+    return result;
+  }
 
   describe('rendering', () => {
     it('should render when visible is true', () => {
@@ -170,14 +195,24 @@ describe('MyQRCodeModal', () => {
       expect(getByTestId('icon-button-close')).toBeTruthy();
     });
 
-    it('should render the QR code', () => {
-      const { getByTestId } = render(<MyQRCodeModal {...defaultProps} />);
-      expect(getByTestId('qr-code')).toBeTruthy();
+    it('should render the QR code once the deep link has been fetched', async () => {
+      const { findByTestId } = render(<MyQRCodeModal {...defaultProps} />);
+      expect(await findByTestId('qr-code')).toBeTruthy();
     });
 
-    it('should render the QR code with user ID as value', () => {
-      const { getByText } = render(<MyQRCodeModal {...defaultProps} />);
-      expect(getByText('user-123-uuid')).toBeTruthy();
+    it('should render the QR code with the backend-issued deep link as value', async () => {
+      const { findByText } = render(<MyQRCodeModal {...defaultProps} />);
+      expect(await findByText(mockQrCode.deep_link)).toBeTruthy();
+    });
+
+    it('should show a loading indicator while the deep link is being fetched', () => {
+      // Hold the fetch pending so we can observe the loading state before resolving.
+      mockFriendsApi.getMyQrCode.mockReturnValue(new Promise(() => {}));
+
+      const { getByTestId, queryByTestId } = render(<MyQRCodeModal {...defaultProps} />);
+
+      expect(getByTestId('activity-indicator')).toBeTruthy();
+      expect(queryByTestId('qr-code')).toBeNull();
     });
 
     it('should render the user display name', () => {
@@ -216,7 +251,7 @@ describe('MyQRCodeModal', () => {
 
   describe('save to photos', () => {
     it('should request permission when Save to Photos is pressed', async () => {
-      const { getByTestId } = render(<MyQRCodeModal {...defaultProps} />);
+      const { getByTestId } = await renderAndWaitForQr();
 
       await act(async () => {
         fireEvent.press(getByTestId('button-download'));
@@ -228,7 +263,7 @@ describe('MyQRCodeModal', () => {
     });
 
     it('should save to library after permission granted', async () => {
-      const { getByTestId } = render(<MyQRCodeModal {...defaultProps} />);
+      const { getByTestId } = await renderAndWaitForQr();
 
       await act(async () => {
         fireEvent.press(getByTestId('button-download'));
@@ -247,7 +282,7 @@ describe('MyQRCodeModal', () => {
     });
 
     it('should show success alert after saving', async () => {
-      const { getByTestId } = render(<MyQRCodeModal {...defaultProps} />);
+      const { getByTestId } = await renderAndWaitForQr();
 
       await act(async () => {
         fireEvent.press(getByTestId('button-download'));
@@ -264,7 +299,7 @@ describe('MyQRCodeModal', () => {
     it('should show permission required alert when permission denied', async () => {
       mockRequestPermissionsAsync.mockResolvedValue({ status: 'denied' });
 
-      const { getByTestId } = render(<MyQRCodeModal {...defaultProps} />);
+      const { getByTestId } = await renderAndWaitForQr();
 
       await act(async () => {
         fireEvent.press(getByTestId('button-download'));
@@ -281,7 +316,7 @@ describe('MyQRCodeModal', () => {
     it('should show error alert when save fails', async () => {
       mockWriteAsStringAsync.mockRejectedValue(new Error('Write failed'));
 
-      const { getByTestId } = render(<MyQRCodeModal {...defaultProps} />);
+      const { getByTestId } = await renderAndWaitForQr();
 
       await act(async () => {
         fireEvent.press(getByTestId('button-download'));
@@ -295,7 +330,7 @@ describe('MyQRCodeModal', () => {
 
   describe('share', () => {
     it('should check if sharing is available when Share is pressed', async () => {
-      const { getByTestId } = render(<MyQRCodeModal {...defaultProps} />);
+      const { getByTestId } = await renderAndWaitForQr();
 
       await act(async () => {
         fireEvent.press(getByTestId('button-share-variant'));
@@ -307,7 +342,7 @@ describe('MyQRCodeModal', () => {
     });
 
     it('should share file when sharing is available', async () => {
-      const { getByTestId } = render(<MyQRCodeModal {...defaultProps} />);
+      const { getByTestId } = await renderAndWaitForQr();
 
       await act(async () => {
         fireEvent.press(getByTestId('button-share-variant'));
@@ -329,7 +364,7 @@ describe('MyQRCodeModal', () => {
     it('should show error alert when sharing is not available', async () => {
       mockIsAvailableAsync.mockResolvedValue(false);
 
-      const { getByTestId } = render(<MyQRCodeModal {...defaultProps} />);
+      const { getByTestId } = await renderAndWaitForQr();
 
       await act(async () => {
         fireEvent.press(getByTestId('button-share-variant'));
@@ -346,7 +381,7 @@ describe('MyQRCodeModal', () => {
     it('should show error alert when share fails', async () => {
       mockShareAsync.mockRejectedValue(new Error('Share failed'));
 
-      const { getByTestId } = render(<MyQRCodeModal {...defaultProps} />);
+      const { getByTestId } = await renderAndWaitForQr();
 
       await act(async () => {
         fireEvent.press(getByTestId('button-share-variant'));
@@ -378,7 +413,7 @@ describe('MyQRCodeModal', () => {
         })
       );
 
-      const { getByTestId } = render(<MyQRCodeModal {...defaultProps} />);
+      const { getByTestId } = await renderAndWaitForQr();
 
       await act(async () => {
         fireEvent.press(getByTestId('button-download'));
@@ -403,7 +438,7 @@ describe('MyQRCodeModal', () => {
         })
       );
 
-      const { getByTestId } = render(<MyQRCodeModal {...defaultProps} />);
+      const { getByTestId } = await renderAndWaitForQr();
 
       await act(async () => {
         fireEvent.press(getByTestId('button-share-variant'));
