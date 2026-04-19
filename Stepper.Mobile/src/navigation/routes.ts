@@ -60,6 +60,7 @@ export const GROUPS_ROUTES = {
   JoinGroup: 'JoinGroup',
   ManageMembers: 'ManageMembers',
   InviteMembers: 'InviteMembers',
+  UserProfile: 'UserProfile',
 } as const;
 
 export const SETTINGS_ROUTES = {

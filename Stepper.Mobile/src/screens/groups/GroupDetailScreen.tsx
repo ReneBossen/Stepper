@@ -154,10 +154,9 @@ export default function GroupDetailScreen({ route }: Props) {
   }, [navigation, groupId]);
 
   const handleMemberPress = useCallback((entry: LeaderboardEntry) => {
-    // Navigate to member profile
-    // For now, we don't have a profile screen in GroupsStack
-    // This would typically navigate to a UserProfile screen
-  }, []);
+    if (entry.is_current_user) return;
+    navigation.navigate(GROUPS_ROUTES.UserProfile, { userId: entry.user_id });
+  }, [navigation]);
 
   const renderLeaderboardItem = useCallback(
     ({ item }: { item: LeaderboardEntry }) => (
