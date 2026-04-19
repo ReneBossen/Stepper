@@ -35,7 +35,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: './assets/adaptive-icon.png',
+      foregroundImage: './assets/StepperIcon.png',
       backgroundColor: '#ffffff',
     },
     package: 'com.stepper.mobile',
