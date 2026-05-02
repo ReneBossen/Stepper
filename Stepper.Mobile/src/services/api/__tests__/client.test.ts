@@ -231,6 +231,62 @@ describe('apiClient', () => {
       expect(headers['Authorization']).toBeUndefined();
     });
 
+    it('should serialize concurrent refreshes via a single in-flight promise', async () => {
+      // Simulates the real-world race where the app comes back to foreground
+      // and many screens fire requests at once. Without a mutex, each call
+      // would POST /auth/refresh with the same refresh token; Supabase rotates
+      // on first use, so all but one would receive 401 and the user would be
+      // signed out. With the mutex, only one /auth/refresh leaves the device.
+      mockGetAccessToken.mockResolvedValue('old-expired-token');
+      mockIsAccessTokenExpired.mockResolvedValue(true);
+      mockGetRefreshToken.mockResolvedValue('valid-refresh-token');
+
+      let resolveRefresh: (value: unknown) => void = () => {};
+      const refreshPromise = new Promise((resolve) => {
+        resolveRefresh = resolve;
+      });
+      mockRefreshToken.mockReturnValue(refreshPromise);
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ success: true, data: null, errors: [] }),
+      });
+
+      const calls = Promise.all([
+        apiClient.get('/a'),
+        apiClient.get('/b'),
+        apiClient.get('/c'),
+        apiClient.get('/d'),
+        apiClient.get('/e'),
+      ]);
+
+      // Flush microtasks until every concurrent caller has subscribed to
+      // the same in-flight refresh promise.
+      for (let i = 0; i < 20; i++) {
+        await Promise.resolve();
+      }
+
+      resolveRefresh({
+        accessToken: 'new-access-token',
+        refreshToken: 'new-refresh-token',
+        expiresIn: 3600,
+        user: { id: '123', email: 'test@test.com', displayName: 'Test' },
+      });
+
+      await calls;
+
+      expect(mockRefreshToken).toHaveBeenCalledTimes(1);
+      expect(mockSetTokens).toHaveBeenCalledTimes(1);
+
+      // Every outgoing request must use the freshly refreshed token.
+      for (const [, init] of mockFetch.mock.calls) {
+        expect((init as RequestInit).headers).toEqual(
+          expect.objectContaining({ Authorization: 'Bearer new-access-token' })
+        );
+      }
+    });
+
     it('should use valid OAuth token without attempting refresh', async () => {
       mockGetAccessToken.mockResolvedValue('valid-oauth-token');
       mockIsAccessTokenExpired.mockResolvedValue(false);
