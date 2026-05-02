@@ -3,6 +3,7 @@ import { ApiResponse, ApiError, ApiErrorResponse } from './types';
 import { tokenStorage } from '../tokenStorage';
 import { authApi } from './authApi';
 import { track } from '../analytics';
+import type { AuthResponse } from '../../types/auth';
 
 /**
  * Module-level callback invoked when the session has expired
@@ -21,6 +22,60 @@ let onSessionExpired: (() => void) | null = null;
  */
 export function setOnSessionExpired(callback: () => void): void {
   onSessionExpired = callback;
+}
+
+// Supabase rotates the refresh token on every successful refresh, so two
+// concurrent /auth/refresh calls with the same token would race: one wins,
+// the other gets 401 and would evict the session. Holding the in-flight
+// promise lets parallel callers share the single refresh result.
+let refreshInFlight: Promise<AuthResponse> | null = null;
+
+/**
+ * Refresh the backend session using the stored refresh token.
+ * Concurrent callers share the in-flight refresh so only one
+ * /auth/refresh request leaves the device at a time.
+ *
+ * On 401, tokens are cleared and the session-expired callback fires
+ * before the rejection is propagated so callers can distinguish a
+ * truly invalid refresh token from a transient failure.
+ *
+ * @throws ApiError on any failure (401, network, 5xx, missing token)
+ */
+export function refreshSession(): Promise<AuthResponse> {
+  if (refreshInFlight) {
+    return refreshInFlight;
+  }
+
+  refreshInFlight = (async () => {
+    try {
+      const refreshToken = await tokenStorage.getRefreshToken();
+      if (!refreshToken) {
+        throw new ApiError('No refresh token available', 0);
+      }
+
+      const response = await authApi.refreshToken(refreshToken);
+      await tokenStorage.setTokens(
+        response.accessToken,
+        response.refreshToken,
+        response.expiresIn
+      );
+      await tokenStorage.setUserInfo(response.user);
+      return response;
+    } catch (error: unknown) {
+      // Only evict the session when the backend explicitly says the
+      // refresh token is invalid. Network errors / timeouts / 5xx must
+      // not clear tokens — callers can retry on the next request.
+      if (error instanceof ApiError && error.isUnauthorized) {
+        await tokenStorage.clearTokens();
+        onSessionExpired?.();
+      }
+      throw error;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
 }
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -65,31 +120,15 @@ async function getAuthToken(): Promise<string | null> {
   const isExpired = await tokenStorage.isAccessTokenExpired();
 
   if (isExpired) {
-    const refreshToken = await tokenStorage.getRefreshToken();
-    if (refreshToken) {
-      try {
-        const response = await authApi.refreshToken(refreshToken);
-        await tokenStorage.setTokens(
-          response.accessToken,
-          response.refreshToken,
-          response.expiresIn
-        );
-        await tokenStorage.setUserInfo(response.user);
-        return response.accessToken;
-      } catch (error: unknown) {
-        // Only evict the session when the backend explicitly says the
-        // refresh token is invalid. Network errors / timeouts / 5xx must
-        // not clear tokens — the user should stay signed in and the caller
-        // can retry on the next request.
-        if (error instanceof ApiError && error.isUnauthorized) {
-          await tokenStorage.clearTokens();
-          onSessionExpired?.();
-        }
-        return null;
-      }
+    try {
+      const response = await refreshSession();
+      return response.accessToken;
+    } catch {
+      // refreshSession already evicted on 401 and left tokens intact on
+      // network/5xx errors. Returning null lets the request go out without
+      // an Authorization header; the backend will respond accordingly.
+      return null;
     }
-    // No refresh token available
-    return null;
   }
 
   return accessToken;

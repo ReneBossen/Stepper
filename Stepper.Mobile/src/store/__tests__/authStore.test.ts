@@ -8,17 +8,50 @@ import type { AuthResponse, AuthUser } from '../../types/auth';
 // Mock the auth API, token storage, and API client
 jest.mock('@services/api/authApi');
 jest.mock('@services/tokenStorage');
-jest.mock('@services/api/client', () => ({
-  setOnSessionExpired: jest.fn(),
-  apiClient: {
-    get: jest.fn(),
-    post: jest.fn(),
-    put: jest.fn(),
-    patch: jest.fn(),
-    delete: jest.fn(),
-    upload: jest.fn(),
-  },
-}));
+jest.mock('@services/api/client', () => {
+  // Mocked refreshSession mirrors the real one closely enough that tests
+  // observing tokenStorage / authApi side-effects still pass. It does NOT
+  // implement the in-flight mutex — that is covered by client.test.ts.
+  const { authApi: mockedAuthApi } = jest.requireMock('@services/api/authApi');
+  const { tokenStorage: mockedTokenStorage } = jest.requireMock('@services/tokenStorage');
+  const { ApiError: MockedApiError } = jest.requireActual<typeof import('@services/api/types')>('@services/api/types');
+  const sessionExpiredCallbacks: (() => void)[] = [];
+  return {
+    setOnSessionExpired: jest.fn((cb: () => void) => {
+      sessionExpiredCallbacks.push(cb);
+    }),
+    refreshSession: jest.fn(async () => {
+      const refreshToken = await mockedTokenStorage.getRefreshToken();
+      if (!refreshToken) {
+        throw new MockedApiError('No refresh token available', 0);
+      }
+      try {
+        const response = await mockedAuthApi.refreshToken(refreshToken);
+        await mockedTokenStorage.setTokens(
+          response.accessToken,
+          response.refreshToken,
+          response.expiresIn
+        );
+        await mockedTokenStorage.setUserInfo(response.user);
+        return response;
+      } catch (error) {
+        if (error instanceof MockedApiError && error.isUnauthorized) {
+          await mockedTokenStorage.clearTokens();
+          sessionExpiredCallbacks.forEach((cb) => cb());
+        }
+        throw error;
+      }
+    }),
+    apiClient: {
+      get: jest.fn(),
+      post: jest.fn(),
+      put: jest.fn(),
+      patch: jest.fn(),
+      delete: jest.fn(),
+      upload: jest.fn(),
+    },
+  };
+});
 
 const mockAuthApi = authApi as jest.Mocked<typeof authApi>;
 const mockTokenStorage = tokenStorage as jest.Mocked<typeof tokenStorage>;

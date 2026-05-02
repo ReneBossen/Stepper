@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { authApi } from '@services/api/authApi';
-import { setOnSessionExpired } from '@services/api/client';
+import { refreshSession, setOnSessionExpired } from '@services/api/client';
 import { ApiError } from '@services/api/types';
 import { tokenStorage } from '@services/tokenStorage';
+import { useUserStore } from '@store/userStore';
 import { getErrorMessage } from '@utils/errorUtils';
 import { track, identify, reset as resetAnalytics, setUserProperties } from '@services/analytics';
 import type { AuthUser } from '../types/auth';
@@ -217,13 +218,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       try {
-        const response = await authApi.refreshToken(refreshToken);
-        await tokenStorage.setTokens(
-          response.accessToken,
-          response.refreshToken,
-          response.expiresIn
-        );
-        await tokenStorage.setUserInfo(response.user);
+        // Routed through the shared in-flight mutex in client.ts so we never
+        // race with API-call-driven refreshes on app resume.
+        const response = await refreshSession();
 
         set({
           user: response.user,
@@ -234,9 +231,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // Only treat an explicit 401 from the refresh endpoint as a truly
         // invalid session. Network errors, timeouts, or 5xx must not evict
         // the user — fall back to the persisted user info so they remain
-        // signed in and can retry.
+        // signed in and can retry. Note: refreshSession() has already
+        // cleared tokens and notified the session-expired callback on 401,
+        // so we just need to update local state.
         if (error instanceof ApiError && error.isUnauthorized) {
-          await tokenStorage.clearTokens();
           set({
             user: null,
             isAuthenticated: false,
@@ -280,4 +278,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 // the auth store without importing it directly (decouples layers).
 setOnSessionExpired(() => {
   useAuthStore.getState().setUser(null);
+  // Match the manual sign-out path so auto-eviction doesn't leave stale
+  // profile data (name, avatar, theme preference) behind.
+  useUserStore.getState().clearUser();
 });

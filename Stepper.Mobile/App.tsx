@@ -92,6 +92,13 @@ function AppContent() {
       ) {
         // App has come to the foreground
         trackEvent('session_started', {});
+        // Proactively rehydrate the session before any feature screens fan
+        // out their requests. The access token may have expired while we
+        // were backgrounded, and racing N parallel refreshes against a
+        // rotated refresh token is what causes spurious sign-outs.
+        if (useAuthStore.getState().isAuthenticated) {
+          void useAuthStore.getState().restoreSession();
+        }
       } else if (
         appState.current === 'active' &&
         nextAppState.match(/inactive|background/)
